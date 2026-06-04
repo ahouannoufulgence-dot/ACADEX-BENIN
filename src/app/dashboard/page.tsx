@@ -1,4 +1,3 @@
-
 'use client';
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -20,7 +19,8 @@ import {
   Sparkles,
   FileDown,
   GraduationCap,
-  Calendar
+  Calendar,
+  Trophy
 } from "lucide-react"
 import { 
   ResponsiveContainer, 
