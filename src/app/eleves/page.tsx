@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -83,7 +82,6 @@ export default function StudentsPage() {
       const classSlug = batchClass.replace(/[^a-zA-Z0-9]/g, "");
       const academicYear = "2025-2026";
       
-      // Header
       doc.setFillColor(20, 83, 45); // ACADEX Green
       doc.rect(0, 0, 210, 40, 'F');
       
@@ -96,7 +94,6 @@ export default function StudentsPage() {
       doc.setFont("helvetica", "normal");
       doc.text("Système de Gestion Scolaire Premium - Excellence & Rigueur", 105, 28, { align: "center" });
 
-      // Document Info
       doc.setTextColor(17, 24, 39);
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
@@ -121,7 +118,7 @@ export default function StudentsPage() {
           status: "En attente d'activation",
           academicYear,
           createdAt: serverTimestamp(),
-          validationCode // Pour vérification lors de l'activation
+          validationCode
         });
       }
 
@@ -269,7 +266,6 @@ export default function StudentsPage() {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="relative group max-w-3xl">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
@@ -280,7 +276,6 @@ export default function StudentsPage() {
           />
         </div>
 
-        {/* Students List */}
         <div className="grid gap-4">
           {loadingStudents ? (
             <div className="flex items-center justify-center p-12">
