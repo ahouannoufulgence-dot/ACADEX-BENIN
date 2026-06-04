@@ -13,7 +13,11 @@ import {
   GraduationCap,
   ChevronRight,
   MoreVertical,
-  ArrowUpDown
+  ArrowUpDown,
+  FileDown,
+  Printer,
+  ShieldCheck,
+  Loader2
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,7 +28,8 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { 
@@ -35,6 +40,9 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 import { useState } from "react"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import { toast } from "@/hooks/use-toast"
 
 const students = [
   { id: "ELV-TLED-001", name: "Amoussou Marie", class: "3ème A", average: 14.2, rank: 5, status: "Actif" },
@@ -44,23 +52,157 @@ const students = [
   { id: "ELV-TLED-005", name: "Tidjani Amadou", class: "Terminale S1", average: 18.1, rank: 1, status: "Actif" },
 ].sort((a, b) => a.name.localeCompare(b.name))
 
+const officialClasses = [
+  "6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3ème D1", "3ème D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"
+]
+
 export default function StudentsPage() {
   const [isAdding, setIsAdding] = useState(false)
+  const [isGeneratingIDs, setIsGeneratingIDs] = useState(false)
+  const [loadingPdf, setLoadingPdf] = useState(false)
+  
+  // States for Batch ID Generation
+  const [batchClass, setBatchClass] = useState("")
+  const [batchQuantity, setBatchQuantity] = useState("40")
+
+  const handleGenerateBatchPDF = () => {
+    if (!batchClass) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner une classe.", variant: "destructive" });
+      return;
+    }
+    
+    setLoadingPdf(true);
+    
+    setTimeout(() => {
+      try {
+        const doc = new jsPDF();
+        const quantity = parseInt(batchQuantity);
+        const classSlug = batchClass.replace(/[^a-zA-Z0-9]/g, "");
+        
+        // Header
+        doc.setFillColor(20, 83, 45); // ACADEX Green
+        doc.rect(0, 0, 210, 40, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text("ACADEX - LISTE OFFICIELLE DES IDENTIFIANTS", 105, 18, { align: "center" });
+        
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text("Système de Gestion Scolaire Premium - Excellence & Rigueur", 105, 28, { align: "center" });
+
+        // Document Info
+        doc.setTextColor(17, 24, 39);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Classe : ${batchClass}`, 14, 50);
+        doc.text(`Année Scolaire : 2025-2026`, 14, 57);
+        doc.text(`Nombre d'identifiants : ${quantity}`, 14, 64);
+        doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 196, 50, { align: "right" });
+
+        // Table Data
+        const rows = [];
+        for (let i = 1; i <= quantity; i++) {
+          const num = i.toString().padStart(3, '0');
+          rows.push([
+            i,
+            `ELV-${classSlug}-${num}`,
+            "..................................................................", // Blank for manual filling
+            Math.random().toString(36).substring(2, 8).toUpperCase() // Random security code
+          ]);
+        }
+
+        autoTable(doc, {
+          startY: 75,
+          head: [['#', 'Identifiant Unique', 'Nom & Prénoms de l\'élève', 'Code de Validation']],
+          body: rows,
+          headStyles: { fillColor: [20, 83, 45], textColor: [255, 255, 255], fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          margin: { top: 75 },
+          styles: { fontSize: 9, cellPadding: 5 }
+        });
+
+        // Footer for signature
+        const finalY = (doc as any).lastAutoTable.finalY || 150;
+        doc.setFontSize(10);
+        doc.text("Le Directeur de l'Établissement", 150, finalY + 20, { align: "center" });
+        doc.text("(Signature et Cachet)", 150, finalY + 45, { align: "center" });
+
+        doc.save(`ACADEX_IDs_${classSlug}.pdf`);
+        
+        toast({
+          title: "PDF Généré",
+          description: `La liste des identifiants pour ${batchClass} a été téléchargée.`
+        });
+        setIsGeneratingIDs(false);
+      } catch (error) {
+        console.error(error);
+        toast({ title: "Erreur", description: "Échec de la génération du PDF.", variant: "destructive" });
+      } finally {
+        setLoadingPdf(false);
+      }
+    }, 1000);
+  }
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 animate-in fade-in duration-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des Élèves</h1>
-            <p className="text-muted-foreground mt-2 font-medium">Répertoire complet des talents de l'établissement.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Répertoire complet et génération d'identifiants.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
-              <Filter className="mr-2 size-4" />
-              Filtrer
-            </Button>
-            
+            <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white hover:bg-muted group">
+                  <FileDown className="mr-2 size-5 text-primary group-hover:scale-110 transition-transform" />
+                  Générer Identifiants par lot
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] border-none p-10">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-black">Identifiants par lot</DialogTitle>
+                  <DialogDescription className="font-medium">Générez une liste d'identifiants vierges pour une classe entière au format PDF.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-6">
+                  <div className="space-y-2">
+                    <Label className="font-bold">Classe concernée</Label>
+                    <Select onValueChange={setBatchClass}>
+                      <SelectTrigger className="h-12 rounded-xl">
+                        <SelectValue placeholder="Choisir une classe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-bold">Nombre d'identifiants à créer</Label>
+                    <Input 
+                      type="number" 
+                      value={batchQuantity} 
+                      onChange={(e) => setBatchQuantity(e.target.value)} 
+                      className="h-12 rounded-xl" 
+                    />
+                    <p className="text-[10px] text-muted-foreground font-medium italic">Un pour chaque élève de la liste.</p>
+                  </div>
+                </div>
+                <DialogFooter className="gap-3">
+                  <Button variant="ghost" onClick={() => setIsGeneratingIDs(false)} className="rounded-xl font-bold">Annuler</Button>
+                  <Button 
+                    onClick={handleGenerateBatchPDF} 
+                    disabled={loadingPdf}
+                    className="bg-primary rounded-xl font-black px-8 h-12 shadow-xl shadow-primary/20"
+                  >
+                    {loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />}
+                    Télécharger le PDF
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
               <DialogTrigger asChild>
                 <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black text-lg">
@@ -90,9 +232,7 @@ export default function StudentsPage() {
                         <SelectValue placeholder="Sélectionner la classe" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="6a">6ème A</SelectItem>
-                        <SelectItem value="3d1">3ème D1</SelectItem>
-                        <SelectItem value="tled1">Terminale D1</SelectItem>
+                        {officialClasses.map(c => <SelectItem key={c} value={c.toLowerCase().replace(/\s/g, "")}>{c}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
