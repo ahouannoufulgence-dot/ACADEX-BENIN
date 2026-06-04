@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, School } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 export default function RegisterDirectorPage() {
   const router = useRouter();
