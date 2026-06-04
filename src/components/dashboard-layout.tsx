@@ -52,29 +52,29 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/hooks/use-toast"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 
 const navigation = [
-  { name: "Cockpit Directeur", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Élèves", href: "/eleves", icon: Users },
-  { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
-  { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
-  { name: "Classement", href: "/classement", icon: Trophy },
-  { name: "Discipline", href: "/discipline", icon: ShieldAlert },
-  { name: "Paiements", href: "/paiements", icon: CreditCard },
-  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles },
-  { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
-  { name: "Emploi du temps", href: "/agenda", icon: Calendar },
-  { name: "Examens", href: "/examens", icon: History },
-  { name: "Documents", href: "/documents", icon: FileText },
-  { name: "Paramètres", href: "/settings", icon: Settings },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur"] },
+  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur"] },
+  { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur"] },
+  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur"] },
+  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur"] },
+  { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur"] },
+  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Professeur"] },
+  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Professeur"] },
+  { name: "Emploi du temps", href: "/agenda", icon: Calendar, roles: ["Directeur", "Professeur"] },
+  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Professeur"] },
+  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Professeur"] },
+  { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [userName, setUserName] = useState("Dr. Koffi Mensah")
-  const [userRole, setUserRole] = useState("Super Administrateur")
+  const [userName, setUserName] = useState("Utilisateur")
+  const [userRole, setUserRole] = useState("Chargement...")
 
   useEffect(() => {
     const savedName = localStorage.getItem('acadex_user_name')
@@ -82,6 +82,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (savedName) setUserName(savedName)
     if (savedRole) setUserRole(savedRole)
   }, [])
+
+  const filteredNavigation = useMemo(() => {
+    return navigation.filter(item => item.roles.includes(userRole.split(' ')[0]))
+  }, [userRole])
 
   const handleLogout = () => {
     toast({
@@ -107,11 +111,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-4 py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
-                  Pilotage Établissement
+                  Menu {userRole.split(' ')[0]}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-2">
-                    {navigation.map((item) => (
+                    {filteredNavigation.map((item) => (
                       <SidebarMenuItem key={item.name}>
                         <SidebarMenuButton
                           asChild
@@ -156,8 +160,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <div className="relative hidden lg:block w-[400px] group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input 
-                  placeholder="Recherche globale (Élève, Prof, Reçu...)" 
-                  className="pl-12 bg-muted/40 border-none focus-visible:ring-2 focus-visible:ring-primary/20 transition-all rounded-[1.25rem] h-12 font-medium text-base shadow-inner"
+                  placeholder="Recherche globale..." 
+                  className="pl-12 bg-muted/40 border-none rounded-[1.25rem] h-12 font-medium text-base shadow-inner"
                 />
               </div>
             </div>

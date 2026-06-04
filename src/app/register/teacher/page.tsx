@@ -34,7 +34,7 @@ export default function RegisterTeacherPage() {
   });
 
   const subjects = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie", "Philosophie", "Informatique", "EPS"];
-  const availableClasses = ["6e A", "6e B", "5e A", "5e B", "4e C", "3D1", "3D2", "2nde C", "1ère D", "Terminale D1", "Terminale D2"];
+  const availableClasses = ["6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"];
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -52,15 +52,15 @@ export default function RegisterTeacherPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      // Génération d'un identifiant basé sur la matière
       const subjectPrefix = form.subject.substring(0, 3).toUpperCase() || "ENS";
       const randomId = Math.floor(100 + Math.random() * 900);
       const newId = `ENS-${subjectPrefix}-${randomId}`;
       setGeneratedId(newId);
       
-      // Sauvegarde du nom pour la personnalisation
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
-      localStorage.setItem('acadex_user_role', `Professeur (${form.subject})`);
+      localStorage.setItem('acadex_user_role', `Professeur`);
+      localStorage.setItem('acadex_user_subject', form.subject);
+      localStorage.setItem('acadex_user_classes', JSON.stringify(form.classes));
       
       nextStep();
       toast({
@@ -79,7 +79,6 @@ export default function RegisterTeacherPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-6">
       <div className="w-full max-w-xl space-y-8 animate-in fade-in duration-700">
         
-        {/* Step Indicator */}
         {step < 4 && (
           <div className="flex justify-center items-center gap-4 mb-8">
             {[1, 2, 3].map((i) => (

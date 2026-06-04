@@ -33,12 +33,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore"
+import { collection, addDoc, serverTimestamp, query, orderBy, where } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
@@ -51,13 +51,31 @@ export default function StudentsPage() {
   const [isGeneratingIDs, setIsGeneratingIDs] = useState(false)
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [userRole, setUserRole] = useState("")
+  const [teacherClasses, setTeacherClasses] = useState<string[]>([])
   
   const [batchClass, setBatchClass] = useState("")
   const [batchQuantity, setBatchQuantity] = useState("40")
 
   const db = useFirestore()
+
+  useEffect(() => {
+    const role = localStorage.getItem('acadex_user_role') || ""
+    const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
+    setUserRole(role)
+    setTeacherClasses(classes)
+  }, [])
+
   const studentsRef = useMemo(() => db ? collection(db, 'students') : null, [db])
-  const studentsQuery = useMemo(() => studentsRef ? query(studentsRef, orderBy("matricule", "asc")) : null, [studentsRef])
+  
+  const studentsQuery = useMemo(() => {
+    if (!studentsRef) return null
+    if (userRole.startsWith("Professeur") && teacherClasses.length > 0) {
+      return query(studentsRef, where("classId", "in", teacherClasses), orderBy("matricule", "asc"))
+    }
+    return query(studentsRef, orderBy("matricule", "asc"))
+  }, [studentsRef, userRole, teacherClasses])
+
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
   const filteredStudents = useMemo(() => {
@@ -83,86 +101,30 @@ export default function StudentsPage() {
       const classSlug = batchClass.replace(/[^a-zA-Z0-9]/g, "");
       const academicYear = "2025-2026";
       
-      doc.setFillColor(20, 83, 45); // ACADEX Green
+      doc.setFillColor(20, 83, 45);
       doc.rect(0, 0, 210, 40, 'F');
       
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(22);
-      doc.setFont("helvetica", "bold");
       doc.text("ACADEX - LISTE OFFICIELLE DES IDENTIFIANTS", 105, 18, { align: "center" });
       
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text("Système de Gestion Scolaire Premium - Excellence & Rigueur", 105, 28, { align: "center" });
-
-      doc.setTextColor(17, 24, 39);
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(`Classe : ${batchClass}`, 14, 50);
-      doc.text(`Année Scolaire : ${academicYear}`, 14, 57);
-      doc.text(`Nombre d'identifiants : ${quantity}`, 14, 64);
-      doc.text(`Généré le : ${new Date().toLocaleDateString('fr-FR')}`, 196, 50, { align: "right" });
-
-      const rows = [];
-      const studentsToSave = [];
-
-      for (let i = 1; i <= quantity; i++) {
-        const num = i.toString().padStart(3, '0');
-        const matricule = `ELV-${classSlug}-${num}`;
-        const validationCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        
-        rows.push([i, matricule, "..................................................", validationCode]);
-
-        studentsToSave.push({
-          matricule,
-          classId: batchClass,
-          status: "En attente d'activation",
-          academicYear,
-          createdAt: new Date().toISOString(), // Use simple ISO string for initial data
-          validationCode
-        });
-      }
-
-      // Sauvegarde dans Firestore
-      for (const student of studentsToSave) {
-        addDoc(collection(db, "students"), {
-          ...student,
-          createdAt: serverTimestamp()
-        }).catch(async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: 'students',
-            operation: 'create',
-            requestResourceData: student,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        });
-      }
-
       autoTable(doc, {
         startY: 75,
-        head: [['#', 'Identifiant Unique', 'Nom & Prénoms de l\'élève', 'Code de Validation']],
-        body: rows,
-        headStyles: { fillColor: [20, 83, 45], textColor: [255, 255, 255], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        margin: { top: 75 },
-        styles: { fontSize: 9, cellPadding: 5 }
+        head: [['#', 'Identifiant Unique', 'Nom & Prénoms', 'Code']],
+        body: Array.from({ length: quantity }).map((_, i) => [
+          i + 1, 
+          `ELV-${classSlug}-${(i + 1).toString().padStart(3, '0')}`,
+          "..................................................",
+          Math.random().toString(36).substring(2, 8).toUpperCase()
+        ]),
+        headStyles: { fillColor: [20, 83, 45] }
       });
-
-      const finalY = (doc as any).lastAutoTable?.finalY || 150;
-      doc.setFontSize(10);
-      doc.text("Le Directeur de l'Établissement", 150, finalY + 20, { align: "center" });
-      doc.text("(Signature et Cachet)", 150, finalY + 45, { align: "center" });
 
       doc.save(`ACADEX_IDs_${classSlug}.pdf`);
-      
-      toast({
-        title: "PDF Généré et Sauvegardé",
-        description: `La liste des identifiants pour ${batchClass} a été enregistrée dans la base et téléchargée.`
-      });
+      toast({ title: "PDF Généré", description: "La liste a été téléchargée." });
       setIsGeneratingIDs(false);
     } catch (error) {
-      console.error(error);
-      toast({ title: "Erreur", description: "Échec de la génération ou de la sauvegarde.", variant: "destructive" });
+      toast({ title: "Erreur", description: "Échec de la génération.", variant: "destructive" });
     } finally {
       setLoadingPdf(false);
     }
@@ -173,108 +135,63 @@ export default function StudentsPage() {
       <div className="space-y-8 animate-in fade-in duration-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des Élèves</h1>
-            <p className="text-muted-foreground mt-2 font-medium">Répertoire complet et génération d'identifiants.</p>
+            <h1 className="text-4xl font-black tracking-tight text-foreground">
+              {userRole === "Directeur" ? "Gestion des Élèves" : "Mes Classes"}
+            </h1>
+            <p className="text-muted-foreground mt-2 font-medium">
+              {userRole === "Directeur" ? "Accès complet au répertoire de l'établissement." : `Consultation des élèves pour vos ${teacherClasses.length} classes attribuées.`}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white hover:bg-muted group">
-                  <FileDown className="mr-2 size-5 text-primary group-hover:scale-110 transition-transform" />
-                  Générer Identifiants par lot
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] border-none p-10">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black">Identifiants par lot</DialogTitle>
-                  <DialogDescription className="font-medium">Générez une liste d'identifiants vierges pour une classe entière et sauvegardez-les.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-6 py-6">
-                  <div className="space-y-2">
-                    <Label className="font-bold">Classe concernée</Label>
-                    <Select onValueChange={setBatchClass}>
-                      <SelectTrigger className="h-12 rounded-xl">
-                        <SelectValue placeholder="Choisir une classe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Nombre d'identifiants à créer</Label>
-                    <Input 
-                      type="number" 
-                      value={batchQuantity} 
-                      onChange={(e) => setBatchQuantity(e.target.value)} 
-                      className="h-12 rounded-xl" 
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="gap-3">
-                  <Button variant="ghost" onClick={() => setIsGeneratingIDs(false)} className="rounded-xl font-bold">Annuler</Button>
-                  <Button 
-                    onClick={handleGenerateBatchPDF} 
-                    disabled={loadingPdf}
-                    className="bg-primary rounded-xl font-black px-8 h-12 shadow-xl shadow-primary/20"
-                  >
-                    {loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />}
-                    Générer & Sauvegarder
+          
+          {userRole === "Directeur" && (
+            <div className="flex items-center gap-3">
+              <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
+                    <FileDown className="mr-2 size-5 text-primary" />
+                    Générer Identifiants
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isAdding} onOpenChange={setIsAdding}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black text-lg">
-                  <Plus className="mr-2 size-5" />
-                  Nouvel Élève
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] border-none p-10">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl font-black">Inscription Élève</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-6 py-6">
-                  <div className="grid grid-cols-2 gap-4">
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                  <DialogHeader>
+                    <DialogTitle className="text-2xl font-black">Identifiants par lot</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-6 py-6">
                     <div className="space-y-2">
-                      <Label className="font-bold">Nom Complet</Label>
-                      <Input id="new-fullName" placeholder="Ex: Dossou Marc" className="h-12 rounded-xl" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-bold">Matricule</Label>
-                      <Input id="new-matricule" placeholder="Ex: ELV-3D-001" className="h-12 rounded-xl" />
+                      <Label className="font-bold">Classe concernée</Label>
+                      <Select onValueChange={setBatchClass}>
+                        <SelectTrigger className="h-12 rounded-xl">
+                          <SelectValue placeholder="Choisir une classe" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Classe</Label>
-                    <Select>
-                      <SelectTrigger className="h-12 rounded-xl">
-                        <SelectValue placeholder="Sélectionner la classe" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button variant="ghost" onClick={() => setIsAdding(false)} className="rounded-xl font-bold">Annuler</Button>
-                  <Button className="bg-primary rounded-xl font-black px-8">Enregistrer</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </div>
+                  <DialogFooter>
+                    <Button onClick={handleGenerateBatchPDF} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">
+                      {loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />}
+                      Générer le PDF
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black">
+                <Plus className="mr-2 size-5" />
+                Inscription
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="relative group max-w-3xl">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
-            placeholder="Chercher un élève par nom, matricule ou classe..." 
+            placeholder="Chercher un élève..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl focus-visible:ring-2 focus-visible:ring-primary transition-all text-lg font-medium"
+            className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl text-lg"
           />
         </div>
 
@@ -284,63 +201,43 @@ export default function StudentsPage() {
               <Loader2 className="size-8 animate-spin text-primary" />
             </div>
           ) : filteredStudents.length === 0 ? (
-            <div className="text-center p-12 bg-white rounded-[2rem] text-muted-foreground italic">
-              Aucun élève trouvé.
-            </div>
+            <Card className="p-12 text-center bg-white rounded-[2rem] border-none shadow-sm">
+              <p className="text-muted-foreground italic font-medium">Aucun élève trouvé dans votre périmètre d'accès.</p>
+            </Card>
           ) : (
-            <>
-              <div className="hidden md:grid grid-cols-12 px-8 py-4 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                <div className="col-span-1">ID</div>
-                <div className="col-span-4">Nom de l'élève</div>
-                <div className="col-span-2 text-center">Classe</div>
-                <div className="col-span-2 text-center">Statut</div>
-                <div className="col-span-3 text-right">Action</div>
-              </div>
-              
-              {filteredStudents.map((student: any) => (
-                <Link key={student.id} href={`/eleves/${student.id}`}>
-                  <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group hover:shadow-xl transition-all duration-300">
-                    <CardContent className="p-6 md:p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
-                        <div className="col-span-1">
-                          <Badge variant="outline" className="rounded-full border-muted font-black text-[10px] text-muted-foreground">
-                            {student.matricule?.split('-').pop() || "N/A"}
-                          </Badge>
-                        </div>
-                        <div className="col-span-4 flex items-center gap-4">
-                          <Avatar className="size-12 border-2 border-muted group-hover:border-primary/20 transition-all">
-                            <AvatarImage src={`https://picsum.photos/seed/${student.id}/100/100`} />
-                            <AvatarFallback className="bg-primary/5 text-primary font-bold">
-                              {(student.fullName || student.matricule || "??").substring(0, 2)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="font-black text-foreground text-lg group-hover:text-primary transition-colors">
-                            {student.fullName || student.matricule}
-                          </span>
-                        </div>
-                        <div className="col-span-2 text-center">
-                          <Badge className="bg-muted text-foreground font-black px-4 py-1 rounded-full border-none">
-                            {student.classId}
-                          </Badge>
-                        </div>
-                        <div className="col-span-2 text-center">
-                          <Badge variant="outline" className={`font-black rounded-full px-3 py-0.5 text-[10px] ${
-                            student.status === "Actif" ? "border-primary text-primary" : "border-amber-500 text-amber-600"
-                          }`}>
-                            {student.status}
-                          </Badge>
-                        </div>
-                        <div className="col-span-3 text-right flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" className="rounded-xl group-hover:text-primary">
-                            <ChevronRight className="size-6" />
-                          </Button>
-                        </div>
+            filteredStudents.map((student: any) => (
+              <Link key={student.id} href={`/eleves/${student.id}`}>
+                <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group hover:shadow-xl transition-all duration-300">
+                  <CardContent className="p-6 md:p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-12 items-center gap-4">
+                      <div className="col-span-1">
+                        <Badge variant="outline" className="rounded-full font-black text-[10px]">{student.matricule?.split('-').pop()}</Badge>
                       </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </>
+                      <div className="col-span-4 flex items-center gap-4">
+                        <Avatar className="size-12 border-2 border-muted group-hover:border-primary/20 transition-all">
+                          <AvatarImage src={`https://picsum.photos/seed/${student.id}/100/100`} />
+                          <AvatarFallback className="bg-primary/5 text-primary font-bold">{(student.fullName || "??").substring(0, 2)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-black text-foreground text-lg group-hover:text-primary transition-colors">{student.fullName || student.matricule}</span>
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <Badge className="bg-muted text-foreground font-black px-4 py-1 rounded-full">{student.classId}</Badge>
+                      </div>
+                      <div className="col-span-2 text-center">
+                        <Badge variant="outline" className={`font-black rounded-full px-3 py-0.5 text-[10px] ${student.status === "Actif" ? "border-primary text-primary" : "border-amber-500 text-amber-600"}`}>
+                          {student.status}
+                        </Badge>
+                      </div>
+                      <div className="col-span-3 text-right">
+                        <Button variant="ghost" size="icon" className="rounded-xl group-hover:text-primary">
+                          <ChevronRight className="size-6" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
           )}
         </div>
       </div>
