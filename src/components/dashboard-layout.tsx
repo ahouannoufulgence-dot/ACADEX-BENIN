@@ -19,7 +19,9 @@ import {
   MessageSquare,
   BarChart3,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  BookOpen,
+  Clock
 } from "lucide-react"
 import {
   Sidebar,
@@ -54,7 +56,7 @@ const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Enseignant", "Élève", "Super Administrateur"] },
   { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur", "Enseignant"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur"] },
   { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur", "Enseignant"] },
   { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
@@ -80,8 +82,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserName(savedName || "Utilisateur")
     setUserRole(savedRole)
 
-    // bypass for admin during development or if matched
-    if (savedRole === "Super Administrateur") {
+    // Bypass for admin
+    if (savedRole.toLowerCase() === "super administrateur" || savedRole.toLowerCase() === "directeur") {
       setIsAuthorized(true)
       return
     }
@@ -93,24 +95,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       const hasPermission = currentNav.roles.some(role => role.toLowerCase() === savedRole.toLowerCase())
       if (!hasPermission) {
         setIsAuthorized(false)
-        toast({
-          variant: "destructive",
-          title: "Accès non autorisé",
-          description: `Votre rôle (${savedRole}) ne permet pas d'accéder à cette section.`,
-        })
         router.push("/dashboard")
       } else {
         setIsAuthorized(true)
       }
-    } else {
-      setIsAuthorized(true)
     }
   }, [pathname, router])
 
   const filteredNavigation = useMemo(() => {
     return navigation.filter(item => {
-      if (userRole === "Super Administrateur") return true
-      return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase())
+      if (userRole.toLowerCase() === "super administrateur" || userRole.toLowerCase() === "directeur") return true
+      return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase() || (userRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant"))
     })
   }, [userRole])
 
@@ -118,28 +113,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('acadex_user_name')
     localStorage.removeItem('acadex_user_role')
     localStorage.removeItem('acadex_user_classes')
-    toast({
-      title: "Déconnexion",
-      description: "À bientôt sur ACADEX !",
-    })
     router.push("/login")
-  }
-
-  if (!isAuthorized) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="text-center space-y-6 max-w-md">
-          <div className="size-24 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto shadow-xl">
-            <AlertTriangle className="size-12" />
-          </div>
-          <h1 className="text-4xl font-black text-foreground">Accès Interdit</h1>
-          <p className="text-muted-foreground font-medium">Votre rôle ({userRole}) ne vous permet pas d'accéder à cette section de l'établissement.</p>
-          <Button onClick={() => router.push("/dashboard")} className="bg-primary rounded-2xl h-12 px-8 font-bold">
-            Retourner au Cockpit
-          </Button>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -158,7 +132,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-4 py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
-                  Menu {userRole}
+                  Espace {userRole}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-2">
@@ -186,12 +160,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </SidebarContent>
           </ScrollArea>
           <SidebarFooter className="p-6">
-            <div className="px-4 py-4 bg-white/5 rounded-2xl mb-4 border border-white/10">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="size-4 text-emerald-400" />
-                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Session Sécurisée</span>
-              </div>
-            </div>
             <Button 
               onClick={handleLogout}
               variant="ghost" 
@@ -235,7 +203,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 mt-4 rounded-3xl p-3 shadow-2xl border-none">
                   <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold cursor-pointer">
-                    <Link href="/settings">Paramètres du compte</Link>
+                    <Link href="/settings">Mon profil</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-2xl h-11 px-4 font-black cursor-pointer">
                     Déconnexion

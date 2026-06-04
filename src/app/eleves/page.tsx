@@ -55,12 +55,12 @@ export default function StudentsPage() {
   const [userClasses, setUserClasses] = useState<string[]>([])
   
   const [batchClass, setBatchClass] = useState("")
-  const [batchQuantity, setBatchQuantity] = useState("40")
 
   const db = useFirestore()
 
   useEffect(() => {
-    setUserRole(localStorage.getItem('acadex_user_role') || "Directeur")
+    const role = localStorage.getItem('acadex_user_role') || "Directeur"
+    setUserRole(role)
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
@@ -68,12 +68,13 @@ export default function StudentsPage() {
     if (!db) return null
     const ref = collection(db, 'students')
     
+    const role = userRole.toLowerCase()
     // RBAC: If Professor, only see their assigned classes
-    if ((userRole === "Professeur" || userRole === "Enseignant") && userClasses.length > 0) {
+    if ((role === "professeur" || role === "enseignant") && userClasses.length > 0) {
       return query(ref, where("classId", "in", userClasses), orderBy("matricule", "asc"))
     }
     
-    // If Director, see everything
+    // If Director or Admin, see everything
     return query(ref, orderBy("matricule", "asc"))
   }, [db, userRole, userClasses])
 
@@ -87,6 +88,8 @@ export default function StudentsPage() {
     )
   }, [students, searchTerm])
 
+  const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
+
   const handleGenerateBatchPDF = async () => {
     if (!batchClass) {
       toast({ title: "Erreur", description: "Veuillez sélectionner une classe.", variant: "destructive" });
@@ -96,10 +99,10 @@ export default function StudentsPage() {
     setLoadingPdf(true);
     try {
       const doc = new jsPDF();
-      const quantity = parseInt(batchQuantity);
+      const quantity = 40;
       const classSlug = batchClass.replace(/[^a-zA-Z0-9]/g, "");
       
-      const newStudents = []
+      const newStudentsData = []
       
       for (let i = 0; i < quantity; i++) {
         const matricule = `ELV-${classSlug}-${(i + 1).toString().padStart(3, '0')}`
@@ -114,7 +117,6 @@ export default function StudentsPage() {
           createdAt: serverTimestamp()
         }
 
-        // Real Persistance in Firestore
         addDoc(collection(db, "students"), studentData)
           .catch(async () => {
             const error = new FirestorePermissionError({
@@ -125,10 +127,9 @@ export default function StudentsPage() {
             errorEmitter.emit('permission-error', error)
           })
 
-        newStudents.push([i + 1, matricule, "..................................", validationCode])
+        newStudentsData.push([i + 1, matricule, "..................................", validationCode])
       }
 
-      // Generate PDF
       doc.setFillColor(20, 83, 45);
       doc.rect(0, 0, 210, 40, 'F');
       doc.setTextColor(255, 255, 255);
@@ -139,15 +140,15 @@ export default function StudentsPage() {
       autoTable(doc, {
         startY: 50,
         head: [['#', 'Matricule', 'Nom & Prénoms', 'Code Activation']],
-        body: newStudents,
+        body: newStudentsData,
         headStyles: { fillColor: [20, 83, 45] }
       });
 
       doc.save(`ACADEX_IDs_${classSlug}.pdf`);
-      toast({ title: "PDF Prêt", description: "Les identifiants ont été sauvegardés en base." });
+      toast({ title: "Succès", description: "Les identifiants ont été générés et enregistrés." });
       setIsGeneratingIDs(false);
     } catch (error) {
-      toast({ title: "Erreur", description: "Échec de sauvegarde.", variant: "destructive" });
+      toast({ title: "Erreur", description: "Échec de génération.", variant: "destructive" });
     } finally {
       setLoadingPdf(false);
     }
@@ -159,16 +160,16 @@ export default function StudentsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">
-              {userRole === "Directeur" ? "Base de Données Élèves" : "Mes Classes assignées"}
+              {isDirector ? "Base de Données Élèves" : "Mes Classes assignées"}
             </h1>
             <p className="text-muted-foreground mt-2 font-medium">
-              {userRole === "Directeur" 
+              {isDirector 
                 ? "Pilotage global de tous les élèves de l'établissement." 
-                : `Vous gérez actuellement ${userClasses.length} classes (${userClasses.join(', ')}).`}
+                : `Vous gérez les élèves de vos classes attribuées.`}
             </p>
           </div>
           
-          {userRole === "Directeur" && (
+          {isDirector && (
             <div className="flex items-center gap-3">
               <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
                 <DialogTrigger asChild>
@@ -197,13 +198,13 @@ export default function StudentsPage() {
                   <DialogFooter>
                     <Button onClick={handleGenerateBatchPDF} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">
                       {loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />}
-                      Enregistrer & Générer PDF
+                      Enregistrer & PDF
                     </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
               <Button className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black">
-                <Plus className="mr-2 size-5" /> Inscription Manuelle
+                <Plus className="mr-2 size-5" /> Inscription
               </Button>
             </div>
           )}

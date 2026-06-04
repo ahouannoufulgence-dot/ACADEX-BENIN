@@ -1,3 +1,4 @@
+
 'use client';
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -20,7 +21,8 @@ import {
   FileDown,
   GraduationCap,
   Calendar,
-  Trophy
+  Trophy,
+  BookOpen
 } from "lucide-react"
 import { 
   ResponsiveContainer, 
@@ -39,39 +41,41 @@ import Link from "next/link"
 
 export default function DashboardPage() {
   const [userName, setUserName] = useState("Utilisateur")
-  const [userRole, setUserRole] = useState("Directeur")
+  const [userRole, setUserRole] = useState("")
   const [userClasses, setUserClasses] = useState<string[]>([])
 
   useEffect(() => {
+    const role = localStorage.getItem('acadex_user_role') || "Directeur"
     setUserName(localStorage.getItem('acadex_user_name') || "Utilisateur")
-    setUserRole(localStorage.getItem('acadex_user_role') || "Directeur")
+    setUserRole(role)
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
   const stats = useMemo(() => {
-    if (userRole === "Directeur") {
+    const role = userRole.toLowerCase()
+    if (role === "directeur" || role === "super administrateur") {
       return [
         { title: "Élèves Total", value: "1,248", change: "+12", trend: "up", icon: Users },
         { title: "Enseignants", value: "48", change: "Actifs", trend: "up", icon: ShieldCheck },
         { title: "Réussite", value: "94.2%", change: "+2.1%", trend: "up", icon: TrendingUp },
         { title: "Recouvrement", value: "84.2M", sub: "FCFA", change: "84%", trend: "up", icon: CreditCard },
       ]
-    } else if (userRole === "Professeur" || userRole === "Enseignant") {
+    } else if (role === "professeur" || role === "enseignant") {
       return [
-        { title: "Mes Élèves", value: "156", change: "3 Classes", trend: "up", icon: Users },
+        { title: "Mes Élèves", value: "156", change: `${userClasses.length} Classes`, trend: "up", icon: Users },
         { title: "Moyenne Classe", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
         { title: "Absences Jour", value: "4", change: "-2", trend: "down", icon: Clock },
-        { title: "Examens Prévis", value: "2", change: "Cette sem.", trend: "up", icon: Calendar },
+        { title: "Examens Prévus", value: "2", change: "Cette sem.", trend: "up", icon: Calendar },
       ]
     } else {
       return [
         { title: "Ma Moyenne", value: "15.42", change: "+0.8", trend: "up", icon: GraduationCap },
         { title: "Mon Rang", value: "4ème", change: "Classe", trend: "up", icon: Trophy },
-        { title: "Paiements", value: "Payé", change: "À jour", trend: "up", icon: CreditCard },
+        { title: "Paiements", value: "À jour", change: "Payé", trend: "up", icon: CreditCard },
         { title: "Absences", value: "2", change: "Total", trend: "down", icon: Clock },
       ]
     }
-  }, [userRole])
+  }, [userRole, userClasses])
 
   const handleExportPDF = () => {
     try {
@@ -80,7 +84,7 @@ export default function DashboardPage() {
       doc.rect(0, 0, 210, 30, 'F')
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(18)
-      doc.text(`ACADEX - RAPPORT ${userRole.toUpperCase()}`, 105, 20, { align: "center" })
+      doc.text(`ACADEX - RAPPORT DE PILOTAGE`, 105, 20, { align: "center" })
       
       doc.setTextColor(0, 0, 0)
       doc.setFontSize(12)
@@ -88,12 +92,15 @@ export default function DashboardPage() {
       doc.text(`Rôle : ${userRole}`, 20, 55)
       doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 190, 45, { align: "right" })
       
-      doc.save(`ACADEX_${userRole}_${new Date().toISOString().split('T')[0]}.pdf`)
+      doc.save(`ACADEX_Rapport_${new Date().toISOString().split('T')[0]}.pdf`)
       toast({ title: "Succès", description: "Le rapport a été généré." })
     } catch (e) {
       toast({ title: "Erreur", description: "Impossible de générer le PDF.", variant: "destructive" })
     }
   }
+
+  const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
+  const isTeacher = userRole.toLowerCase() === "professeur" || userRole.toLowerCase() === "enseignant"
 
   return (
     <DashboardLayout>
@@ -102,24 +109,24 @@ export default function DashboardPage() {
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs mb-2">
               <Sparkles className="size-4 fill-primary" />
-              Pilotage Excellence Acadex
+              Système ACADEX - {userRole}
             </div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">
-              Bonjour Monsieur <span className="text-primary italic">{userName}</span>
+              Bienvenue, <span className="text-primary italic">{userName}</span>
             </h1>
             <p className="text-muted-foreground font-medium">
-              {userRole === "Directeur" ? "Voici l'état actuel de votre établissement." : `Bienvenue dans votre espace sécurisé (${userRole}).`}
+              {isDirector ? "Vision globale de votre établissement." : isTeacher ? "Gestion de votre équipe pédagogique." : "Accès à votre suivi scolaire."}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-bold bg-white">
               <FileDown className="mr-2 size-5" />
-              Rapport PDF
+              Exporter Rapport
             </Button>
-            {userRole === "Directeur" && (
-              <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-lg">
+            {isDirector && (
+              <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold">
                 <Zap className="mr-2 size-5 fill-white" />
-                Rapport IA
+                Audit IA
               </Button>
             )}
           </div>
@@ -144,13 +151,9 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {userRole === "Directeur" && (
+        {isDirector && (
           <div className="grid gap-8 lg:grid-cols-12">
             <div className="lg:col-span-4 space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <ShieldCheck className="size-5 text-primary fill-primary/20" />
-                <h2 className="text-xl font-black">Centre de Vigilance</h2>
-              </div>
               <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group">
                 <div className="h-1.5 w-full bg-destructive" />
                 <CardContent className="p-6">
@@ -160,8 +163,10 @@ export default function DashboardPage() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SÉCURITÉ</p>
-                      <p className="text-sm font-bold leading-relaxed">Modification de note suspecte détectée sur ENS-MATH-042.</p>
-                      <Button variant="link" className="p-0 h-auto text-xs font-black text-primary hover:no-underline">Enquêter →</Button>
+                      <p className="text-sm font-bold leading-relaxed">Le trimestre est ouvert pour la saisie.</p>
+                      <Button asChild variant="link" className="p-0 h-auto text-xs font-black text-primary hover:no-underline">
+                        <Link href="/settings">Gérer les verrous →</Link>
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -171,39 +176,42 @@ export default function DashboardPage() {
             <div className="lg:col-span-8">
               <Card className="border-none shadow-sm bg-white rounded-[2rem] p-10 h-full flex flex-col justify-center text-center space-y-6">
                 <div className="size-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mx-auto">
-                  <Lock className="size-10" />
+                  <PieChartIcon className="size-10" />
                 </div>
-                <h3 className="text-2xl font-black">Contrôle des Trimestres</h3>
+                <h3 className="text-2xl font-black">Performance Globale</h3>
                 <p className="text-muted-foreground font-medium max-w-md mx-auto">
-                  Vous pouvez verrouiller l'édition des notes pour l'ensemble des enseignants une fois les compositions terminées.
+                  Consultez les statistiques détaillées pour piloter l'excellence de votre établissement.
                 </p>
                 <div className="flex gap-4 justify-center">
-                  <Button variant="outline" className="border-2 rounded-2xl h-12 px-8 font-black">Déverrouiller</Button>
-                  <Button className="bg-primary rounded-2xl h-12 px-8 font-black">Verrouiller T1</Button>
+                  <Button asChild className="bg-primary rounded-2xl h-12 px-8 font-black">
+                    <Link href="/statistiques">Voir les stats</Link>
+                  </Button>
                 </div>
               </Card>
             </div>
           </div>
         )}
 
-        {(userRole === "Professeur" || userRole === "Enseignant") && (
+        {isTeacher && (
           <div className="grid gap-8 lg:grid-cols-12">
             <div className="lg:col-span-8 space-y-8">
               <Card className="border-none shadow-sm bg-white rounded-[2rem] p-8">
                 <h3 className="text-xl font-black mb-6">Mes Classes Actives</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {userClasses.map((cls, i) => (
+                  {userClasses.length > 0 ? userClasses.map((cls, i) => (
                     <div key={i} className="p-6 bg-muted/30 rounded-[2rem] border border-transparent hover:border-primary/20 transition-all group">
                       <div className="flex justify-between items-start mb-4">
                         <Badge className="bg-primary font-black">{cls}</Badge>
-                        <GraduationCap className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                        <BookOpen className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
-                      <p className="font-black text-lg">42 Élèves</p>
+                      <p className="font-black text-lg">Suivi des notes</p>
                       <Button asChild variant="link" className="p-0 h-auto font-black text-xs text-primary mt-2">
                         <Link href={`/eleves?class=${cls}`}>Voir la liste →</Link>
                       </Button>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-muted-foreground italic col-span-2 text-center py-8">Aucune classe n'a été attribuée à votre profil lors de l'inscription.</p>
+                  )}
                 </div>
               </Card>
             </div>
@@ -212,10 +220,10 @@ export default function DashboardPage() {
                 <div>
                   <Sparkles className="size-8 mb-4 fill-white/20" />
                   <h3 className="text-xl font-black mb-2">Conseil de Classe</h3>
-                  <p className="text-sm text-white/70 font-medium">Les bulletins du 1er Trimestre pour la 3ème D sont prêts à être générés via l'IA.</p>
+                  <p className="text-sm text-white/70 font-medium">L'IA ACADEX peut vous aider à générer les appréciations pour vos bulletins.</p>
                 </div>
-                <Button className="w-full bg-white text-primary hover:bg-white/90 font-black rounded-xl h-12">
-                  Lancer l'IA
+                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 font-black rounded-xl h-12">
+                  <Link href="/feedback">Utiliser l'IA</Link>
                 </Button>
               </Card>
             </div>
