@@ -18,7 +18,8 @@ import {
   Bell,
   Search,
   BookOpen,
-  PieChart
+  PieChart,
+  MessageSquare
 } from "lucide-react"
 import {
   Sidebar,
@@ -60,6 +61,7 @@ const navigation = [
   { name: "Discipline", href: "/discipline", icon: ShieldAlert },
   { name: "Paiements", href: "/paiements", icon: CreditCard },
   { name: "IA & Bulletins", href: "/feedback", icon: Sparkles },
+  { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
   { name: "Emploi du temps", href: "/agenda", icon: Calendar },
   { name: "Examens", href: "/examens", icon: History },
   { name: "Documents", href: "/documents", icon: FileText },

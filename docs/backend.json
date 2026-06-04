@@ -14,9 +14,33 @@
         "status": { "type": "string", "enum": ["Actif", "En attente d'activation", "Transféré", "Exclu", "Diplômé", "Archivé"] },
         "isRepeater": { "type": "boolean" },
         "academicYear": { "type": "string" },
-        "deletedAt": { "type": "string", "format": "date-time", "description": "Date de suppression pour corbeille 30 jours" }
+        "deletedAt": { "type": "string", "format": "date-time" },
+        "validationCode": { "type": "string" }
       },
       "required": ["matricule", "classId", "academicYear"]
+    },
+    "Conversation": {
+      "title": "Discussion",
+      "description": "Canal de communication entre utilisateurs",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "lastMessageTime": { "type": "string", "format": "date-time" },
+        "unreadCount": { "type": "object" },
+        "type": { "type": "string", "enum": ["direct", "group"] }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Contenu d'une discussion",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
     },
     "AuditLog": {
       "title": "Journal d'Audit",
@@ -34,19 +58,6 @@
         "ipAddress": { "type": "string" }
       }
     },
-    "LoginHistory": {
-      "title": "Historique Connexion",
-      "description": "Suivi des accès au système",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "device": { "type": "string" },
-        "browser": { "type": "string" },
-        "ip": { "type": "string" },
-        "status": { "type": "string", "enum": ["Success", "Failed", "Blocked"] }
-      }
-    },
     "Payment": {
       "title": "Paiement",
       "description": "Suivi des tranches de scolarité",
@@ -59,7 +70,7 @@
         "status": { "type": "string", "enum": ["Payé", "Partiel", "Impayé"] },
         "date": { "type": "string", "format": "date" },
         "receiptNo": { "type": "string" },
-        "verificationCode": { "type": "string", "description": "Code unique pour QR verification" }
+        "verificationCode": { "type": "string" }
       }
     }
   },
@@ -69,7 +80,8 @@
   "firestore": {
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
     "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Journal de sécurité" },
-    "/login_history/{historyId}": { "schema": "LoginHistory", "description": "Accès système" },
-    "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" }
+    "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },
+    "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions actives" },
+    "/conversations/{convId}/messages/{msgId}": { "schema": "Message", "description": "Messages d'une discussion" }
   }
 }
