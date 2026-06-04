@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
-  UserX
+  UserX,
+  ChevronRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
