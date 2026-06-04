@@ -18,10 +18,6 @@ import {
   Bell,
   MessageSquare,
   BarChart3,
-  ShieldCheck,
-  AlertTriangle,
-  BookOpen,
-  Clock
 } from "lucide-react"
 import {
   Sidebar,
@@ -49,22 +45,22 @@ import {
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { toast } from "@/hooks/use-toast"
 import { useEffect, useState, useMemo } from "react"
 
+// Configuration des menus avec les rôles autorisés
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Enseignant", "Élève", "Super Administrateur"] },
-  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Professeur", "Élève", "Super Administrateur"] },
+  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
   { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur"] },
-  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur", "Enseignant"] },
-  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
+  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
-  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Professeur", "Enseignant"] },
-  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
-  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
-  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Professeur", "Enseignant"] },
-  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
+  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
+  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
+  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
 
@@ -73,7 +69,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [userName, setUserName] = useState("Utilisateur")
   const [userRole, setUserRole] = useState("")
-  const [isAuthorized, setIsAuthorized] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     const savedName = localStorage.getItem('acadex_user_name')
@@ -81,40 +77,37 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     
     setUserName(savedName || "Utilisateur")
     setUserRole(savedRole)
+    setMounted(true)
 
-    // Bypass for admin
-    if (savedRole.toLowerCase() === "super administrateur" || savedRole.toLowerCase() === "directeur") {
-      setIsAuthorized(true)
-      return
-    }
-
-    // Strict URL Protection
+    // Protection des routes : si l'utilisateur n'a pas le droit d'être ici, on le ramène au dashboard
     const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
-    
     if (currentNav) {
-      const hasPermission = currentNav.roles.some(role => role.toLowerCase() === savedRole.toLowerCase())
+      const hasPermission = currentNav.roles.some(role => 
+        role.toLowerCase() === savedRole.toLowerCase() || 
+        (savedRole.toLowerCase() === "super administrateur")
+      )
       if (!hasPermission) {
-        setIsAuthorized(false)
         router.push("/dashboard")
-      } else {
-        setIsAuthorized(true)
       }
     }
   }, [pathname, router])
 
   const filteredNavigation = useMemo(() => {
+    if (!userRole) return []
     return navigation.filter(item => {
+      // Le directeur et l'admin voient tout
       if (userRole.toLowerCase() === "super administrateur" || userRole.toLowerCase() === "directeur") return true
-      return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase() || (userRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant"))
+      // Les autres rôles voient selon leur liste
+      return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase())
     })
   }, [userRole])
 
   const handleLogout = () => {
-    localStorage.removeItem('acadex_user_name')
-    localStorage.removeItem('acadex_user_role')
-    localStorage.removeItem('acadex_user_classes')
+    localStorage.clear()
     router.push("/login")
   }
+
+  if (!mounted) return null
 
   return (
     <SidebarProvider>

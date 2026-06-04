@@ -2,36 +2,22 @@
 'use client';
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { 
   Users, 
   TrendingUp, 
-  AlertCircle, 
-  Activity,
-  CreditCard,
-  ShieldCheck,
-  Zap,
-  PieChart as PieChartIcon,
-  Clock,
-  ShieldAlert,
-  ArrowUpRight,
-  Eye,
-  Lock,
-  Sparkles,
-  FileDown,
-  GraduationCap,
-  Calendar,
-  Trophy,
-  BookOpen
+  CreditCard, 
+  ShieldCheck, 
+  Zap, 
+  Clock, 
+  ShieldAlert, 
+  FileDown, 
+  GraduationCap, 
+  Calendar, 
+  Trophy, 
+  BookOpen,
+  Sparkles
 } from "lucide-react"
-import { 
-  ResponsiveContainer, 
-  Tooltip,
-  Cell,
-  PieChart,
-  Pie,
-  Legend
-} from "recharts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState, useMemo } from "react"
@@ -43,16 +29,21 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState("Utilisateur")
   const [userRole, setUserRole] = useState("")
   const [userClasses, setUserClasses] = useState<string[]>([])
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role') || "Directeur"
     setUserName(localStorage.getItem('acadex_user_name') || "Utilisateur")
     setUserRole(role)
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
+    setMounted(true)
   }, [])
 
   const stats = useMemo(() => {
+    if (!userRole) return []
     const role = userRole.toLowerCase()
+    
+    // KPIs pour le Directeur (Vision Globale)
     if (role === "directeur" || role === "super administrateur") {
       return [
         { title: "Élèves Total", value: "1,248", change: "+12", trend: "up", icon: Users },
@@ -60,14 +51,18 @@ export default function DashboardPage() {
         { title: "Réussite", value: "94.2%", change: "+2.1%", trend: "up", icon: TrendingUp },
         { title: "Recouvrement", value: "84.2M", sub: "FCFA", change: "84%", trend: "up", icon: CreditCard },
       ]
-    } else if (role === "professeur" || role === "enseignant") {
+    } 
+    // KPIs pour l'Enseignant (Vision Pédagogique)
+    else if (role === "enseignant" || role === "professeur") {
       return [
         { title: "Mes Élèves", value: "156", change: `${userClasses.length} Classes`, trend: "up", icon: Users },
         { title: "Moyenne Classe", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
         { title: "Absences Jour", value: "4", change: "-2", trend: "down", icon: Clock },
         { title: "Examens Prévus", value: "2", change: "Cette sem.", trend: "up", icon: Calendar },
       ]
-    } else {
+    } 
+    // KPIs pour l'Élève (Vision Personnelle)
+    else {
       return [
         { title: "Ma Moyenne", value: "15.42", change: "+0.8", trend: "up", icon: GraduationCap },
         { title: "Mon Rang", value: "4ème", change: "Classe", trend: "up", icon: Trophy },
@@ -99,8 +94,10 @@ export default function DashboardPage() {
     }
   }
 
+  if (!mounted) return null
+
   const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
-  const isTeacher = userRole.toLowerCase() === "professeur" || userRole.toLowerCase() === "enseignant"
+  const isTeacher = userRole.toLowerCase() === "enseignant" || userRole.toLowerCase() === "professeur"
 
   return (
     <DashboardLayout>
@@ -132,6 +129,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* KPIs Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title} className="border-none shadow-sm rounded-3xl group bg-white hover:shadow-xl transition-all duration-300">
@@ -151,6 +149,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Modules Spécifiques par Rôle */}
         {isDirector && (
           <div className="grid gap-8 lg:grid-cols-12">
             <div className="lg:col-span-4 space-y-6">
@@ -172,21 +171,15 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
-            
             <div className="lg:col-span-8">
               <Card className="border-none shadow-sm bg-white rounded-[2rem] p-10 h-full flex flex-col justify-center text-center space-y-6">
-                <div className="size-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mx-auto">
-                  <PieChartIcon className="size-10" />
-                </div>
                 <h3 className="text-2xl font-black">Performance Globale</h3>
                 <p className="text-muted-foreground font-medium max-w-md mx-auto">
                   Consultez les statistiques détaillées pour piloter l'excellence de votre établissement.
                 </p>
-                <div className="flex gap-4 justify-center">
-                  <Button asChild className="bg-primary rounded-2xl h-12 px-8 font-black">
-                    <Link href="/statistiques">Voir les stats</Link>
-                  </Button>
-                </div>
+                <Button asChild className="bg-primary rounded-2xl h-12 px-8 font-black w-fit mx-auto">
+                  <Link href="/statistiques">Voir les stats complètes</Link>
+                </Button>
               </Card>
             </div>
           </div>
@@ -206,11 +199,11 @@ export default function DashboardPage() {
                       </div>
                       <p className="font-black text-lg">Suivi des notes</p>
                       <Button asChild variant="link" className="p-0 h-auto font-black text-xs text-primary mt-2">
-                        <Link href={`/eleves?class=${cls}`}>Voir la liste →</Link>
+                        <Link href={`/eleves?class=${cls}`}>Gérer la classe →</Link>
                       </Button>
                     </div>
                   )) : (
-                    <p className="text-muted-foreground italic col-span-2 text-center py-8">Aucune classe n'a été attribuée à votre profil lors de l'inscription.</p>
+                    <p className="text-muted-foreground italic col-span-2 text-center py-8">Aucune classe n'est attribuée à votre profil.</p>
                   )}
                 </div>
               </Card>
@@ -222,7 +215,7 @@ export default function DashboardPage() {
                   <h3 className="text-xl font-black mb-2">Conseil de Classe</h3>
                   <p className="text-sm text-white/70 font-medium">L'IA ACADEX peut vous aider à générer les appréciations pour vos bulletins.</p>
                 </div>
-                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 font-black rounded-xl h-12">
+                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 font-black rounded-xl h-12 mt-6">
                   <Link href="/feedback">Utiliser l'IA</Link>
                 </Button>
               </Card>

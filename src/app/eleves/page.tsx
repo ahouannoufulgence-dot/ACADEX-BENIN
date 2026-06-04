@@ -12,8 +12,7 @@ import {
   FileDown,
   Printer,
   Loader2,
-  Users,
-  ShieldAlert
+  Users
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -53,7 +52,6 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [userRole, setUserRole] = useState("")
   const [userClasses, setUserClasses] = useState<string[]>([])
-  
   const [batchClass, setBatchClass] = useState("")
 
   const db = useFirestore()
@@ -64,18 +62,23 @@ export default function StudentsPage() {
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
+  // Requête Firebase RBAC : On filtre les données à la source pour les enseignants
   const studentsQuery = useMemo(() => {
-    if (!db) return null
+    if (!db || !userRole) return null
     const ref = collection(db, 'students')
-    
     const role = userRole.toLowerCase()
-    // RBAC: If Professor, only see their assigned classes
-    if ((role === "professeur" || role === "enseignant") && userClasses.length > 0) {
+
+    // Si c'est un enseignant, il ne voit QUE ses classes attribuées
+    if ((role === "enseignant" || role === "professeur") && userClasses.length > 0) {
       return query(ref, where("classId", "in", userClasses), orderBy("matricule", "asc"))
     }
     
-    // If Director or Admin, see everything
-    return query(ref, orderBy("matricule", "asc"))
+    // Si c'est le Directeur ou Admin, il voit tout
+    if (role === "directeur" || role === "super administrateur") {
+      return query(ref, orderBy("matricule", "asc"))
+    }
+
+    return null
   }, [db, userRole, userClasses])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
@@ -117,6 +120,7 @@ export default function StudentsPage() {
           createdAt: serverTimestamp()
         }
 
+        // On n'attend pas l'écriture en DB (Optimistic Update)
         addDoc(collection(db, "students"), studentData)
           .catch(async () => {
             const error = new FirestorePermissionError({
@@ -165,7 +169,7 @@ export default function StudentsPage() {
             <p className="text-muted-foreground mt-2 font-medium">
               {isDirector 
                 ? "Pilotage global de tous les élèves de l'établissement." 
-                : `Vous gérez les élèves de vos classes attribuées.`}
+                : `Vous gérez les élèves de vos classes attribuées (${userClasses.join(', ')}).`}
             </p>
           </div>
           
@@ -230,7 +234,7 @@ export default function StudentsPage() {
               <div className="size-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="size-8 text-muted-foreground" />
               </div>
-              <p className="text-muted-foreground italic font-bold">Aucun élève trouvé dans votre périmètre.</p>
+              <p className="text-muted-foreground italic font-bold">Aucun élève trouvé dans votre périmètre de gestion.</p>
             </Card>
           ) : (
             filteredStudents.map((student: any) => (
