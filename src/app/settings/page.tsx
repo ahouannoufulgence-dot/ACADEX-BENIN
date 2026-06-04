@@ -22,7 +22,8 @@ import {
   Smartphone,
   Globe,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
@@ -37,19 +38,36 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { useState, useEffect } from "react"
 
 export default function SettingsPage() {
+  const [termLocked, setTermLocked] = useState(false)
+  const [logs, setLogs] = useState([
+    { author: "DIR-001", action: "Verrouillage Trimestre", details: "Le trimestre 1 a été gelé pour tous les enseignants.", time: "Aujourd'hui, 14:32", severity: "high" },
+    { author: "ENS-MATH-042", action: "Modification Note", details: "Koffi Djimon (Maths: 12 -> 15)", time: "Aujourd'hui, 11:20", severity: "medium" },
+    { author: "DIR-001", action: "Suppression Élève", details: "ELV-3D-012 (Placé en corbeille)", time: "Hier, 18:45", severity: "high" },
+  ])
+
   const handleSave = () => {
     toast({
       title: "Configuration enregistrée",
-      description: "Les paramètres du système ont été mis à jour avec succès.",
+      description: "Les paramètres RBAC et système ont été mis à jour.",
     })
   }
 
-  const handleCriticalAction = () => {
+  const handleToggleLock = () => {
+    setTermLocked(!termLocked)
+    const newLog = {
+      author: "DIR-001",
+      action: termLocked ? "Déverrouillage Trimestre" : "Verrouillage Trimestre",
+      details: termLocked ? "L'édition des notes est à nouveau libre." : "Toute modification de note est désormais impossible pour les profs.",
+      time: "Maintenant",
+      severity: "high"
+    }
+    setLogs([newLog, ...logs])
     toast({
-      title: "Action exécutée",
-      description: "L'action critique a été journalisée dans l'audit.",
+      title: termLocked ? "Système débloqué" : "Système verrouillé",
+      description: "L'action a été journalisée avec succès.",
     })
   }
 
@@ -58,80 +76,35 @@ export default function SettingsPage() {
       <div className="space-y-8 animate-in fade-in duration-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">Pilotage Acadex</h1>
-            <p className="text-muted-foreground mt-2 font-medium">Configuration globale du collège et du lycée.</p>
+            <h1 className="text-4xl font-black tracking-tight text-foreground">Cockpit de Sécurité</h1>
+            <p className="text-muted-foreground mt-2 font-medium">Contrôle strict des accès et intégrité des données Acadex.</p>
           </div>
           <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold">
             <Save className="mr-2 size-5" />
-            Sauvegarder
+            Sauvegarder RBAC
           </Button>
         </div>
 
-        <Tabs defaultValue="ecole" className="space-y-8">
-          <TabsList className="bg-white border-2 rounded-[1.5rem] h-14 p-1 flex w-fit overflow-x-auto">
+        <Tabs defaultValue="secu" className="space-y-8">
+          <TabsList className="bg-white border-2 rounded-[1.5rem] h-14 p-1 flex w-fit">
+            <TabsTrigger value="secu" className="rounded-2xl font-bold px-8 flex gap-2">
+              <Lock className="size-4" /> Sécurité & Audit
+            </TabsTrigger>
             <TabsTrigger value="ecole" className="rounded-2xl font-bold px-8 flex gap-2">
               <School className="size-4" /> Établissement
             </TabsTrigger>
             <TabsTrigger value="coefficients" className="rounded-2xl font-bold px-8 flex gap-2">
               <Calculator className="size-4" /> Coefficients
             </TabsTrigger>
-            <TabsTrigger value="periode" className="rounded-2xl font-bold px-8 flex gap-2">
-              <History className="size-4" /> Trimestres
-            </TabsTrigger>
-            <TabsTrigger value="secu" className="rounded-2xl font-bold px-8 flex gap-2">
-              <Lock className="size-4" /> Sécurité & Audit
-            </TabsTrigger>
           </TabsList>
 
-          {/* Établissement (Previous content preserved) */}
-          <TabsContent value="ecole" className="space-y-8">
-            <div className="grid gap-8 lg:grid-cols-12">
-              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2.5rem] p-10">
-                <CardHeader className="px-0 pt-0">
-                  <CardTitle className="text-2xl font-black">Informations de l'École</CardTitle>
-                  <CardDescription>Configuration officielle pour les documents et bulletins.</CardDescription>
-                </CardHeader>
-                <div className="space-y-6 pt-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label className="font-bold">Nom Officiel</Label>
-                      <Input defaultValue="Collège Acadex Elite" className="h-12 rounded-xl bg-muted/50 border-none font-bold" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="font-bold">Année Scolaire Active</Label>
-                      <Input defaultValue="2025-2026" className="h-12 rounded-xl bg-muted/50 border-none font-bold" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Adresse Complète (Cotonou, Bénin)</Label>
-                    <Input defaultValue="Carrefour de l'Aéroport, Zone Résidentielle" className="h-12 rounded-xl bg-muted/50 border-none" />
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="lg:col-span-4 border-none shadow-sm bg-white rounded-[2.5rem] p-10 flex flex-col items-center text-center">
-                <div className="relative group mb-8">
-                  <div className="size-40 bg-muted rounded-3xl flex items-center justify-center text-primary font-black text-6xl shadow-inner group-hover:bg-primary/5 transition-colors">
-                    A
-                  </div>
-                  <Button size="icon" className="absolute -bottom-2 -right-2 rounded-full size-12 shadow-xl border-4 border-white">
-                    <Camera className="size-5" />
-                  </Button>
-                </div>
-                <h3 className="text-xl font-black mb-1">Logo Établissement</h3>
-                <p className="text-sm text-muted-foreground font-medium">Affiché sur bulletins et reçus.</p>
-              </Card>
-            </div>
-          </TabsContent>
-
-          {/* Sécurité & Audit Renforcé */}
           <TabsContent value="secu" className="space-y-8">
             <div className="grid gap-8 lg:grid-cols-12">
               <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2.5rem] p-10">
                 <div className="flex items-center justify-between mb-8">
                   <div>
-                    <CardTitle className="text-2xl font-black">Journal d'Audit Complet</CardTitle>
-                    <CardDescription>Traçabilité totale de toutes les modifications critiques.</CardDescription>
+                    <CardTitle className="text-2xl font-black">Journal d'Audit Systématique</CardTitle>
+                    <CardDescription>Traçabilité totale de toutes les modifications critiques (Loi sur l'intégrité).</CardDescription>
                   </div>
                   <Button variant="outline" className="rounded-xl font-bold border-2 h-10">
                     <RefreshCw className="size-4 mr-2" /> Actualiser
@@ -139,12 +112,7 @@ export default function SettingsPage() {
                 </div>
                 
                 <div className="space-y-4">
-                  {[
-                    { author: "Dr. Koffi Mensah", action: "Modification de note", details: "Élève ID: ELV-3D-042 (Maths: 12 -> 16)", time: "Aujourd'hui, 14:32", severity: "medium" },
-                    { author: "M. Dossou Marc", action: "Saisie de notes", details: "Classe 3ème A (Terminé)", time: "Aujourd'hui, 11:20", severity: "low" },
-                    { author: "Admin", action: "Clôture Trimestre 1", details: "Verrouillage global des notes", time: "Hier, 18:45", severity: "high" },
-                    { author: "Admin", action: "Suppression Élève", details: "ID: ELV-6A-012 (Placé en Corbeille)", time: "22 Mai, 09:15", severity: "high" },
-                  ].map((log, i) => (
+                  {logs.map((log, i) => (
                     <div key={i} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-muted/20 rounded-3xl border border-transparent hover:border-primary/10 transition-all group">
                       <div className="flex items-start gap-4 mb-4 md:mb-0">
                         <div className={`p-3 rounded-2xl ${log.severity === 'high' ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
@@ -162,97 +130,77 @@ export default function SettingsPage() {
                         </div>
                       </div>
                       <Button variant="ghost" size="sm" className="rounded-xl font-bold text-primary group-hover:bg-primary/5">
-                        Détails JSON
+                        Audit complet
                       </Button>
                     </div>
                   ))}
                 </div>
-                <div className="mt-8 pt-8 border-t border-muted text-center">
-                  <Button variant="link" className="font-black text-primary">Télécharger l'historique complet (PDF/CSV)</Button>
-                </div>
               </Card>
 
               <div className="lg:col-span-4 space-y-8">
+                <Card className={`border-none shadow-xl rounded-[2.5rem] p-10 transition-all duration-500 ${termLocked ? 'bg-destructive text-white' : 'bg-white text-foreground'}`}>
+                  <CardTitle className="text-xl font-black mb-6 flex items-center gap-2">
+                    <LockIcon className="size-5" />
+                    Contrôle Trimestre
+                  </CardTitle>
+                  <p className="text-sm font-medium mb-8 leading-relaxed opacity-80">
+                    {termLocked 
+                      ? "Le trimestre est actuellement verrouillé. Aucun enseignant ne peut modifier ou ajouter des notes." 
+                      : "Le trimestre est ouvert. Les enseignants peuvent saisir les notes de leurs classes respectives."}
+                  </p>
+                  <Button 
+                    onClick={handleToggleLock}
+                    className={`w-full h-14 rounded-2xl font-black text-lg shadow-xl ${termLocked ? 'bg-white text-destructive hover:bg-white/90 shadow-white/10' : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'}`}
+                  >
+                    {termLocked ? "Déverrouiller le Système" : "Verrouiller le Trimestre"}
+                  </Button>
+                </Card>
+
                 <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-10">
-                  <CardTitle className="text-xl font-black mb-6">Contrôle d'Accès</CardTitle>
+                  <CardTitle className="text-xl font-black mb-6">Restrictions par Rôle</CardTitle>
                   <div className="space-y-6">
                     <div className="flex items-center justify-between p-5 rounded-2xl bg-primary/5 border border-primary/10">
                       <div className="flex items-center gap-4">
                         <Smartphone className="size-5 text-primary" />
                         <div>
                           <p className="text-xs font-black text-foreground">Double Auth (2FA)</p>
-                          <p className="text-[10px] text-muted-foreground font-bold">SMS/Email Bénin</p>
+                          <p className="text-[10px] text-muted-foreground font-bold">Obligatoire Directeur</p>
                         </div>
                       </div>
                       <Switch defaultChecked />
                     </div>
                     <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20">
                       <div className="flex items-center gap-4">
-                        <History className="size-5 text-muted-foreground" />
+                        <Clock className="size-5 text-muted-foreground" />
                         <div>
                           <p className="text-xs font-black text-foreground">Auto-Déconnexion</p>
-                          <p className="text-[10px] text-muted-foreground font-bold">Inactivité 30 min</p>
+                          <p className="text-[10px] text-muted-foreground font-bold">Inactivité 15 min</p>
                         </div>
                       </div>
                       <Switch defaultChecked />
                     </div>
                   </div>
-                  
-                  <div className="mt-10 pt-10 border-t border-muted space-y-4">
-                    <Label className="text-xs font-black uppercase text-muted-foreground tracking-widest mb-2 block">Actions Sensibles</Label>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="outline" className="w-full h-12 rounded-xl border-destructive/20 text-destructive hover:bg-destructive hover:text-white font-black transition-all">
-                          <Trash2 className="size-4 mr-2" /> Vider la Corbeille (30j)
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="rounded-[2.5rem] border-none p-10">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="text-2xl font-black">Confirmation de Suppression</AlertDialogTitle>
-                          <AlertDialogDescription className="text-base font-medium leading-relaxed">
-                            Cette action supprimera définitivement tous les élèves et données placés en corbeille depuis plus de 30 jours. Cette action est irréversible.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter className="mt-8 gap-4">
-                          <AlertDialogCancel className="rounded-xl font-bold h-12">Annuler</AlertDialogCancel>
-                          <AlertDialogAction onClick={handleCriticalAction} className="rounded-xl bg-destructive font-black h-12 px-8">
-                            Confirmer la suppression
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-
-                    <Button variant="ghost" className="w-full h-12 rounded-xl font-black text-foreground/70">
-                      Réinitialiser tous les mots de passe
-                    </Button>
-                  </div>
-                </Card>
-
-                <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-10">
-                  <CardTitle className="text-xl font-black mb-6">Connexions Récentes</CardTitle>
-                  <div className="space-y-4">
-                    {[
-                      { device: "MacBook Pro", browser: "Chrome", ip: "197.234.xx.xx (Cotonou)", status: "Active" },
-                      { device: "iPhone 15", browser: "Safari", ip: "41.85.xx.xx (Abomey)", status: "Il y a 2h" },
-                    ].map((session, i) => (
-                      <div key={i} className="flex items-center justify-between py-3">
-                        <div className="flex items-center gap-3">
-                          <Globe className="size-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs font-black text-foreground">{session.device}</p>
-                            <p className="text-[10px] font-bold text-muted-foreground">{session.ip}</p>
-                          </div>
-                        </div>
-                        <Badge variant="outline" className={`text-[8px] font-black ${session.status === 'Active' ? 'text-primary bg-primary/5 border-primary/20' : ''}`}>
-                          {session.status}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="ecole" className="space-y-8">
+            <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-10">
+              <CardHeader className="px-0 pt-0">
+                <CardTitle className="text-2xl font-black">Informations Institutionnelles</CardTitle>
+              </CardHeader>
+              <div className="grid md:grid-cols-2 gap-8 pt-6">
+                <div className="space-y-4">
+                  <Label className="font-bold">Nom de l'école</Label>
+                  <Input defaultValue="Collège Acadex Elite" className="h-12 rounded-xl" />
+                </div>
+                <div className="space-y-4">
+                  <Label className="font-bold">Année Scolaire</Label>
+                  <Input defaultValue="2025-2026" className="h-12 rounded-xl" />
+                </div>
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

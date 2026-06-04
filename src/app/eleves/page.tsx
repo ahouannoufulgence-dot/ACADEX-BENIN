@@ -11,7 +11,9 @@ import {
   ChevronRight,
   FileDown,
   Printer,
-  Loader2
+  Loader2,
+  Users,
+  ShieldAlert
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -37,7 +39,9 @@ import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, where } from "firebase/firestore"
+import { collection, query, orderBy, where, addDoc, serverTimestamp } from "firebase/firestore"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 const officialClasses = [
   "6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"
@@ -48,7 +52,7 @@ export default function StudentsPage() {
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [userRole, setUserRole] = useState("")
-  const [teacherClasses, setTeacherClasses] = useState<string[]>([])
+  const [userClasses, setUserClasses] = useState<string[]>([])
   
   const [batchClass, setBatchClass] = useState("")
   const [batchQuantity, setBatchQuantity] = useState("40")
@@ -56,24 +60,22 @@ export default function StudentsPage() {
   const db = useFirestore()
 
   useEffect(() => {
-    const role = localStorage.getItem('acadex_user_role') || ""
-    const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
-    setUserRole(role)
-    setTeacherClasses(classes)
+    setUserRole(localStorage.getItem('acadex_user_role') || "Directeur")
+    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
   const studentsQuery = useMemo(() => {
     if (!db) return null
     const ref = collection(db, 'students')
     
-    // Restriction : Si professeur, ne voir que ses classes
-    if (userRole === "Professeur" && teacherClasses.length > 0) {
-      return query(ref, where("classId", "in", teacherClasses), orderBy("matricule", "asc"))
+    // RBAC: If Professor, only see their assigned classes
+    if ((userRole === "Professeur" || userRole === "Enseignant") && userClasses.length > 0) {
+      return query(ref, where("classId", "in", userClasses), orderBy("matricule", "asc"))
     }
     
-    // Si Directeur ou Admin, tout voir
+    // If Director, see everything
     return query(ref, orderBy("matricule", "asc"))
-  }, [db, userRole, teacherClasses])
+  }, [db, userRole, userClasses])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
@@ -97,31 +99,55 @@ export default function StudentsPage() {
       const quantity = parseInt(batchQuantity);
       const classSlug = batchClass.replace(/[^a-zA-Z0-9]/g, "");
       
+      const newStudents = []
+      
+      for (let i = 0; i < quantity; i++) {
+        const matricule = `ELV-${classSlug}-${(i + 1).toString().padStart(3, '0')}`
+        const validationCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+        
+        const studentData = {
+          matricule,
+          classId: batchClass,
+          status: "En attente d'activation",
+          validationCode,
+          academicYear: "2025-2026",
+          createdAt: serverTimestamp()
+        }
+
+        // Real Persistance in Firestore
+        addDoc(collection(db, "students"), studentData)
+          .catch(async () => {
+            const error = new FirestorePermissionError({
+              path: 'students',
+              operation: 'create',
+              requestResourceData: studentData
+            })
+            errorEmitter.emit('permission-error', error)
+          })
+
+        newStudents.push([i + 1, matricule, "..................................", validationCode])
+      }
+
+      // Generate PDF
       doc.setFillColor(20, 83, 45);
       doc.rect(0, 0, 210, 40, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(22);
       doc.text("ACADEX - IDENTIFIANTS OFFICIELS", 105, 18, { align: "center" });
-      doc.setFontSize(14);
-      doc.text(`CLASSE : ${batchClass} | ANNÉE : 2025-2026`, 105, 28, { align: "center" });
+      doc.text(`CLASSE : ${batchClass}`, 105, 28, { align: "center" });
       
       autoTable(doc, {
         startY: 50,
-        head: [['#', 'Identifiant', 'Nom & Prénoms', 'Code Activation']],
-        body: Array.from({ length: quantity }).map((_, i) => [
-          i + 1, 
-          `ELV-${classSlug}-${(i + 1).toString().padStart(3, '0')}`,
-          "..................................................",
-          Math.random().toString(36).substring(2, 8).toUpperCase()
-        ]),
+        head: [['#', 'Matricule', 'Nom & Prénoms', 'Code Activation']],
+        body: newStudents,
         headStyles: { fillColor: [20, 83, 45] }
       });
 
       doc.save(`ACADEX_IDs_${classSlug}.pdf`);
-      toast({ title: "PDF Prêt", description: "Le lot d'identifiants a été généré." });
+      toast({ title: "PDF Prêt", description: "Les identifiants ont été sauvegardés en base." });
       setIsGeneratingIDs(false);
     } catch (error) {
-      toast({ title: "Erreur", description: "Échec de génération PDF.", variant: "destructive" });
+      toast({ title: "Erreur", description: "Échec de sauvegarde.", variant: "destructive" });
     } finally {
       setLoadingPdf(false);
     }
@@ -138,7 +164,7 @@ export default function StudentsPage() {
             <p className="text-muted-foreground mt-2 font-medium">
               {userRole === "Directeur" 
                 ? "Pilotage global de tous les élèves de l'établissement." 
-                : `Vous gérez actuellement ${teacherClasses.length} classes (${teacherClasses.join(', ')}).`}
+                : `Vous gérez actuellement ${userClasses.length} classes (${userClasses.join(', ')}).`}
             </p>
           </div>
           
@@ -171,7 +197,7 @@ export default function StudentsPage() {
                   <DialogFooter>
                     <Button onClick={handleGenerateBatchPDF} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">
                       {loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />}
-                      Générer le PDF
+                      Enregistrer & Générer PDF
                     </Button>
                   </DialogFooter>
                 </DialogContent>

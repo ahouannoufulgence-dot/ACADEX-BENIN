@@ -18,7 +18,9 @@ import {
   Eye,
   Lock,
   Sparkles,
-  FileDown
+  FileDown,
+  GraduationCap,
+  Calendar
 } from "lucide-react"
 import { 
   ResponsiveContainer, 
@@ -30,35 +32,46 @@ import {
 } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { jsPDF } from "jspdf"
 import { toast } from "@/hooks/use-toast"
-
-const stats = [
-  { title: "Élèves", value: "1,248", change: "+12", trend: "up", icon: Users, color: "text-primary" },
-  { title: "Enseignants", value: "48", change: "Actifs", trend: "up", icon: ShieldCheck, color: "text-primary" },
-  { title: "Réussite", value: "94.2%", change: "+2.1%", trend: "up", icon: TrendingUp, color: "text-primary" },
-  { title: "Absences", value: "12", change: "Aujourd'hui", trend: "down", icon: Clock, color: "text-destructive" },
-]
-
-const academicStatus = [
-  { name: "Succès (>10)", value: 85, color: "#14532D" },
-  { name: "Échec (<10)", value: 15, color: "#B91C1C" },
-]
-
-const securityAlerts = [
-  { id: 1, type: "Sécurité", message: "3 tentatives de connexion échouées sur le compte DIR-002.", severity: "high", icon: ShieldAlert },
-  { id: 2, type: "Audit", message: "Modification de note validée pour 12 élèves (Tle D1).", severity: "medium", icon: Eye },
-  { id: 3, type: "Session", message: "Une connexion suspecte détectée depuis Porto-Novo.", severity: "low", icon: Lock },
-]
+import Link from "next/link"
 
 export default function DashboardPage() {
-  const [userName, setUserName] = useState("Koffi Mensah")
+  const [userName, setUserName] = useState("Utilisateur")
+  const [userRole, setUserRole] = useState("Directeur")
+  const [userClasses, setUserClasses] = useState<string[]>([])
 
   useEffect(() => {
-    const savedName = localStorage.getItem('acadex_user_name')
-    if (savedName) setUserName(savedName)
+    setUserName(localStorage.getItem('acadex_user_name') || "Utilisateur")
+    setUserRole(localStorage.getItem('acadex_user_role') || "Directeur")
+    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
+
+  const stats = useMemo(() => {
+    if (userRole === "Directeur") {
+      return [
+        { title: "Élèves Total", value: "1,248", change: "+12", trend: "up", icon: Users },
+        { title: "Enseignants", value: "48", change: "Actifs", trend: "up", icon: ShieldCheck },
+        { title: "Réussite", value: "94.2%", change: "+2.1%", trend: "up", icon: TrendingUp },
+        { title: "Recouvrement", value: "84.2M", sub: "FCFA", change: "84%", trend: "up", icon: CreditCard },
+      ]
+    } else if (userRole === "Professeur" || userRole === "Enseignant") {
+      return [
+        { title: "Mes Élèves", value: "156", change: "3 Classes", trend: "up", icon: Users },
+        { title: "Moyenne Classe", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
+        { title: "Absences Jour", value: "4", change: "-2", trend: "down", icon: Clock },
+        { title: "Examens Prévis", value: "2", change: "Cette sem.", trend: "up", icon: Calendar },
+      ]
+    } else {
+      return [
+        { title: "Ma Moyenne", value: "15.42", change: "+0.8", trend: "up", icon: GraduationCap },
+        { title: "Mon Rang", value: "4ème", change: "Classe", trend: "up", icon: Trophy },
+        { title: "Paiements", value: "Payé", change: "À jour", trend: "up", icon: CreditCard },
+        { title: "Absences", value: "2", change: "Total", trend: "down", icon: Clock },
+      ]
+    }
+  }, [userRole])
 
   const handleExportPDF = () => {
     try {
@@ -67,22 +80,16 @@ export default function DashboardPage() {
       doc.rect(0, 0, 210, 30, 'F')
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(18)
-      doc.text("ACADEX - RAPPORT DE PILOTAGE", 105, 20, { align: "center" })
+      doc.text(`ACADEX - RAPPORT ${userRole.toUpperCase()}`, 105, 20, { align: "center" })
       
       doc.setTextColor(0, 0, 0)
       doc.setFontSize(12)
-      doc.text(`Directeur : ${userName}`, 20, 45)
+      doc.text(`Utilisateur : ${userName}`, 20, 45)
+      doc.text(`Rôle : ${userRole}`, 20, 55)
       doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 190, 45, { align: "right" })
       
-      doc.setFontSize(14)
-      doc.text("Statistiques Globales", 20, 60)
-      stats.forEach((stat, index) => {
-        doc.setFontSize(10)
-        doc.text(`${stat.title} : ${stat.value} (${stat.change})`, 25, 75 + (index * 10))
-      })
-
-      doc.save(`ACADEX_Dashboard_${new Date().toISOString().split('T')[0]}.pdf`)
-      toast({ title: "Succès", description: "Le rapport dashboard a été généré." })
+      doc.save(`ACADEX_${userRole}_${new Date().toISOString().split('T')[0]}.pdf`)
+      toast({ title: "Succès", description: "Le rapport a été généré." })
     } catch (e) {
       toast({ title: "Erreur", description: "Impossible de générer le PDF.", variant: "destructive" })
     }
@@ -100,17 +107,21 @@ export default function DashboardPage() {
             <h1 className="text-4xl font-black tracking-tight text-foreground">
               Bonjour Monsieur <span className="text-primary italic">{userName}</span>
             </h1>
-            <p className="text-muted-foreground font-medium">Voici l'état actuel de votre établissement.</p>
+            <p className="text-muted-foreground font-medium">
+              {userRole === "Directeur" ? "Voici l'état actuel de votre établissement." : `Bienvenue dans votre espace sécurisé (${userRole}).`}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-bold bg-white">
               <FileDown className="mr-2 size-5" />
               Rapport PDF
             </Button>
-            <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-lg">
-              <Zap className="mr-2 size-5 fill-white" />
-              Rapport IA
-            </Button>
+            {userRole === "Directeur" && (
+              <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-lg">
+                <Zap className="mr-2 size-5 fill-white" />
+                Rapport IA
+              </Button>
+            )}
           </div>
         </div>
 
@@ -133,86 +144,83 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-12">
-          <div className="lg:col-span-4 space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ShieldCheck className="size-5 text-primary fill-primary/20" />
-              <h2 className="text-xl font-black">Centre de Vigilance</h2>
-            </div>
-            {securityAlerts.map((alert) => (
-              <Card key={alert.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group hover:scale-[1.02] transition-transform">
-                <div className={`h-1.5 w-full ${alert.severity === 'high' ? 'bg-destructive' : alert.severity === 'medium' ? 'bg-amber-500' : 'bg-primary'}`} />
+        {userRole === "Directeur" && (
+          <div className="grid gap-8 lg:grid-cols-12">
+            <div className="lg:col-span-4 space-y-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldCheck className="size-5 text-primary fill-primary/20" />
+                <h2 className="text-xl font-black">Centre de Vigilance</h2>
+              </div>
+              <Card className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group">
+                <div className="h-1.5 w-full bg-destructive" />
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-2xl ${alert.severity === 'high' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-foreground'}`}>
-                      <alert.icon className="size-6" />
+                    <div className="p-3 rounded-2xl bg-destructive/10 text-destructive">
+                      <ShieldAlert className="size-6" />
                     </div>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{alert.type}</p>
-                        {alert.severity === 'high' && <Badge className="bg-destructive text-[8px] h-4">CRITIQUE</Badge>}
-                      </div>
-                      <p className="text-sm font-bold leading-relaxed">{alert.message}</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">SÉCURITÉ</p>
+                      <p className="text-sm font-bold leading-relaxed">Modification de note suspecte détectée sur ENS-MATH-042.</p>
                       <Button variant="link" className="p-0 h-auto text-xs font-black text-primary hover:no-underline">Enquêter →</Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-
-          <div className="lg:col-span-8 space-y-8">
-            <div className="grid gap-8 md:grid-cols-2">
-              <Card className="border-none shadow-sm bg-white rounded-[2rem]">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">Réussite Globale</CardTitle>
-                  <CardDescription>Moyennes &gt; 10/20</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={academicStatus}
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {academicStatus.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                         contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Legend verticalAlign="bottom" height={36}/>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-sm bg-white rounded-[2rem]">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">Recouvrement</CardTitle>
-                  <CardDescription>Frais de scolarité</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col justify-center items-center h-[250px] space-y-6">
-                  <div className="relative size-40 flex items-center justify-center">
-                    <svg className="size-full -rotate-90">
-                      <circle cx="80" cy="80" r="70" fill="none" stroke="#F1F5F9" strokeWidth="12" />
-                      <circle cx="80" cy="80" r="70" fill="none" stroke="#14532D" strokeWidth="12" strokeDasharray="440" strokeDashoffset="66" strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-3xl font-black">84%</span>
-                      <span className="text-[10px] font-bold text-muted-foreground">RECOUVRÉ</span>
-                    </div>
-                  </div>
-                  <Button className="w-full rounded-2xl bg-foreground font-bold">Lancer Relances SMS</Button>
-                </CardContent>
+            </div>
+            
+            <div className="lg:col-span-8">
+              <Card className="border-none shadow-sm bg-white rounded-[2rem] p-10 h-full flex flex-col justify-center text-center space-y-6">
+                <div className="size-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mx-auto">
+                  <Lock className="size-10" />
+                </div>
+                <h3 className="text-2xl font-black">Contrôle des Trimestres</h3>
+                <p className="text-muted-foreground font-medium max-w-md mx-auto">
+                  Vous pouvez verrouiller l'édition des notes pour l'ensemble des enseignants une fois les compositions terminées.
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <Button variant="outline" className="border-2 rounded-2xl h-12 px-8 font-black">Déverrouiller</Button>
+                  <Button className="bg-primary rounded-2xl h-12 px-8 font-black">Verrouiller T1</Button>
+                </div>
               </Card>
             </div>
           </div>
-        </div>
+        )}
+
+        {(userRole === "Professeur" || userRole === "Enseignant") && (
+          <div className="grid gap-8 lg:grid-cols-12">
+            <div className="lg:col-span-8 space-y-8">
+              <Card className="border-none shadow-sm bg-white rounded-[2rem] p-8">
+                <h3 className="text-xl font-black mb-6">Mes Classes Actives</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {userClasses.map((cls, i) => (
+                    <div key={i} className="p-6 bg-muted/30 rounded-[2rem] border border-transparent hover:border-primary/20 transition-all group">
+                      <div className="flex justify-between items-start mb-4">
+                        <Badge className="bg-primary font-black">{cls}</Badge>
+                        <GraduationCap className="size-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                      </div>
+                      <p className="font-black text-lg">42 Élèves</p>
+                      <Button asChild variant="link" className="p-0 h-auto font-black text-xs text-primary mt-2">
+                        <Link href={`/eleves?class=${cls}`}>Voir la liste →</Link>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+            <div className="lg:col-span-4">
+              <Card className="border-none shadow-xl bg-primary text-white p-8 rounded-[2rem] h-full flex flex-col justify-between">
+                <div>
+                  <Sparkles className="size-8 mb-4 fill-white/20" />
+                  <h3 className="text-xl font-black mb-2">Conseil de Classe</h3>
+                  <p className="text-sm text-white/70 font-medium">Les bulletins du 1er Trimestre pour la 3ème D sont prêts à être générés via l'IA.</p>
+                </div>
+                <Button className="w-full bg-white text-primary hover:bg-white/90 font-black rounded-xl h-12">
+                  Lancer l'IA
+                </Button>
+              </Card>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )
