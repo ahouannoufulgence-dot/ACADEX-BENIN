@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Clock, ArrowLeft, ArrowRight, Loader2, BookOpen, GraduationCap } from "lucide-react";
+import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, BookOpen, GraduationCap } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ export default function RegisterTeacherPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [generatedId, setGeneratedId] = useState("");
   const [form, setForm] = useState({
     lastName: "",
     firstName: "",
@@ -51,8 +52,27 @@ export default function RegisterTeacherPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
+      // Génération d'un identifiant basé sur la matière
+      const subjectPrefix = form.subject.substring(0, 3).toUpperCase() || "ENS";
+      const randomId = Math.floor(100 + Math.random() * 900);
+      const newId = `ENS-${subjectPrefix}-${randomId}`;
+      setGeneratedId(newId);
+      
+      // Sauvegarde du nom pour la personnalisation
+      localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
+      localStorage.setItem('acadex_user_role', `Professeur (${form.subject})`);
+      
       nextStep();
+      toast({
+        title: "Compte Enseignant créé",
+        description: `Bienvenue dans l'équipe pédagogique ACADEX.`
+      });
     }, 2000);
+  };
+
+  const copyId = () => {
+    navigator.clipboard.writeText(generatedId);
+    toast({ title: "Identifiant copié !" });
   };
 
   return (
@@ -125,7 +145,7 @@ export default function RegisterTeacherPage() {
                       <SelectValue placeholder="Sélectionner votre matière" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subjects.map(s => <SelectItem key={s} value={s.toLowerCase()}>{s}</SelectItem>)}
+                      {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -214,7 +234,7 @@ export default function RegisterTeacherPage() {
                 <Button variant="ghost" onClick={prevStep} className="font-bold rounded-xl h-12 flex gap-2"><ArrowLeft className="size-4" /> Retour</Button>
                 <Button onClick={handleRegister} disabled={loading} className="bg-foreground text-white rounded-xl font-black px-10 h-12">
                   {loading ? <Loader2 className="size-5 animate-spin mr-2" /> : <ShieldCheck className="size-5 mr-2" />}
-                  Soumettre mon inscription
+                  Finaliser l'inscription
                 </Button>
               </CardFooter>
             </>
@@ -222,36 +242,26 @@ export default function RegisterTeacherPage() {
 
           {step === 4 && (
             <div className="p-12 text-center space-y-8 animate-in zoom-in-95">
-              <div className="size-24 bg-foreground text-white rounded-full flex items-center justify-center mx-auto shadow-2xl animate-pulse">
-                <Clock className="size-12" />
+              <div className="size-24 bg-foreground text-white rounded-full flex items-center justify-center mx-auto shadow-2xl">
+                <CheckCircle2 className="size-12" />
               </div>
               <div className="space-y-3">
-                <h2 className="text-3xl font-black">Demande Enregistrée</h2>
+                <h2 className="text-3xl font-black">Compte Activé !</h2>
                 <p className="text-muted-foreground font-medium text-lg leading-relaxed">
-                  Votre compte Enseignant est maintenant <span className="text-foreground font-black">en attente de validation</span> par la direction de votre établissement.
+                  Votre espace Enseignant est prêt. Utilisez cet identifiant pour vous connecter à votre cockpit.
                 </p>
               </div>
-              <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-muted text-left space-y-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Prochaines étapes :</p>
-                <ul className="space-y-3">
-                  <li className="flex gap-3 text-sm font-bold">
-                    <div className="size-5 bg-foreground text-white rounded-full flex items-center justify-center text-[10px]">1</div>
-                    Votre directeur reçoit une notification.
-                  </li>
-                  <li className="flex gap-3 text-sm font-bold">
-                    <div className="size-5 bg-foreground text-white rounded-full flex items-center justify-center text-[10px]">2</div>
-                    Il vérifie vos informations et vos classes.
-                  </li>
-                  <li className="flex gap-3 text-sm font-bold">
-                    <div className="size-5 bg-foreground text-white rounded-full flex items-center justify-center text-[10px]">3</div>
-                    Vous recevez votre identifiant ENS-xxx par SMS/Email.
-                  </li>
-                </ul>
+              <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-foreground space-y-4">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Officiel</p>
+                <p className="text-4xl font-black text-foreground tracking-tighter">{generatedId}</p>
+                <Button onClick={copyId} variant="outline" size="sm" className="rounded-full border-foreground/20 text-foreground font-bold h-10 px-6">
+                  <Copy className="size-4 mr-2" /> Copier l'identifiant
+                </Button>
               </div>
               <div className="pt-8">
-                <Button asChild variant="outline" className="w-full h-14 rounded-2xl border-2 font-black text-lg">
-                  <Link href="/">
-                    Retour à l'accueil
+                <Button asChild className="w-full h-14 rounded-2xl bg-foreground text-white font-black text-lg shadow-xl">
+                  <Link href="/dashboard">
+                    Accéder au tableau de bord <ArrowRight className="ml-2 size-5" />
                   </Link>
                 </Button>
               </div>
