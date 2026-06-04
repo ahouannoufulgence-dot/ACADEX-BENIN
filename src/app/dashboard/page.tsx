@@ -1,5 +1,5 @@
 
-"use client"
+'use client';
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -12,16 +12,14 @@ import {
   ShieldCheck,
   Zap,
   PieChart as PieChartIcon,
-  Calendar,
+  Clock,
+  ShieldAlert,
   ArrowUpRight,
-  Clock
+  Eye,
+  Lock
 } from "lucide-react"
 import { 
-  Bar, 
-  BarChart, 
   ResponsiveContainer, 
-  XAxis, 
-  YAxis, 
   Tooltip,
   Cell,
   PieChart,
@@ -30,7 +28,6 @@ import {
 } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 
 const stats = [
   { title: "Élèves", value: "1,248", change: "+12", trend: "up", icon: Users, color: "text-primary" },
@@ -39,25 +36,15 @@ const stats = [
   { title: "Absences", value: "12", change: "Aujourd'hui", trend: "down", icon: Clock, color: "text-destructive" },
 ]
 
-const performanceData = [
-  { name: "6ème", value: 14.5, color: "#14532D" },
-  { name: "5ème", value: 13.8, color: "#111827" },
-  { name: "4ème", value: 15.2, color: "#14532D" },
-  { name: "3ème", value: 11.5, color: "#B91C1C" },
-  { name: "2nde", value: 14.2, color: "#14532D" },
-  { name: "1ère", value: 15.8, color: "#14532D" },
-  { name: "Tle", value: 16.1, color: "#14532D" },
-]
-
 const academicStatus = [
   { name: "Succès (>10)", value: 85, color: "#14532D" },
   { name: "Échec (<10)", value: 15, color: "#B91C1C" },
 ]
 
-const directorAlerts = [
-  { id: 1, type: "Finance", message: "27 paiements restent impayés pour le T1.", severity: "high", icon: CreditCard },
-  { id: 2, type: "Pédagogie", message: "3 enseignants n'ont pas encore saisi les notes de Devoir.", severity: "medium", icon: Zap },
-  { id: 3, type: "Discipline", message: "5 élèves ont dépassé le seuil d'absences autorisé.", severity: "low", icon: AlertCircle },
+const securityAlerts = [
+  { id: 1, type: "Sécurité", message: "3 tentatives de connexion échouées sur le compte DIR-002.", severity: "high", icon: ShieldAlert },
+  { id: 2, type: "Audit", message: "Modification de note validée pour 12 élèves (Tle D1).", severity: "medium", icon: Eye },
+  { id: 3, type: "Session", message: "Une connexion suspecte détectée depuis Porto-Novo.", severity: "low", icon: Lock },
 ]
 
 export default function DashboardPage() {
@@ -102,14 +89,14 @@ export default function DashboardPage() {
 
         {/* Assistant & Performance */}
         <div className="grid gap-8 lg:grid-cols-12">
-          {/* Assistant Cards */}
+          {/* Security & Alerts Side */}
           <div className="lg:col-span-4 space-y-6">
             <div className="flex items-center gap-2 mb-4">
-              <Zap className="size-5 text-primary fill-primary" />
-              <h2 className="text-xl font-black">Assistant Intelligent</h2>
+              <ShieldCheck className="size-5 text-primary fill-primary/20" />
+              <h2 className="text-xl font-black">Centre de Vigilance</h2>
             </div>
-            {directorAlerts.map((alert) => (
-              <Card key={alert.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group">
+            {securityAlerts.map((alert) => (
+              <Card key={alert.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden group hover:scale-[1.02] transition-transform">
                 <div className={`h-1.5 w-full ${alert.severity === 'high' ? 'bg-destructive' : alert.severity === 'medium' ? 'bg-amber-500' : 'bg-primary'}`} />
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
@@ -117,14 +104,32 @@ export default function DashboardPage() {
                       <alert.icon className="size-6" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">{alert.type}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{alert.type}</p>
+                        {alert.severity === 'high' && <Badge className="bg-destructive text-[8px] h-4">CRITIQUE</Badge>}
+                      </div>
                       <p className="text-sm font-bold leading-relaxed">{alert.message}</p>
-                      <Button variant="link" className="p-0 h-auto text-xs font-black text-primary">Agir maintenant →</Button>
+                      <Button variant="link" className="p-0 h-auto text-xs font-black text-primary hover:no-underline">Enquêter →</Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
+
+            <Card className="border-none shadow-lg bg-foreground text-white rounded-[2rem] p-8 relative overflow-hidden group">
+              <div className="relative z-10">
+                <h3 className="text-lg font-black mb-2 flex items-center gap-2">
+                  <Lock className="size-5 text-primary" /> Intégrité Système
+                </h3>
+                <p className="text-sm text-white/70 font-medium mb-6">
+                  Toutes les notes du Trimestre 1 sont verrouillées et archivées.
+                </p>
+                <Button className="w-full bg-primary hover:bg-primary/90 font-black rounded-xl h-11">
+                  Journal d'Audit Complet
+                </Button>
+              </div>
+              <ShieldCheck className="absolute -bottom-6 -right-6 size-32 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+            </Card>
           </div>
 
           {/* Performance Charts */}
@@ -149,7 +154,9 @@ export default function DashboardPage() {
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip 
+                         contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                      />
                       <Legend verticalAlign="bottom" height={36}/>
                     </PieChart>
                   </ResponsiveContainer>
@@ -180,27 +187,33 @@ export default function DashboardPage() {
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem]">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-xl font-bold">Performance par Niveau</CardTitle>
-                  <CardDescription>Moyennes générales du trimestre</CardDescription>
+                  <CardTitle className="text-xl font-bold">Activité Récente de l'Établissement</CardTitle>
+                  <CardDescription>Dernières actions pédagogiques et administratives</CardDescription>
                 </div>
                 <Activity className="size-6 text-primary" />
               </CardHeader>
-              <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={performanceData}>
-                    <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis fontSize={12} tickLine={false} axisLine={false} domain={[0, 20]} />
-                    <Tooltip 
-                      cursor={{ fill: '#F1F5F9' }}
-                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="value" radius={[12, 12, 0, 0]} barSize={40}>
-                      {performanceData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              <CardContent className="p-0">
+                <div className="divide-y divide-muted/30">
+                  {[
+                    { user: "M. Dossou", action: "Saisie des notes", target: "Terminale D1", time: "Il y a 12 min" },
+                    { user: "Admin", action: "Validation paiement", target: "Koffi Djimon", time: "Il y a 45 min" },
+                    { user: "Mme. Amoussou", action: "Signalement absence", target: "3 élèves de 4ème", time: "Il y a 1h" },
+                    { user: "Direction", action: "Clôture Trimestre 1", target: "Global", time: "Il y a 3h" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-6 hover:bg-muted/10 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 bg-muted rounded-xl flex items-center justify-center text-primary font-bold">
+                          {item.user[0]}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground">{item.user}</p>
+                          <p className="text-xs text-muted-foreground">{item.action} • <span className="text-primary font-bold">{item.target}</span></p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{item.time}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>

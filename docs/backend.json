@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Student": {
@@ -10,39 +11,40 @@
         "classId": { "type": "string" },
         "subdivision": { "type": "string" },
         "serie": { "type": "string", "enum": ["Général", "A", "C", "D", "G2", "G3"] },
-        "status": { "type": "string", "enum": ["Actif", "Transféré", "Exclu", "Diplômé"] },
+        "status": { "type": "string", "enum": ["Actif", "Transféré", "Exclu", "Diplômé", "Archivé"] },
         "isRepeater": { "type": "boolean" },
-        "academicYear": { "type": "string" }
+        "academicYear": { "type": "string" },
+        "deletedAt": { "type": "string", "format": "date-time", "description": "Date de suppression pour corbeille 30 jours" }
       },
       "required": ["fullName", "classId", "academicYear"]
     },
-    "Teacher": {
-      "title": "Enseignant",
-      "description": "Profil enseignant avec identifiant ENS-xxx",
+    "AuditLog": {
+      "title": "Journal d'Audit",
+      "description": "Trace de toutes les actions critiques",
       "type": "object",
       "properties": {
-        "teacherId": { "type": "string" },
-        "fullName": { "type": "string" },
-        "mainSubject": { "type": "string" },
-        "assignedClasses": { "type": "array", "items": { "type": "string" } },
-        "phone": { "type": "string" },
-        "isFormTeacher": { "type": "boolean" },
-        "formClassId": { "type": "string" }
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "action": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "oldValue": { "type": "object" },
+        "newValue": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "ipAddress": { "type": "string" }
       }
     },
-    "Grade": {
-      "title": "Note",
-      "description": "Notes par type d'évaluation et trimestre",
+    "LoginHistory": {
+      "title": "Historique Connexion",
+      "description": "Suivi des accès au système",
       "type": "object",
       "properties": {
-        "studentId": { "type": "string" },
-        "subject": { "type": "string" },
-        "value": { "type": "number" },
-        "max": { "type": "number" },
-        "coeff": { "type": "number" },
-        "type": { "type": "string", "enum": ["Interro", "Devoir", "Composition", "Examen"] },
-        "term": { "type": "string", "enum": ["T1", "T2", "T3"] },
-        "academicYear": { "type": "string" }
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "device": { "type": "string" },
+        "browser": { "type": "string" },
+        "ip": { "type": "string" },
+        "status": { "type": "string", "enum": ["Success", "Failed", "Blocked"] }
       }
     },
     "Payment": {
@@ -55,17 +57,19 @@
         "amountPaid": { "type": "number" },
         "tranche": { "type": "string", "enum": ["Inscription", "Tranche 1", "Tranche 2", "Examen"] },
         "status": { "type": "string", "enum": ["Payé", "Partiel", "Impayé"] },
-        "date": { "type": "string", "format": "date" }
+        "date": { "type": "string", "format": "date" },
+        "receiptNo": { "type": "string" },
+        "verificationCode": { "type": "string", "description": "Code unique pour QR verification" }
       }
     }
   },
   "auth": {
-    "providers": ["google", "password"]
+    "providers": ["password", "google"]
   },
   "firestore": {
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
-    "/teachers/{teacherId}": { "schema": "Teacher", "description": "Base enseignants" },
-    "/grades/{gradeId}": { "schema": "Grade", "description": "Carnet de notes" },
+    "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Journal de sécurité" },
+    "/login_history/{historyId}": { "schema": "LoginHistory", "description": "Accès système" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" }
   }
 }
