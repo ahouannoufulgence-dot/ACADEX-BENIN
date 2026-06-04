@@ -3,29 +3,20 @@
 
 import { useParams } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   TrendingUp, 
   TrendingDown,
-  AlertCircle, 
-  Calendar, 
   ChevronLeft,
-  GraduationCap,
   ShieldCheck,
   CreditCard,
-  FileText,
-  History,
-  Award,
-  BookOpen,
-  UserPlus,
   Sparkles,
   Download,
-  Share2
+  Share2,
+  Award
 } from "lucide-react"
 import { 
-  Line, 
-  LineChart, 
   ResponsiveContainer, 
   XAxis, 
   YAxis, 
@@ -39,6 +30,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { toast } from "@/hooks/use-toast"
+import { generateBulletinPDF, type BulletinData } from "@/lib/bulletin-generator"
 
 const progressionData = [
   { name: "Sem 1", value: 14.5 },
@@ -52,35 +44,76 @@ const progressionData = [
 export default function StudentDetailPage() {
   const { id } = useParams()
 
-  const handleGenerateBulletin = () => {
+  const handleGenerateBulletin = async () => {
     toast({
       title: "Génération en cours",
-      description: "Le bulletin PDF de Koffi Djimon est en cours de création...",
+      description: "Le bulletin officiel haute qualité est en cours de création...",
+    })
+
+    const mockData: BulletinData = {
+      schoolInfo: {
+        name: "Collège Acadex Elite",
+        motto: "Discipline - Travail - Succès",
+        address: "Cotonou, Quartier Fidjrossè",
+        phone: "+229 97 00 00 00",
+        academicYear: "2024-2025"
+      },
+      student: {
+        id: id as string,
+        fullName: "Koffi Djimon",
+        matricule: "AC-2024-042",
+        classId: "TERMINALE S1",
+        dob: "12/04/2006",
+        sex: "Masculin",
+        rank: 2,
+        effectif: 42,
+        principalTeacher: "M. Dossou Marc"
+      },
+      term: "1er Trimestre",
+      grades: [
+        { subject: "Mathématiques", coef: 5, quiz: 18.5, exam: 17.5, avg: 18, weighted: 90, rank: 1, appreciation: "Excellent travail." },
+        { subject: "Physique-Chimie", coef: 4, quiz: 16.0, exam: 15.5, avg: 15.75, weighted: 63, rank: 3, appreciation: "Très bon élève." },
+        { subject: "SVT", coef: 3, quiz: 14.5, exam: 15.0, avg: 14.75, weighted: 44.25, rank: 5, appreciation: "Satisfaisant." },
+        { subject: "Français", coef: 3, quiz: 12.0, exam: 13.0, avg: 12.5, weighted: 37.5, rank: 12, appreciation: "Assez bien." },
+        { subject: "Anglais", coef: 2, quiz: 11.5, exam: 10.0, avg: 10.75, weighted: 21.5, rank: 18, appreciation: "Doit s'investir plus." },
+        { subject: "Histoire-Géo", coef: 2, quiz: 13.5, exam: 14.0, avg: 13.75, weighted: 27.5, rank: 8, appreciation: "Bonne participation." },
+      ],
+      discipline: {
+        absencesJustified: 1,
+        absencesUnjustified: 0,
+        delays: 2,
+        behavior: "Excellent"
+      },
+      councilDecision: "Tableau d'Honneur avec Félicitations"
+    }
+
+    await generateBulletinPDF(mockData)
+    toast({
+      title: "Succès",
+      description: "Bulletin PDF généré et téléchargé.",
     })
   }
 
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
-        {/* Navigation & Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <Link href="/eleves" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-bold group">
             <ChevronLeft className="size-5 transition-transform group-hover:-translate-x-1" />
-            Retour à la liste des élèves
+            Retour à la liste
           </Link>
           <div className="flex items-center gap-3">
             <Button onClick={handleGenerateBulletin} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-base">
               <Download className="mr-2 size-5" />
-              Générer Bulletin PDF
+              Générer Bulletin PDF Premium
             </Button>
-            <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6">
+            <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
               <Share2 className="mr-2 size-5" />
               Partager
             </Button>
           </div>
         </div>
 
-        {/* Header Profile */}
         <Card className="border-none shadow-sm bg-white overflow-hidden rounded-[2.5rem]">
           <div className="h-48 bg-primary relative">
             <div className="absolute -bottom-16 left-16">
@@ -123,7 +156,6 @@ export default function StudentDetailPage() {
         </Card>
 
         <div className="grid gap-8 md:grid-cols-12">
-          {/* Main Content - Progression */}
           <div className="md:col-span-8 space-y-8">
             <Card className="border-none shadow-sm bg-white rounded-[2rem]">
               <CardHeader className="flex flex-row items-center justify-between">
@@ -236,7 +268,6 @@ export default function StudentDetailPage() {
             </Card>
           </div>
 
-          {/* Sidebar Info - Discipline & Payments */}
           <div className="md:col-span-4 space-y-8">
             <Card className="border-none shadow-sm bg-white rounded-[2rem]">
               <CardHeader>

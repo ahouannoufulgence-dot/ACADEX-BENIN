@@ -19,6 +19,22 @@
       },
       "required": ["matricule", "classId", "academicYear"]
     },
+    "Grade": {
+      "title": "Note",
+      "description": "Évaluation académique par matière",
+      "type": "object",
+      "properties": {
+        "subjectId": { "type": "string" },
+        "subjectLabel": { "type": "string" },
+        "coefficient": { "type": "number" },
+        "quizScore": { "type": "number" },
+        "examScore": { "type": "number" },
+        "average": { "type": "number" },
+        "rankInSubject": { "type": "number" },
+        "teacherComment": { "type": "string" },
+        "term": { "type": "string", "enum": ["T1", "T2", "T3"] }
+      }
+    },
     "Conversation": {
       "title": "Discussion",
       "description": "Canal de communication entre utilisateurs",
@@ -79,6 +95,7 @@
   },
   "firestore": {
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
+    "/students/{studentId}/grades/{gradeId}": { "schema": "Grade", "description": "Notes de l'élève" },
     "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Journal de sécurité" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },
     "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions actives" },

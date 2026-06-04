@@ -12,7 +12,8 @@ import {
   FileDown,
   Printer,
   Loader2,
-  Users
+  Users,
+  Files
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -41,6 +42,7 @@ import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, orderBy, where, addDoc, serverTimestamp } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import { generateBulletinPDF, type BulletinData } from "@/lib/bulletin-generator"
 
 const officialClasses = [
   "6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"
@@ -48,11 +50,13 @@ const officialClasses = [
 
 export default function StudentsPage() {
   const [isGeneratingIDs, setIsGeneratingIDs] = useState(false)
+  const [isBulkBulletins, setIsBulkBulletins] = useState(false)
   const [loadingPdf, setLoadingPdf] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [userRole, setUserRole] = useState("")
   const [userClasses, setUserClasses] = useState<string[]>([])
   const [batchClass, setBatchClass] = useState("")
+  const [bulkClass, setBulkClass] = useState("")
 
   const db = useFirestore()
 
@@ -62,18 +66,15 @@ export default function StudentsPage() {
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
-  // Requête Firebase RBAC : On filtre les données à la source pour les enseignants
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const ref = collection(db, 'students')
     const role = userRole.toLowerCase()
 
-    // Si c'est un enseignant, il ne voit QUE ses classes attribuées
     if ((role === "enseignant" || role === "professeur") && userClasses.length > 0) {
       return query(ref, where("classId", "in", userClasses), orderBy("matricule", "asc"))
     }
     
-    // Si c'est le Directeur ou Admin, il voit tout
     if (role === "directeur" || role === "super administrateur") {
       return query(ref, orderBy("matricule", "asc"))
     }
@@ -116,11 +117,10 @@ export default function StudentsPage() {
           classId: batchClass,
           status: "En attente d'activation",
           validationCode,
-          academicYear: "2025-2026",
+          academicYear: "2024-2025",
           createdAt: serverTimestamp()
         }
 
-        // On n'attend pas l'écriture en DB (Optimistic Update)
         addDoc(collection(db, "students"), studentData)
           .catch(async () => {
             const error = new FirestorePermissionError({
@@ -149,12 +149,62 @@ export default function StudentsPage() {
       });
 
       doc.save(`ACADEX_IDs_${classSlug}.pdf`);
-      toast({ title: "Succès", description: "Les identifiants ont été générés et enregistrés." });
+      toast({ title: "Succès", description: "Les identifiants ont été générés." });
       setIsGeneratingIDs(false);
     } catch (error) {
       toast({ title: "Erreur", description: "Échec de génération.", variant: "destructive" });
     } finally {
       setLoadingPdf(false);
+    }
+  }
+
+  const handleBulkBulletins = async () => {
+    if (!bulkClass) {
+      toast({ title: "Erreur", description: "Veuillez sélectionner une classe.", variant: "destructive" });
+      return;
+    }
+
+    setLoadingPdf(true)
+    toast({ title: "Génération en série", description: `Préparation des bulletins pour la classe ${bulkClass}...` })
+    
+    try {
+      // Simulate multiple generation
+      for (let i = 0; i < 3; i++) {
+        const mockData: BulletinData = {
+          schoolInfo: {
+            name: "Collège Acadex Elite",
+            motto: "Discipline - Travail - Succès",
+            address: "Cotonou, Bénin",
+            phone: "+229 97 00 00 00",
+            academicYear: "2024-2025"
+          },
+          student: {
+            id: `ELV-${i}`,
+            fullName: i === 0 ? "Koffi Djimon" : i === 1 ? "Amoussou Marie" : "Tidjani Amadou",
+            matricule: `AC-2024-0${42 + i}`,
+            classId: bulkClass,
+            dob: "12/04/2006",
+            sex: "M",
+            rank: i + 1,
+            effectif: 42,
+            principalTeacher: "M. Dossou Marc"
+          },
+          term: "1er Trimestre",
+          grades: [
+            { subject: "Mathématiques", coef: 5, quiz: 18, exam: 17, avg: 17.5, weighted: 87.5, rank: i + 1, appreciation: "Excellent." },
+            { subject: "Français", coef: 3, quiz: 14, exam: 13, avg: 13.5, weighted: 40.5, rank: i + 5, appreciation: "Satisfaisant." },
+          ],
+          discipline: { absencesJustified: 0, absencesUnjustified: 0, delays: 0, behavior: "Excellent" },
+          councilDecision: "Félicitations du jury"
+        }
+        await generateBulletinPDF(mockData)
+      }
+      toast({ title: "Succès", description: "Bulletins de classe générés avec succès." })
+      setIsBulkBulletins(false)
+    } catch (e) {
+      toast({ title: "Erreur", description: "Échec lors de la génération groupée.", variant: "destructive" })
+    } finally {
+      setLoadingPdf(false)
     }
   }
 
@@ -168,50 +218,47 @@ export default function StudentsPage() {
             </h1>
             <p className="text-muted-foreground mt-2 font-medium">
               {isDirector 
-                ? "Pilotage global de tous les élèves de l'établissement." 
-                : `Vous gérez les élèves de vos classes attribuées (${userClasses.join(', ')}).`}
+                ? "Pilotage global et édition des bulletins officiels." 
+                : `Gestion pédagogique de vos classes (${userClasses.join(', ')}).`}
             </p>
           </div>
           
-          {isDirector && (
-            <div className="flex items-center gap-3">
-              <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
-                    <FileDown className="mr-2 size-5 text-primary" />
-                    Générer Identifiants
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-black">Identifiants par lot</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-6 py-6">
-                    <div className="space-y-2">
-                      <Label className="font-bold">Classe concernée</Label>
-                      <Select onValueChange={setBatchClass}>
-                        <SelectTrigger className="h-12 rounded-xl">
-                          <SelectValue placeholder="Choisir une classe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button onClick={handleGenerateBatchPDF} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">
-                      {loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />}
-                      Enregistrer & PDF
+          <div className="flex items-center gap-3">
+            {isDirector && (
+              <>
+                <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
+                      <FileDown className="mr-2 size-5 text-primary" />
+                      IDs par Lot
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Button className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black">
-                <Plus className="mr-2 size-5" /> Inscription
-              </Button>
-            </div>
-          )}
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                    <DialogHeader><DialogTitle className="text-2xl font-black">Générer Identifiants</DialogTitle></DialogHeader>
+                    <div className="py-6"><Select onValueChange={setBatchClass}><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Choisir une classe" /></SelectTrigger><SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                    <DialogFooter><Button onClick={handleGenerateBatchPDF} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">{loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />} Générer & PDF</Button></DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={isBulkBulletins} onOpenChange={setIsBulkBulletins}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white border-primary text-primary hover:bg-primary/5">
+                      <Files className="mr-2 size-5" />
+                      Bulletins de Classe
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
+                    <DialogHeader><DialogTitle className="text-2xl font-black">Bulletins Massifs</DialogTitle></DialogHeader>
+                    <div className="py-6"><Select onValueChange={setBulkClass}><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Choisir la classe entière" /></SelectTrigger><SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
+                    <DialogFooter><Button onClick={handleBulkBulletins} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">{loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Download className="mr-2 size-5" />} Générer Série PDF</Button></DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+            <Button className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black">
+              <Plus className="mr-2 size-5" /> Inscription
+            </Button>
+          </div>
         </div>
 
         <div className="relative group max-w-2xl">
@@ -226,15 +273,11 @@ export default function StudentsPage() {
 
         <div className="grid gap-4">
           {loadingStudents ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="size-8 animate-spin text-primary" />
-            </div>
+            <div className="flex items-center justify-center p-12"><Loader2 className="size-8 animate-spin text-primary" /></div>
           ) : filteredStudents.length === 0 ? (
             <Card className="p-16 text-center bg-white rounded-[2rem] border-none shadow-sm">
-              <div className="size-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Users className="size-8 text-muted-foreground" />
-              </div>
-              <p className="text-muted-foreground italic font-bold">Aucun élève trouvé dans votre périmètre de gestion.</p>
+              <div className="size-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"><Users className="size-8 text-muted-foreground" /></div>
+              <p className="text-muted-foreground italic font-bold">Aucun élève trouvé.</p>
             </Card>
           ) : (
             filteredStudents.map((student: any) => (
