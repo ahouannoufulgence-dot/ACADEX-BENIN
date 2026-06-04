@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -7,27 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Eye, EyeOff, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldCheck, Lock, Loader2, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [id, setId] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!id.trim()) return;
     setLoading(true);
     
     setTimeout(() => {
       setLoading(false);
-      
-      // Store the official ID
       localStorage.setItem('acadex_user_id', id);
 
-      // Smart identification based on prefix
       if (id.startsWith('DIR')) {
         localStorage.setItem('acadex_user_role', 'Directeur');
         localStorage.setItem('acadex_user_name', 'Koffi Mensah');
@@ -35,12 +31,9 @@ export default function LoginPage() {
         localStorage.setItem('acadex_user_role', 'Enseignant');
         localStorage.setItem('acadex_user_name', 'Marc Dossou');
         localStorage.setItem('acadex_user_classes', JSON.stringify(['3D1', 'Terminale D1']));
-      } else if (id.startsWith('ELV')) {
+      } else {
         localStorage.setItem('acadex_user_role', 'Élève');
         localStorage.setItem('acadex_user_name', 'David Sossa');
-      } else {
-        localStorage.setItem('acadex_user_role', 'Directeur'); // Fallback for testing
-        localStorage.setItem('acadex_user_name', 'Utilisateur');
       }
       
       router.push('/dashboard');
@@ -48,63 +41,70 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-6 relative overflow-hidden">
-      <div className="w-full max-w-md animate-in fade-in zoom-in-95 duration-500">
-        <div className="flex flex-col items-center mb-10">
-          <Link href="/">
-            <div className="size-16 bg-primary rounded-2xl flex items-center justify-center shadow-xl mb-4 transform rotate-3">
-              <span className="text-white font-black text-4xl">A</span>
-            </div>
-          </Link>
-          <h1 className="text-3xl font-black text-foreground tracking-tight">ACADEX</h1>
-          <p className="text-muted-foreground font-semibold mt-2">Gestion Scolaire Sécurisée</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4 md:p-6 relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 left-0 w-full h-1 bg-primary" />
+      
+      <div className="w-full max-w-[420px] animate-in">
+        <div className="flex flex-col items-center mb-8 md:mb-12">
+          <div className="size-14 md:size-16 bg-primary rounded-2xl flex items-center justify-center shadow-xl mb-4 transform rotate-3 active:rotate-0 transition-transform">
+            <span className="text-white font-black text-3xl md:text-4xl">A</span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight flex items-center gap-2">
+            ACADEX <Sparkles className="size-4 text-primary fill-primary/10" />
+          </h1>
+          <p className="text-[10px] md:text-xs font-black text-muted-foreground uppercase tracking-[0.3em] mt-1">Gestion Scolaire Bénin</p>
         </div>
 
-        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden">
-          <div className="h-2 bg-primary"></div>
-          <CardHeader className="space-y-1 pt-10 px-10 text-center">
-            <CardTitle className="text-3xl font-black">Connexion</CardTitle>
-            <CardDescription className="font-medium">Identifiez-vous pour accéder au cockpit.</CardDescription>
+        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden p-2">
+          <CardHeader className="space-y-1 pt-8 px-8 text-center">
+            <CardTitle className="text-2xl md:text-3xl font-black">Accès Cockpit</CardTitle>
+            <CardDescription className="text-xs font-medium">Connectez-vous à votre espace sécurisé.</CardDescription>
           </CardHeader>
-          <CardContent className="px-10 pb-8">
-            <form onSubmit={handleLogin} className="space-y-6">
+          <CardContent className="px-6 md:px-8 pb-8">
+            <form onSubmit={handleLogin} className="space-y-5 md:space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="id" className="font-bold">Identifiant Officiel</Label>
+                <Label htmlFor="id" className="font-bold text-xs">Identifiant Officiel</Label>
                 <Input 
                   id="id" 
                   placeholder="DIR-..., ENS-..., ELV-..." 
-                  className="h-14 rounded-xl bg-muted/30 border-none font-black tracking-widest text-lg text-center"
+                  className="h-14 md:h-16 rounded-2xl bg-muted/30 border-none font-black tracking-widest text-lg md:text-xl text-center focus-visible:ring-primary shadow-inner"
                   value={id}
                   onChange={e => setId(e.target.value.toUpperCase())}
                   required 
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pass" className="font-bold">Mot de passe</Label>
+                <Label htmlFor="pass" className="font-bold text-xs">Mot de passe</Label>
                 <Input 
                   id="pass" 
                   type="password"
-                  className="h-14 rounded-xl bg-muted/30 border-none font-bold text-center tracking-widest"
+                  placeholder="••••••••"
+                  className="h-14 md:h-16 rounded-2xl bg-muted/30 border-none font-bold text-center tracking-widest shadow-inner"
                   required 
                 />
               </div>
 
               <Button 
                 type="submit" 
-                className="w-full h-16 bg-primary hover:bg-primary/90 rounded-2xl font-black text-xl shadow-xl shadow-primary/20 gap-3"
+                className="w-full h-14 md:h-16 bg-primary hover:bg-primary/90 rounded-2xl font-black text-lg md:text-xl shadow-xl shadow-primary/20 gap-3 active:scale-95 transition-all"
                 disabled={loading}
               >
-                {loading ? <Loader2 className="size-6 animate-spin" /> : <ShieldCheck className="size-6" />}
-                {loading ? "Vérification..." : "Accès Sécurisé"}
+                {loading ? <Loader2 className="size-6 animate-spin" /> : <ShieldCheck className="size-5 md:size-6" />}
+                {loading ? "Vérification..." : "Entrer"}
               </Button>
             </form>
           </CardContent>
-          <CardFooter className="bg-muted/30 p-8 flex flex-col gap-4 text-center">
-            <Link href="/register" className="text-sm font-black text-primary hover:underline">
-              Pas de compte ? Créer un espace
+          <CardFooter className="bg-muted/30 p-6 md:p-8 flex flex-col gap-4 text-center rounded-b-[2rem]">
+            <Link href="/register" className="text-xs font-black text-primary hover:underline uppercase tracking-widest">
+              Nouveau ? Créer un espace
             </Link>
           </CardFooter>
         </Card>
+
+        <p className="text-center mt-8 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+          &copy; 2025 ACADEX • Excellence & Rigueur
+        </p>
       </div>
     </div>
   );
