@@ -133,7 +133,7 @@ export default function DashboardPage() {
               <Card className="border-none shadow-sm bg-white rounded-[2rem]">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold">Réussite Globale</CardTitle>
-                  <CardDescription>Moyennes > 10/20</CardDescription>
+                  <CardDescription>Moyennes &gt; 10/20</CardDescription>
                 </CardHeader>
                 <CardContent className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
