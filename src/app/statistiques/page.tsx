@@ -17,7 +17,8 @@ import {
   ChevronRight,
   UserCheck,
   UserX,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Sparkles
 } from "lucide-react"
 import { 
   Bar, 
