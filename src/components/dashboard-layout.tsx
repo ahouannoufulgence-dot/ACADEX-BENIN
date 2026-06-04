@@ -50,6 +50,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/hooks/use-toast"
+import { useEffect, useState } from "react"
 
 const navigation = [
   { name: "Cockpit Directeur", href: "/dashboard", icon: LayoutDashboard },
@@ -68,6 +69,15 @@ const navigation = [
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [userName, setUserName] = useState("Dr. Koffi Mensah")
+  const [userRole, setUserRole] = useState("Super Administrateur")
+
+  useEffect(() => {
+    const savedName = localStorage.getItem('acadex_user_name')
+    const savedRole = localStorage.getItem('acadex_user_role')
+    if (savedName) setUserName(savedName)
+    if (savedRole) setUserRole(savedRole)
+  }, [])
 
   const handleLogout = () => {
     toast({
@@ -160,12 +170,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative flex items-center gap-4 hover:bg-transparent px-0 h-auto group">
                     <div className="text-right hidden sm:block space-y-0.5">
-                      <p className="text-base font-black text-foreground group-hover:text-primary transition-colors">Dr. Koffi Mensah</p>
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Super Administrateur</p>
+                      <p className="text-base font-black text-foreground group-hover:text-primary transition-colors">{userName}</p>
+                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{userRole}</p>
                     </div>
                     <Avatar className="size-12 border-2 border-primary/10 group-hover:border-primary transition-all shadow-md">
-                      <AvatarImage src="https://picsum.photos/seed/acadex-avatar/200/200" />
-                      <AvatarFallback className="bg-primary text-white font-black">KM</AvatarFallback>
+                      <AvatarImage src={`https://picsum.photos/seed/${userName}/200/200`} />
+                      <AvatarFallback className="bg-primary text-white font-black">{userName[0]}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -175,9 +185,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <p className="text-sm font-bold">2025 - 2026</p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="mx-2 bg-muted/50" />
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Profil Directeur</DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Profil</DropdownMenuItem>
                   <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Historique d'Audit</DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Changer d'Établissement</DropdownMenuItem>
                   <DropdownMenuSeparator className="mx-2 bg-muted/50" />
                   <DropdownMenuItem 
                     onClick={handleLogout}

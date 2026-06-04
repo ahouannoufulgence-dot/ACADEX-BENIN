@@ -16,7 +16,8 @@ import {
   ShieldAlert,
   ArrowUpRight,
   Eye,
-  Lock
+  Lock,
+  Sparkles
 } from "lucide-react"
 import { 
   ResponsiveContainer, 
@@ -28,6 +29,7 @@ import {
 } from "recharts"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useEffect, useState } from "react"
 
 const stats = [
   { title: "Élèves", value: "1,248", change: "+12", trend: "up", icon: Users, color: "text-primary" },
@@ -48,13 +50,26 @@ const securityAlerts = [
 ]
 
 export default function DashboardPage() {
+  const [userName, setUserName] = useState("Koffi Mensah")
+
+  useEffect(() => {
+    const savedName = localStorage.getItem('acadex_user_name')
+    if (savedName) setUserName(savedName)
+  }, [])
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">Cockpit Directeur</h1>
-            <p className="text-muted-foreground mt-2 font-medium">L'état de votre établissement en un coup d'œil.</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-xs mb-2">
+              <Sparkles className="size-4 fill-primary" />
+              Pilotage Excellence Acadex
+            </div>
+            <h1 className="text-4xl font-black tracking-tight text-foreground">
+              Bonjour Monsieur <span className="text-primary italic">{userName}</span>
+            </h1>
+            <p className="text-muted-foreground font-medium">Voici l'état actuel de votre établissement.</p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" className="border-2 rounded-2xl h-12 px-6 font-bold bg-white">

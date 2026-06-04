@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, School } from "lucide-react";
+import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -36,10 +36,13 @@ export default function RegisterDirectorPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
+      // Save user info for personalization
+      localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
+      localStorage.setItem('acadex_user_role', 'Directeur');
       nextStep();
       toast({
         title: "Compte créé avec succès",
-        description: "Bienvenue dans l'écosystème ACADEX."
+        description: `Bienvenue Monsieur ${form.lastName} dans l'écosystème ACADEX.`
       });
     }, 2000);
   };
@@ -53,7 +56,6 @@ export default function RegisterDirectorPage() {
     <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-6">
       <div className="w-full max-w-xl space-y-8 animate-in fade-in duration-700">
         
-        {/* Step Indicator */}
         {step < 3 && (
           <div className="flex justify-center items-center gap-4 mb-8">
             {[1, 2].map((i) => (
@@ -138,7 +140,6 @@ export default function RegisterDirectorPage() {
                 <div className="space-y-2">
                   <Label className="font-bold">Mot de passe</Label>
                   <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Min. 8 car., 1 maj., 1 min., 1 chiffre</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold">Confirmer mot de passe</Label>
@@ -160,12 +161,12 @@ export default function RegisterDirectorPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold">Réponse Secrète</Label>
-                    <Input placeholder="Votre réponse confidentielle" className="h-12 rounded-xl" value={form.secretAnswer} onChange={e => setForm({...form, secretAnswer: e.target.value})} />
+                    <Input placeholder="Votre réponse" className="h-12 rounded-xl" value={form.secretAnswer} onChange={e => setForm({...form, secretAnswer: e.target.value})} />
                   </div>
                 </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/30 flex justify-between">
-                <Button variant="ghost" onClick={prevStep} className="font-bold rounded-xl h-12 flex gap-2"><ArrowLeft className="size-4" /> Retour</Button>
+                <Button variant="ghost" onClick={prevStep} className="font-bold rounded-xl h-12">Retour</Button>
                 <Button onClick={handleRegister} disabled={loading} className="bg-primary rounded-xl font-black px-10 h-12 shadow-xl shadow-primary/20">
                   {loading ? <Loader2 className="size-5 animate-spin mr-2" /> : <ShieldCheck className="size-5 mr-2" />}
                   Finaliser l'inscription
@@ -184,10 +185,10 @@ export default function RegisterDirectorPage() {
                 <p className="text-muted-foreground font-medium text-lg">Votre espace Directeur a été créé avec succès.</p>
               </div>
               <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-primary/20 space-y-4">
-                <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Officiel</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Officiel</p>
                 <p className="text-5xl font-black text-primary tracking-tighter">DIR-001</p>
                 <Button onClick={copyId} variant="outline" size="sm" className="rounded-full border-primary/20 text-primary font-bold h-10 px-6">
-                  <Copy className="size-4 mr-2" /> Copier l'identifiant
+                  Copier l'identifiant
                 </Button>
               </div>
               <div className="pt-8">
@@ -197,9 +198,6 @@ export default function RegisterDirectorPage() {
                   </Link>
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground font-medium">
-                Note : Gardez précieusement cet identifiant. Vous en aurez besoin pour chaque connexion.
-              </p>
             </div>
           )}
         </Card>

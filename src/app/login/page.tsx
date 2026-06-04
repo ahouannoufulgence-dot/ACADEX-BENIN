@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Eye, EyeOff, Lock, User, AlertCircle, Loader2, Checkbox } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -36,6 +36,12 @@ export default function LoginPage() {
     // Simulation d'authentification sécurisée
     setTimeout(() => {
       setLoading(false);
+      // Fallback personalized greeting if none set
+      if (!localStorage.getItem('acadex_user_name')) {
+        localStorage.setItem('acadex_user_name', 'Koffi Mensah');
+        localStorage.setItem('acadex_user_role', 'Super Administrateur');
+      }
+      
       toast({
         title: "Connexion réussie",
         description: "Bienvenue sur ACADEX.",
