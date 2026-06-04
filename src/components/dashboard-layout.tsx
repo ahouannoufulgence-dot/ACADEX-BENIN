@@ -47,8 +47,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { toast } from "@/hooks/use-toast"
 
 const navigation = [
   { name: "Cockpit Directeur", href: "/dashboard", icon: LayoutDashboard },
@@ -66,6 +67,15 @@ const navigation = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = () => {
+    toast({
+      title: "Déconnexion",
+      description: "Vous avez été déconnecté avec succès. À bientôt !",
+    })
+    router.push("/login")
+  }
 
   return (
     <SidebarProvider>
@@ -114,7 +124,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </SidebarContent>
           </ScrollArea>
           <SidebarFooter className="p-6">
-            <Button variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold">
+            <Button 
+              onClick={handleLogout}
+              variant="ghost" 
+              className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold transition-all"
+            >
               <LogOut className="size-5" />
               <span>Quitter ACADEX</span>
             </Button>
@@ -161,11 +175,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <p className="text-sm font-bold">2025 - 2026</p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="mx-2 bg-muted/50" />
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary">Profil Directeur</DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary">Historique d'Audit</DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary">Changer d'Établissement</DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Profil Directeur</DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Historique d'Audit</DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Changer d'Établissement</DropdownMenuItem>
                   <DropdownMenuSeparator className="mx-2 bg-muted/50" />
-                  <DropdownMenuItem className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-2xl h-11 px-4 font-black">
+                  <DropdownMenuItem 
+                    onClick={handleLogout}
+                    className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-2xl h-11 px-4 font-black cursor-pointer"
+                  >
                     Déconnexion
                   </DropdownMenuItem>
                 </DropdownMenuContent>
