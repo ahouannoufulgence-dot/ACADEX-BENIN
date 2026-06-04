@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -36,7 +37,7 @@ import { useState, useMemo } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { toast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase"
+import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, addDoc, serverTimestamp, query, orderBy } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
@@ -117,24 +118,25 @@ export default function StudentsPage() {
           classId: batchClass,
           status: "En attente d'activation",
           academicYear,
-          createdAt: serverTimestamp(),
+          createdAt: new Date().toISOString(), // Use simple ISO string for initial data
           validationCode
         });
       }
 
       // Sauvegarde dans Firestore
-      const savePromises = studentsToSave.map(student => 
-        addDoc(collection(db, "students"), student).catch(async (error) => {
+      for (const student of studentsToSave) {
+        addDoc(collection(db, "students"), {
+          ...student,
+          createdAt: serverTimestamp()
+        }).catch(async (error) => {
           const permissionError = new FirestorePermissionError({
             path: 'students',
             operation: 'create',
             requestResourceData: student,
           });
           errorEmitter.emit('permission-error', permissionError);
-        })
-      );
-
-      await Promise.all(savePromises);
+        });
+      }
 
       autoTable(doc, {
         startY: 75,
@@ -146,7 +148,7 @@ export default function StudentsPage() {
         styles: { fontSize: 9, cellPadding: 5 }
       });
 
-      const finalY = (doc as any).lastAutoTable.finalY || 150;
+      const finalY = (doc as any).lastAutoTable?.finalY || 150;
       doc.setFontSize(10);
       doc.text("Le Directeur de l'Établissement", 150, finalY + 20, { align: "center" });
       doc.text("(Signature et Cachet)", 150, finalY + 45, { align: "center" });
