@@ -19,7 +19,8 @@ import {
   Search,
   BookOpen,
   PieChart,
-  MessageSquare
+  MessageSquare,
+  BarChart3
 } from "lucide-react"
 import {
   Sidebar,
@@ -57,6 +58,7 @@ const navigation = [
   { name: "Cockpit Directeur", href: "/dashboard", icon: LayoutDashboard },
   { name: "Élèves", href: "/eleves", icon: Users },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
   { name: "Classement", href: "/classement", icon: Trophy },
   { name: "Discipline", href: "/discipline", icon: ShieldAlert },
   { name: "Paiements", href: "/paiements", icon: CreditCard },
