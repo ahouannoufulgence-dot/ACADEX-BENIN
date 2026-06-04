@@ -1,0 +1,65 @@
+
+{
+  "entities": {
+    "Student": {
+      "title": "Élève",
+      "description": "Profil complet de l'élève",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "classId": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Actif", "Exclu", "Diplômé"] },
+        "average": { "type": "number" },
+        "rank": { "type": "integer" }
+      },
+      "required": ["fullName", "classId"]
+    },
+    "Grade": {
+      "title": "Note",
+      "description": "Notes académiques",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "subject": { "type": "string" },
+        "value": { "type": "number" },
+        "max": { "type": "number" },
+        "term": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      }
+    },
+    "Payment": {
+      "title": "Paiement",
+      "description": "Suivi des frais scolaires",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["Payé", "Partiel", "Impayé"] },
+        "type": { "type": "string" },
+        "date": { "type": "string", "format": "date" }
+      }
+    },
+    "Discipline": {
+      "title": "Discipline",
+      "description": "Records disciplinaires",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Avertissement", "Retard", "Sanction", "Exclusion"] },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google", "password"]
+  },
+  "firestore": {
+    "/students/{studentId}": { "schema": "Student", "description": "Liste des élèves" },
+    "/grades/{gradeId}": { "schema": "Grade", "description": "Notes des élèves" },
+    "/payments/{paymentId}": { "schema": "Payment", "description": "Historique financier" },
+    "/discipline/{disciplineId}": { "schema": "Discipline", "description": "Suivi comportemental" }
+  }
+}

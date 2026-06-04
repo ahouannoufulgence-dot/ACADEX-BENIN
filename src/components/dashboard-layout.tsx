@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,7 +16,10 @@ import {
   FileText,
   CreditCard,
   Menu,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert,
+  Trophy,
+  History
 } from "lucide-react"
 import {
   Sidebar,
@@ -31,7 +35,6 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
@@ -46,15 +49,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Badge } from "@/components/ui/badge"
 
 const navigation = [
   { name: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Direction", href: "/direction", icon: GraduationCap },
-  { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
   { name: "Élèves", href: "/eleves", icon: Users },
-  { name: "Bulletins & IA", href: "/feedback", icon: Sparkles },
+  { name: "Classement", href: "/classement", icon: Trophy },
+  { name: "Discipline", href: "/discipline", icon: ShieldAlert },
   { name: "Paiements", href: "/paiements", icon: CreditCard },
-  { name: "Emploi du temps", href: "/agenda", icon: Calendar },
+  { name: "Bulletins & IA", href: "/feedback", icon: Sparkles },
+  { name: "Agenda", href: "/agenda", icon: Calendar },
+  { name: "Examens", href: "/examens", icon: History },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Paramètres", href: "/settings", icon: Settings },
 ]
@@ -65,7 +70,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-background">
-        <Sidebar className="border-none shadow-2xl">
+        <Sidebar className="border-none shadow-2xl flex-shrink-0">
           <SidebarHeader className="h-20 flex items-center px-6">
             <Link href="/" className="flex items-center gap-2">
               <div className="size-10 bg-white rounded-lg flex items-center justify-center">
@@ -74,7 +79,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <span className="text-xl font-bold text-white tracking-tight">ACADEX</span>
             </Link>
           </SidebarHeader>
-          <SidebarContent className="px-3">
+          <SidebarContent className="px-3 overflow-y-auto">
             <SidebarGroup>
               <SidebarGroupLabel className="text-white/40 font-semibold px-4 py-2 uppercase tracking-widest text-[10px]">
                 Menu Principal
@@ -114,8 +119,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex flex-col">
-          <header className="sticky top-0 z-10 flex h-20 items-center justify-between bg-white px-8 border-b border-border/50">
+        <SidebarInset className="flex flex-col flex-1 min-w-0">
+          <header className="sticky top-0 z-20 flex h-20 items-center justify-between bg-white px-8 border-b border-border/50">
             <div className="flex items-center gap-4">
               <SidebarTrigger className="md:hidden" />
               <div className="relative hidden lg:block w-96 group">
