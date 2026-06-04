@@ -17,8 +17,6 @@ import {
   LogOut,
   Bell,
   Search,
-  BookOpen,
-  PieChart,
   MessageSquare,
   BarChart3
 } from "lucide-react"
@@ -55,10 +53,10 @@ import { toast } from "@/hooks/use-toast"
 import { useEffect, useState, useMemo } from "react"
 
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur"] },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Super"] },
   { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur"] },
+  { name: "Statistiques", href: "/statistiques", icon: Directeur, roles: ["Directeur", "Professeur"] },
   { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur"] },
   { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur"] },
@@ -74,7 +72,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const [userName, setUserName] = useState("Utilisateur")
-  const [userRole, setUserRole] = useState("Chargement...")
+  const [userRole, setUserRole] = useState("Directeur")
 
   useEffect(() => {
     const savedName = localStorage.getItem('acadex_user_name')
@@ -84,13 +82,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [])
 
   const filteredNavigation = useMemo(() => {
-    return navigation.filter(item => item.roles.includes(userRole.split(' ')[0]))
+    return navigation.filter(item => {
+      if (userRole === "Super Administrateur") return true
+      return item.roles.includes(userRole)
+    })
   }, [userRole])
 
   const handleLogout = () => {
     toast({
       title: "Déconnexion",
-      description: "Vous avez été déconnecté avec succès. À bientôt !",
+      description: "À bientôt sur ACADEX !",
     })
     router.push("/login")
   }
@@ -111,7 +112,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-4 py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
-                  Menu {userRole.split(' ')[0]}
+                  Menu {userRole}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-2">
@@ -129,9 +130,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           <Link href={item.href}>
                             <item.icon className={`size-5 transition-transform group-hover:scale-110 ${pathname === item.href ? "text-white" : "text-white/50"}`} />
                             <span className="font-bold text-sm tracking-wide">{item.name}</span>
-                            {pathname === item.href && (
-                              <div className="ml-auto size-2 rounded-full bg-white shadow-[0_0_12px_white] animate-pulse" />
-                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -148,7 +146,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold transition-all"
             >
               <LogOut className="size-5" />
-              <span>Quitter ACADEX</span>
+              <span>Quitter</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
@@ -157,12 +155,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-20 flex h-24 items-center justify-between bg-white/80 backdrop-blur-xl px-10 border-b border-border/40">
             <div className="flex items-center gap-6">
               <SidebarTrigger className="md:hidden" />
-              <div className="relative hidden lg:block w-[400px] group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <Input 
-                  placeholder="Recherche globale..." 
-                  className="pl-12 bg-muted/40 border-none rounded-[1.25rem] h-12 font-medium text-base shadow-inner"
-                />
+              <div className="text-lg font-black text-foreground">
+                Bonjour Monsieur <span className="text-primary italic">{userName}</span>
               </div>
             </div>
             
@@ -188,18 +182,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 mt-4 rounded-3xl p-3 shadow-2xl border-none">
-                  <DropdownMenuLabel className="px-4 py-3">
-                    <p className="text-xs font-black text-muted-foreground uppercase tracking-[0.1em] mb-1">Session Active</p>
-                    <p className="text-sm font-bold">2025 - 2026</p>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="mx-2 bg-muted/50" />
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Profil</DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-2xl h-11 px-4 font-bold focus:bg-primary/5 focus:text-primary cursor-pointer">Historique d'Audit</DropdownMenuItem>
-                  <DropdownMenuSeparator className="mx-2 bg-muted/50" />
-                  <DropdownMenuItem 
-                    onClick={handleLogout}
-                    className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-2xl h-11 px-4 font-black cursor-pointer"
-                  >
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-2xl h-11 px-4 font-black cursor-pointer">
                     Déconnexion
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -207,7 +190,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           
-          <main className="flex-1 overflow-y-auto p-10 scroll-smooth bg-[#F8FAFC]">
+          <main className="flex-1 overflow-y-auto p-10 bg-[#F8FAFC]">
             <div className="mx-auto max-w-7xl w-full">
               {children}
             </div>
