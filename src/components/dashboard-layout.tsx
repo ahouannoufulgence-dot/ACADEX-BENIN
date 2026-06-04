@@ -53,10 +53,10 @@ import { toast } from "@/hooks/use-toast"
 import { useEffect, useState, useMemo } from "react"
 
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Super"] },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Super Administrateur"] },
   { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Statistiques", href: "/statistiques", icon: Directeur, roles: ["Directeur", "Professeur"] },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur"] },
   { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur"] },
   { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur"] },
