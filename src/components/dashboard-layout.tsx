@@ -1,10 +1,10 @@
-
 "use client"
 
 import * as React from "react"
 import { 
   LayoutDashboard, 
   Users, 
+  UserSquare2,
   Trophy, 
   ShieldAlert, 
   CreditCard, 
@@ -46,12 +46,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
 const navigation = [
   { name: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
   { name: "Élèves", href: "/eleves", icon: Users },
+  { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
   { name: "Classement", href: "/classement", icon: Trophy },
   { name: "Discipline", href: "/discipline", icon: ShieldAlert },
   { name: "Paiements", href: "/paiements", icon: CreditCard },
@@ -126,7 +126,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <div className="relative hidden lg:block w-96 group">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input 
-                  placeholder="Rechercher un élève, une classe..." 
+                  placeholder="Rechercher (Ctrl+K)" 
                   className="pl-10 bg-muted/50 border-none focus-visible:ring-1 focus-visible:ring-primary transition-all rounded-full h-11"
                 />
               </div>
@@ -154,11 +154,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 mt-2">
-                  <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
+                  <DropdownMenuLabel>Session: 2025-2026</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Profil</DropdownMenuItem>
-                  <DropdownMenuItem>Messages</DropdownMenuItem>
-                  <DropdownMenuItem>Paramètres</DropdownMenuItem>
+                  <DropdownMenuItem>Profil Directeur</DropdownMenuItem>
+                  <DropdownMenuItem>Journal d'Actions</DropdownMenuItem>
+                  <DropdownMenuItem>Changer d'Année</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive focus:bg-destructive focus:text-destructive-foreground">Déconnexion</DropdownMenuItem>
                 </DropdownMenuContent>

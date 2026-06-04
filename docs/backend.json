@@ -1,55 +1,61 @@
-
 {
   "entities": {
     "Student": {
       "title": "Élève",
-      "description": "Profil complet de l'élève",
+      "description": "Profil complet de l'élève béninois",
       "type": "object",
       "properties": {
         "fullName": { "type": "string" },
+        "matricule": { "type": "string" },
         "classId": { "type": "string" },
-        "photoUrl": { "type": "string" },
-        "status": { "type": "string", "enum": ["Actif", "Exclu", "Diplômé"] },
-        "average": { "type": "number" },
-        "rank": { "type": "integer" }
+        "subdivision": { "type": "string" },
+        "serie": { "type": "string", "enum": ["Général", "A", "C", "D", "G2", "G3"] },
+        "status": { "type": "string", "enum": ["Actif", "Transféré", "Exclu", "Diplômé"] },
+        "isRepeater": { "type": "boolean" },
+        "academicYear": { "type": "string" }
       },
-      "required": ["fullName", "classId"]
+      "required": ["fullName", "classId", "academicYear"]
+    },
+    "Teacher": {
+      "title": "Enseignant",
+      "description": "Profil enseignant avec identifiant ENS-xxx",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "fullName": { "type": "string" },
+        "mainSubject": { "type": "string" },
+        "assignedClasses": { "type": "array", "items": { "type": "string" } },
+        "phone": { "type": "string" },
+        "isFormTeacher": { "type": "boolean" },
+        "formClassId": { "type": "string" }
+      }
     },
     "Grade": {
       "title": "Note",
-      "description": "Notes académiques",
+      "description": "Notes par type d'évaluation et trimestre",
       "type": "object",
       "properties": {
         "studentId": { "type": "string" },
         "subject": { "type": "string" },
         "value": { "type": "number" },
         "max": { "type": "number" },
-        "term": { "type": "string" },
-        "date": { "type": "string", "format": "date" }
+        "coeff": { "type": "number" },
+        "type": { "type": "string", "enum": ["Interro", "Devoir", "Composition", "Examen"] },
+        "term": { "type": "string", "enum": ["T1", "T2", "T3"] },
+        "academicYear": { "type": "string" }
       }
     },
     "Payment": {
       "title": "Paiement",
-      "description": "Suivi des frais scolaires",
+      "description": "Suivi des tranches de scolarité",
       "type": "object",
       "properties": {
         "studentId": { "type": "string" },
-        "amount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "tranche": { "type": "string", "enum": ["Inscription", "Tranche 1", "Tranche 2", "Examen"] },
         "status": { "type": "string", "enum": ["Payé", "Partiel", "Impayé"] },
-        "type": { "type": "string" },
         "date": { "type": "string", "format": "date" }
-      }
-    },
-    "Discipline": {
-      "title": "Discipline",
-      "description": "Records disciplinaires",
-      "type": "object",
-      "properties": {
-        "studentId": { "type": "string" },
-        "type": { "type": "string", "enum": ["Avertissement", "Retard", "Sanction", "Exclusion"] },
-        "description": { "type": "string" },
-        "date": { "type": "string", "format": "date" },
-        "severity": { "type": "string", "enum": ["low", "medium", "high"] }
       }
     }
   },
@@ -57,9 +63,9 @@
     "providers": ["google", "password"]
   },
   "firestore": {
-    "/students/{studentId}": { "schema": "Student", "description": "Liste des élèves" },
-    "/grades/{gradeId}": { "schema": "Grade", "description": "Notes des élèves" },
-    "/payments/{paymentId}": { "schema": "Payment", "description": "Historique financier" },
-    "/discipline/{disciplineId}": { "schema": "Discipline", "description": "Suivi comportemental" }
+    "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
+    "/teachers/{teacherId}": { "schema": "Teacher", "description": "Base enseignants" },
+    "/grades/{gradeId}": { "schema": "Grade", "description": "Carnet de notes" },
+    "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" }
   }
 }
