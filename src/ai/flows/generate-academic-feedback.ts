@@ -81,9 +81,9 @@ Le feedback doit inclure les sections suivantes, dans l'ordre :
 
 Formatez l'intégralité de votre réponse en un objet JSON valide, strictement conforme au schéma de sortie fourni ci-dessous, sans aucun texte additionnel ou marque de mise en forme en dehors de l'objet JSON. Utilisez les descriptions du schéma pour guider la profondeur et le contenu de chaque champ.
 
-```json
+\`\`\`json
 {{jsonSchema output}}
-```
+\`\`\`
 `,
 });
 
