@@ -11,12 +11,12 @@
         "classId": { "type": "string" },
         "subdivision": { "type": "string" },
         "serie": { "type": "string", "enum": ["Général", "A", "C", "D", "G2", "G3"] },
-        "status": { "type": "string", "enum": ["Actif", "Transféré", "Exclu", "Diplômé", "Archivé"] },
+        "status": { "type": "string", "enum": ["Actif", "En attente d'activation", "Transféré", "Exclu", "Diplômé", "Archivé"] },
         "isRepeater": { "type": "boolean" },
         "academicYear": { "type": "string" },
         "deletedAt": { "type": "string", "format": "date-time", "description": "Date de suppression pour corbeille 30 jours" }
       },
-      "required": ["fullName", "classId", "academicYear"]
+      "required": ["matricule", "classId", "academicYear"]
     },
     "AuditLog": {
       "title": "Journal d'Audit",
