@@ -5,21 +5,18 @@ import * as React from "react"
 import { 
   LayoutDashboard, 
   Users, 
-  UserSquare2, 
-  GraduationCap, 
+  Trophy, 
+  ShieldAlert, 
+  CreditCard, 
+  Sparkles, 
   Calendar, 
-  Bell, 
-  Search, 
+  History, 
+  FileText, 
   Settings, 
   LogOut,
-  Sparkles,
-  FileText,
-  CreditCard,
-  Menu,
-  ChevronRight,
-  ShieldAlert,
-  Trophy,
-  History
+  Bell,
+  Search,
+  Menu
 } from "lucide-react"
 import {
   Sidebar,
@@ -50,6 +47,7 @@ import {
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const navigation = [
   { name: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
@@ -69,7 +67,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-background">
+      <div className="flex min-h-screen w-full bg-background overflow-hidden">
         <Sidebar className="border-none shadow-2xl flex-shrink-0">
           <SidebarHeader className="h-20 flex items-center px-6">
             <Link href="/" className="flex items-center gap-2">
@@ -79,38 +77,40 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <span className="text-xl font-bold text-white tracking-tight">ACADEX</span>
             </Link>
           </SidebarHeader>
-          <SidebarContent className="px-3 overflow-y-auto">
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-white/40 font-semibold px-4 py-2 uppercase tracking-widest text-[10px]">
-                Menu Principal
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navigation.map((item) => (
-                    <SidebarMenuItem key={item.name}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === item.href}
-                        className={`group transition-all duration-200 h-11 ${
-                          pathname === item.href 
-                            ? "bg-white/10 text-white" 
-                            : "text-white/70 hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        <Link href={item.href}>
-                          <item.icon className="size-5" />
-                          <span className="font-medium">{item.name}</span>
-                          {pathname === item.href && (
-                            <div className="ml-auto size-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />
-                          )}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
+          <ScrollArea className="flex-1">
+            <SidebarContent className="px-3 py-2">
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-white/40 font-semibold px-4 py-2 uppercase tracking-widest text-[10px]">
+                  Menu Principal
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {navigation.map((item) => (
+                      <SidebarMenuItem key={item.name}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === item.href}
+                          className={`group transition-all duration-200 h-11 ${
+                            pathname === item.href 
+                              ? "bg-white/10 text-white" 
+                              : "text-white/70 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className="size-5" />
+                            <span className="font-medium">{item.name}</span>
+                            {pathname === item.href && (
+                              <div className="ml-auto size-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />
+                            )}
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+          </ScrollArea>
           <SidebarFooter className="p-4">
             <Button variant="ghost" className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10 gap-3 px-3 h-11">
               <LogOut className="size-5" />
@@ -133,10 +133,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
             
             <div className="flex items-center gap-6">
-              <button className="relative p-2 text-muted-foreground hover:text-primary transition-colors">
+              <div className="relative p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer">
                 <Bell className="size-6" />
                 <span className="absolute top-1.5 right-1.5 size-2 bg-destructive rounded-full ring-2 ring-white" />
-              </button>
+              </div>
               
               <div className="h-8 w-px bg-border/60" />
 
@@ -167,7 +167,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </header>
           
           <main className="flex-1 overflow-y-auto p-8 scroll-smooth bg-[#F8FAFC]">
-            {children}
+            <div className="mx-auto max-w-7xl w-full">
+              {children}
+            </div>
           </main>
         </SidebarInset>
       </div>

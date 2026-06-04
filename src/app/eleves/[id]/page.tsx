@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from "@/components/ui/button"
 import { 
   TrendingUp, 
+  TrendingDown,
   AlertCircle, 
   Calendar, 
   ChevronLeft,
@@ -17,7 +18,10 @@ import {
   History,
   Award,
   BookOpen,
-  UserPlus
+  UserPlus,
+  Sparkles,
+  Download,
+  Share2
 } from "lucide-react"
 import { 
   Line, 
@@ -26,221 +30,287 @@ import {
   XAxis, 
   YAxis, 
   Tooltip,
-  CartesianGrid
+  CartesianGrid,
+  AreaChart,
+  Area
 } from "recharts"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
+import { toast } from "@/hooks/use-toast"
 
 const progressionData = [
-  { name: "S1", value: 14.5 },
-  { name: "S2", value: 15.2 },
-  { name: "S3", value: 14.8 },
-  { name: "S4", value: 16.5 },
-  { name: "S5", value: 16.1 },
-  { name: "S6", value: 17.2 },
+  { name: "Sem 1", value: 14.5 },
+  { name: "Sem 2", value: 15.2 },
+  { name: "Sem 3", value: 14.8 },
+  { name: "Sem 4", value: 16.5 },
+  { name: "Sem 5", value: 16.1 },
+  { name: "Sem 6", value: 17.2 },
 ]
 
 export default function StudentDetailPage() {
   const { id } = useParams()
 
+  const handleGenerateBulletin = () => {
+    toast({
+      title: "Génération en cours",
+      description: "Le bulletin PDF de Koffi Djimon est en cours de création...",
+    })
+  }
+
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
         {/* Navigation & Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <Link href="/eleves" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-bold">
-            <ChevronLeft className="size-4" />
-            Retour à la liste
+          <Link href="/eleves" className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors font-bold group">
+            <ChevronLeft className="size-5 transition-transform group-hover:-translate-x-1" />
+            Retour à la liste des élèves
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="h-11 rounded-full border-2">
-              <FileText className="mr-2 size-4" />
-              Bulletin PDF
+            <Button onClick={handleGenerateBulletin} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-base">
+              <Download className="mr-2 size-5" />
+              Générer Bulletin PDF
             </Button>
-            <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-full h-11 px-6">
-              Modifier Profil
+            <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6">
+              <Share2 className="mr-2 size-5" />
+              Partager
             </Button>
           </div>
         </div>
 
         {/* Header Profile */}
-        <Card className="border-none shadow-sm bg-white overflow-hidden rounded-3xl">
-          <div className="h-32 bg-primary relative">
-            <div className="absolute -bottom-12 left-12">
-              <Avatar className="size-32 border-8 border-white shadow-xl">
-                <AvatarImage src={`https://picsum.photos/seed/${id}/200/200`} />
-                <AvatarFallback className="bg-primary text-white text-3xl font-black">KD</AvatarFallback>
+        <Card className="border-none shadow-sm bg-white overflow-hidden rounded-[2.5rem]">
+          <div className="h-48 bg-primary relative">
+            <div className="absolute -bottom-16 left-16">
+              <Avatar className="size-40 border-8 border-white shadow-2xl">
+                <AvatarImage src={`https://picsum.photos/seed/${id}/400/400`} />
+                <AvatarFallback className="bg-primary text-white text-5xl font-black">KD</AvatarFallback>
               </Avatar>
             </div>
           </div>
-          <CardContent className="pt-16 pb-8 px-12">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl font-black text-foreground">Koffi Djimon</h1>
-                  <Badge className="bg-primary hover:bg-primary px-3 rounded-full font-bold">TERMINALE S1</Badge>
+          <CardContent className="pt-20 pb-10 px-16">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  <h1 className="text-4xl font-black text-foreground">Koffi Djimon</h1>
+                  <Badge className="bg-primary hover:bg-primary px-5 py-1 rounded-full font-black text-sm">TERMINALE S1</Badge>
                 </div>
-                <p className="text-muted-foreground flex items-center gap-2 font-medium">
+                <p className="text-muted-foreground flex items-center gap-3 font-semibold text-lg">
                   Matricule: AC-2024-042 • Né le 12/04/2006 • Cotonou, Bénin
                 </p>
-              </div>
-              <div className="flex gap-4">
-                <div className="text-center px-6 py-2 bg-muted/50 rounded-2xl border border-muted">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Moyenne Générale</p>
-                  <p className="text-2xl font-black text-primary">16.54/20</p>
+                <div className="flex gap-2 pt-2">
+                  <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-bold">Actif</Badge>
+                  <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-bold">Boursier</Badge>
                 </div>
-                <div className="text-center px-6 py-2 bg-muted/50 rounded-2xl border border-muted">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground mb-1">Rang Global</p>
-                  <p className="text-2xl font-black text-foreground">2<sup>ème</sup></p>
+              </div>
+              <div className="flex gap-6">
+                <div className="text-center px-8 py-4 bg-muted/50 rounded-3xl border border-muted shadow-sm">
+                  <p className="text-[10px] uppercase font-black text-muted-foreground mb-1 tracking-widest">Moyenne Générale</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-3xl font-black text-primary">16.54</p>
+                    <TrendingUp className="size-5 text-primary" />
+                  </div>
+                </div>
+                <div className="text-center px-8 py-4 bg-muted/50 rounded-3xl border border-muted shadow-sm">
+                  <p className="text-[10px] uppercase font-black text-muted-foreground mb-1 tracking-widest">Rang Global</p>
+                  <p className="text-3xl font-black text-foreground">2<sup>ème</sup></p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid gap-6 md:grid-cols-12">
+        <div className="grid gap-8 md:grid-cols-12">
           {/* Main Content - Progression */}
-          <div className="md:col-span-8 space-y-6">
-            <Card className="border-none shadow-sm bg-white rounded-3xl">
+          <div className="md:col-span-8 space-y-8">
+            <Card className="border-none shadow-sm bg-white rounded-[2rem]">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">Graphique de Progression</CardTitle>
-                  <CardDescription>Évolution des moyennes par semaine</CardDescription>
+                  <CardTitle className="text-xl font-bold">Carnet de Suivi Intelligent</CardTitle>
+                  <CardDescription>Évolution des performances sur le semestre</CardDescription>
                 </div>
-                <Badge className="bg-primary/10 text-primary border-none font-bold">
-                  <TrendingUp className="size-3 mr-1" />
-                  +8% ce mois
-                </Badge>
+                <div className="flex items-center gap-2 text-primary font-black bg-primary/10 px-4 py-2 rounded-2xl">
+                  <TrendingUp className="size-5" />
+                  +8.4%
+                </div>
               </CardHeader>
-              <CardContent className="h-[300px]">
+              <CardContent className="h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={progressionData}>
+                  <AreaChart data={progressionData}>
+                    <defs>
+                      <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#14532D" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#14532D" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} />
                     <YAxis axisLine={false} tickLine={false} fontSize={12} domain={[0, 20]} />
                     <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
                     />
-                    <Line 
+                    <Area 
                       type="monotone" 
                       dataKey="value" 
                       stroke="#14532D" 
                       strokeWidth={4} 
-                      dot={{ r: 6, fill: '#14532D', strokeWidth: 2, stroke: '#fff' }}
-                      activeDot={{ r: 8 }}
+                      fillOpacity={1} 
+                      fill="url(#colorValue)" 
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="border-none shadow-sm bg-white rounded-3xl">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <Card className="border-none shadow-sm bg-white rounded-[2rem]">
                 <CardHeader>
-                  <CardTitle className="text-base">Matières Fortes</CardTitle>
+                  <CardTitle className="text-lg font-bold">Matières Fortes</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   {[
-                    { subject: "Mathématiques", score: 18.5, color: "bg-primary" },
-                    { subject: "Physique-Chimie", score: 17.2, color: "bg-primary" },
-                    { subject: "SVT", score: 16.8, color: "bg-primary" },
+                    { subject: "Mathématiques", score: 18.5, trend: "up" },
+                    { subject: "Physique-Chimie", score: 17.2, trend: "up" },
+                    { subject: "SVT", score: 16.8, trend: "stable" },
                   ].map((item, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between text-sm font-bold">
-                        <span>{item.subject}</span>
+                    <div key={i} className="space-y-3">
+                      <div className="flex justify-between items-center text-sm font-black">
+                        <div className="flex items-center gap-2">
+                          {item.subject}
+                          {item.trend === 'up' ? <TrendingUp className="size-3 text-primary" /> : <div className="size-3 bg-muted rounded-full" />}
+                        </div>
                         <span className="text-primary">{item.score}/20</span>
                       </div>
-                      <Progress value={item.score * 5} className="h-2" />
+                      <Progress value={item.score * 5} className="h-2.5 rounded-full" />
                     </div>
                   ))}
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-sm bg-white rounded-3xl">
+              <Card className="border-none shadow-sm bg-white rounded-[2rem]">
                 <CardHeader>
-                  <CardTitle className="text-base">Points d'Amélioration</CardTitle>
+                  <CardTitle className="text-lg font-bold">Points d'Amélioration</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   {[
-                    { subject: "Anglais", score: 11.5, color: "bg-amber-500" },
-                    { subject: "Français", score: 12.0, color: "bg-amber-500" },
-                    { subject: "Histoire-Géo", score: 13.5, color: "bg-primary" },
+                    { subject: "Anglais", score: 11.5, trend: "down" },
+                    { subject: "Français", score: 12.0, trend: "up" },
+                    { subject: "Histoire-Géo", score: 13.5, trend: "stable" },
                   ].map((item, i) => (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between text-sm font-bold">
-                        <span>{item.subject}</span>
+                    <div key={i} className="space-y-3">
+                      <div className="flex justify-between items-center text-sm font-black">
+                        <div className="flex items-center gap-2">
+                          {item.subject}
+                          {item.trend === 'down' ? <TrendingDown className="size-3 text-destructive" /> : <TrendingUp className="size-3 text-primary" />}
+                        </div>
                         <span className="text-amber-600">{item.score}/20</span>
                       </div>
-                      <Progress value={item.score * 5} className="h-2" />
+                      <Progress value={item.score * 5} className="h-2.5 rounded-full" />
                     </div>
                   ))}
                 </CardContent>
               </Card>
             </div>
+
+            <Card className="border-none shadow-lg bg-primary text-white p-8 rounded-[2.5rem] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                <Sparkles className="size-48" />
+              </div>
+              <h3 className="text-2xl font-black mb-4 flex items-center gap-3">
+                <Sparkles className="size-7" />
+                Analyse Prédictive ACADEX
+              </h3>
+              <p className="text-lg text-primary-foreground/90 leading-relaxed mb-8">
+                "Koffi présente un profil d'excellence scientifique. Son évolution en Mathématiques suggère un potentiel pour les concours nationaux. Une attention particulière sur l'Anglais permettrait d'équilibrer son dossier pour des bourses internationales."
+              </p>
+              <div className="flex gap-4">
+                <Button variant="secondary" className="bg-white text-primary font-black rounded-2xl h-12 px-8">
+                  Voir recommandations
+                </Button>
+                <Button variant="ghost" className="text-white hover:bg-white/10 font-bold h-12 rounded-2xl">
+                  Historique IA
+                </Button>
+              </div>
+            </Card>
           </div>
 
           {/* Sidebar Info - Discipline & Payments */}
-          <div className="md:col-span-4 space-y-6">
-            <Card className="border-none shadow-sm bg-white rounded-3xl">
+          <div className="md:col-span-4 space-y-8">
+            <Card className="border-none shadow-sm bg-white rounded-[2rem]">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <ShieldCheck className="size-5 text-primary" />
-                  Carnet de Discipline
+                <CardTitle className="text-xl font-bold flex items-center gap-3">
+                  <ShieldCheck className="size-6 text-primary" />
+                  Carnet Disciplinaire
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted/30 rounded-2xl border border-transparent">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className="bg-primary/10 text-primary border-none rounded-full">EXCELLENT</Badge>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Note de conduite: 19/20</span>
+              <CardContent className="space-y-6">
+                <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <Badge className="bg-primary hover:bg-primary px-4 py-1 rounded-full font-black">EXCELLENT</Badge>
+                    <span className="text-xs font-black text-primary">CONDUITE : 19/20</span>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Élève exemplaire. Participation active en classe et respect strict du règlement intérieur.
+                  <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                    Élève exemplaire, moteur pour sa classe. Respect absolu des valeurs de l'établissement.
                   </p>
                 </div>
-                <div className="flex items-center justify-between p-3 border-l-4 border-primary bg-primary/5 rounded-r-xl">
-                  <div className="text-sm font-bold">0 Avertissement</div>
-                  <div className="text-[10px] font-bold text-muted-foreground">CE TRIMESTRE</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-4 bg-muted/30 rounded-2xl">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Avertissements</p>
+                    <p className="text-2xl font-black text-foreground">0</p>
+                  </div>
+                  <div className="text-center p-4 bg-muted/30 rounded-2xl">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Retards</p>
+                    <p className="text-2xl font-black text-foreground">1</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-white rounded-3xl">
+            <Card className="border-none shadow-sm bg-white rounded-[2rem]">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <CreditCard className="size-5 text-primary" />
+                <CardTitle className="text-xl font-bold flex items-center gap-3">
+                  <CreditCard className="size-6 text-primary" />
                   Situation Financière
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Total Payé</p>
-                    <p className="text-xl font-black text-foreground">320,000 FCFA</p>
+                    <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Total Payé</p>
+                    <p className="text-2xl font-black text-foreground">320,000 FCFA</p>
                   </div>
-                  <Badge className="bg-primary rounded-full font-bold">SOLDE À JOUR</Badge>
+                  <Badge className="bg-primary px-4 py-1 rounded-full font-black">À JOUR</Badge>
                 </div>
-                <Progress value={100} className="h-2" />
-                <Button variant="ghost" className="w-full text-primary font-bold text-xs h-10 hover:bg-primary/5">
-                  Historique des reçus <ChevronRight className="size-4 ml-1" />
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span>Scolarité : 100%</span>
+                    <span className="text-muted-foreground">Reste : 0 FCFA</span>
+                  </div>
+                  <Progress value={100} className="h-3 rounded-full" />
+                </div>
+                <Button variant="ghost" className="w-full text-primary font-black text-sm h-12 hover:bg-primary/5 rounded-2xl">
+                  Voir historique des reçus <Share2 className="size-4 ml-2" />
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-primary text-white p-6 rounded-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-white/10 rounded-lg">
-                  <Award className="size-6" />
+            <Card className="border-none shadow-sm bg-white rounded-[2rem] p-8">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="size-14 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600 shadow-sm">
+                  <Award className="size-8" />
                 </div>
-                <h3 className="font-bold">Mention d'Excellence</h3>
+                <div>
+                  <h4 className="font-black text-lg">Distinction Académique</h4>
+                  <p className="text-xs text-muted-foreground font-bold">Tableau d'Honneur - Mars 2024</p>
+                </div>
               </div>
-              <p className="text-xs text-white/80 leading-relaxed mb-6">
-                Félicitations ! Koffi Djimon est éligible pour le tableau d'honneur du mois de Mars 2024.
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6 font-medium">
+                Koffi est officiellement nominé pour le prix d'excellence de fin d'année dans la catégorie "Sciences Exactes".
               </p>
-              <Button className="w-full bg-white text-primary font-bold rounded-xl h-11 hover:bg-white/90">
-                Générer Certificat
+              <Button className="w-full bg-foreground hover:bg-foreground/90 text-white font-black rounded-2xl h-12">
+                Voir Palmarès
               </Button>
             </Card>
           </div>

@@ -24,7 +24,7 @@
     --border: 214 32% 91%;
     --input: 214 32% 91%;
     --ring: 144 61% 20%;
-    --radius: 0.75rem;
+    --radius: 1.5rem; /* Consistent 24px radius for premium feel */
     --sidebar-background: 144 61% 20%;
     --sidebar-foreground: 0 0% 98%;
     --sidebar-primary: 0 0% 100%;
@@ -51,7 +51,7 @@
 }
 
 .card-hover-effect {
-  @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  @apply transition-all duration-500 hover:shadow-2xl hover:-translate-y-2;
 }
 
 ::-webkit-scrollbar {
@@ -63,15 +63,31 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
+  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
 }
 
 /* Animations for premium feel */
 @keyframes slide-up {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-slide-up {
-  animation: slide-up 0.4s ease-out forwards;
+  animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+  .sidebar-collapsed {
+    width: 0;
+  }
+}
+
+.glass-morphism {
+  @apply bg-white/70 backdrop-blur-xl border border-white/20;
+}
+
+/* Chart customizations */
+.recharts-cartesian-grid-horizontal line {
+  stroke: #F1F5F9;
 }
