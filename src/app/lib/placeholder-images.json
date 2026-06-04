@@ -1,0 +1,16 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-students",
+      "description": "African students studying together in a modern classroom",
+      "imageUrl": "https://picsum.photos/seed/acadex-hero/1920/1080",
+      "imageHint": "african students"
+    },
+    {
+      "id": "user-avatar",
+      "description": "Premium user profile avatar",
+      "imageUrl": "https://picsum.photos/seed/user-1/200/200",
+      "imageHint": "business person"
+    }
+  ]
+}
