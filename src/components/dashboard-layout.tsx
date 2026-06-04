@@ -16,7 +16,6 @@ import {
   Settings, 
   LogOut,
   Bell,
-  Search,
   MessageSquare,
   BarChart3
 } from "lucide-react"
@@ -36,14 +35,11 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
@@ -53,18 +49,18 @@ import { toast } from "@/hooks/use-toast"
 import { useEffect, useState, useMemo } from "react"
 
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Super Administrateur"] },
-  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur"] },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Enseignant", "Super Administrateur"] },
+  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur", "Enseignant"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur"] },
-  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur"] },
-  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur"] },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur", "Enseignant"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur"] },
-  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Professeur"] },
-  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Professeur"] },
-  { name: "Emploi du temps", href: "/agenda", icon: Calendar, roles: ["Directeur", "Professeur"] },
-  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Professeur"] },
-  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Professeur"] },
+  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Emploi du temps", href: "/agenda", icon: Calendar, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Professeur", "Enseignant"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
 
