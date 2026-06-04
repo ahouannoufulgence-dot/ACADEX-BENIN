@@ -18,6 +18,7 @@ import {
   Bell,
   MessageSquare,
   BarChart3,
+  BookOpen,
 } from "lucide-react"
 import {
   Sidebar,
@@ -41,13 +42,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
+import { Badge } from "@/components/ui/badge"
 
-// Configuration des menus avec les rôles autorisés
 const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Professeur", "Élève", "Super Administrateur"] },
   { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
@@ -69,22 +72,25 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [userName, setUserName] = useState("Utilisateur")
   const [userRole, setUserRole] = useState("")
+  const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     const savedName = localStorage.getItem('acadex_user_name')
     const savedRole = localStorage.getItem('acadex_user_role') || "Élève"
+    const savedId = localStorage.getItem('acadex_user_id') || ""
     
     setUserName(savedName || "Utilisateur")
     setUserRole(savedRole)
+    setUserId(savedId)
     setMounted(true)
 
-    // Protection des routes : si l'utilisateur n'a pas le droit d'être ici, on le ramène au dashboard
     const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
     if (currentNav) {
       const hasPermission = currentNav.roles.some(role => 
         role.toLowerCase() === savedRole.toLowerCase() || 
-        (savedRole.toLowerCase() === "super administrateur")
+        (savedRole.toLowerCase() === "super administrateur") ||
+        (savedRole.toLowerCase() === "directeur")
       )
       if (!hasPermission) {
         router.push("/dashboard")
@@ -95,9 +101,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const filteredNavigation = useMemo(() => {
     if (!userRole) return []
     return navigation.filter(item => {
-      // Le directeur et l'admin voient tout
       if (userRole.toLowerCase() === "super administrateur" || userRole.toLowerCase() === "directeur") return true
-      // Les autres rôles voient selon leur liste
       return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase())
     })
   }, [userRole])
@@ -168,8 +172,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-20 flex h-24 items-center justify-between bg-white/80 backdrop-blur-xl px-10 border-b border-border/40">
             <div className="flex items-center gap-6">
               <SidebarTrigger className="md:hidden" />
-              <div className="text-lg font-black text-foreground">
-                Bonjour Monsieur <span className="text-primary italic">{userName}</span>
+              <div className="flex flex-col">
+                <div className="text-lg font-black text-foreground">
+                  Bonjour Monsieur <span className="text-primary italic">{userName}</span>
+                </div>
+                {userId && (
+                  <div className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                    <ShieldAlert className="size-3" />
+                    ID OFFICIEL : {userId}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -186,7 +198,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Button variant="ghost" className="relative flex items-center gap-4 hover:bg-transparent px-0 h-auto group">
                     <div className="text-right hidden sm:block space-y-0.5">
                       <p className="text-base font-black text-foreground group-hover:text-primary transition-colors">{userName}</p>
-                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{userRole}</p>
+                      <div className="flex items-center justify-end gap-2">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{userRole}</p>
+                        {userId && <Badge variant="outline" className="text-[8px] h-4 py-0 font-black border-primary/20 text-primary">{userId}</Badge>}
+                      </div>
                     </div>
                     <Avatar className="size-12 border-2 border-primary/10 group-hover:border-primary transition-all shadow-md">
                       <AvatarImage src={`https://picsum.photos/seed/${userName}/200/200`} />
@@ -195,8 +210,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64 mt-4 rounded-3xl p-3 shadow-2xl border-none">
+                  <DropdownMenuLabel className="px-4 py-3">
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-1">Identité Connectée</p>
+                    <p className="font-black text-foreground">{userName}</p>
+                    <p className="text-[10px] font-bold text-primary">{userId}</p>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold cursor-pointer">
-                    <Link href="/settings">Mon profil</Link>
+                    <Link href="/settings">Mon profil & Sécurité</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 focus:text-destructive rounded-2xl h-11 px-4 font-black cursor-pointer">
                     Déconnexion

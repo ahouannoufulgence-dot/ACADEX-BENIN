@@ -39,6 +39,7 @@ export default function RegisterDirectorPage() {
       // Save user info for personalization
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
       localStorage.setItem('acadex_user_role', 'Directeur');
+      localStorage.setItem('acadex_user_id', 'DIR-001');
       nextStep();
       toast({
         title: "Compte créé avec succès",

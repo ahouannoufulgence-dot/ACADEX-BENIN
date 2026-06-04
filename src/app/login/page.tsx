@@ -24,6 +24,9 @@ export default function LoginPage() {
     setTimeout(() => {
       setLoading(false);
       
+      // Store the official ID
+      localStorage.setItem('acadex_user_id', id);
+
       // Smart identification based on prefix
       if (id.startsWith('DIR')) {
         localStorage.setItem('acadex_user_role', 'Directeur');
@@ -32,9 +35,12 @@ export default function LoginPage() {
         localStorage.setItem('acadex_user_role', 'Enseignant');
         localStorage.setItem('acadex_user_name', 'Marc Dossou');
         localStorage.setItem('acadex_user_classes', JSON.stringify(['3D1', 'Terminale D1']));
-      } else {
+      } else if (id.startsWith('ELV')) {
         localStorage.setItem('acadex_user_role', 'Élève');
         localStorage.setItem('acadex_user_name', 'David Sossa');
+      } else {
+        localStorage.setItem('acadex_user_role', 'Directeur'); // Fallback for testing
+        localStorage.setItem('acadex_user_name', 'Utilisateur');
       }
       
       router.push('/dashboard');
