@@ -51,18 +51,18 @@ import { toast } from "@/hooks/use-toast"
 import { useEffect, useState, useMemo } from "react"
 
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Élève", "Super Administrateur"] },
-  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur"] },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Professeur", "Enseignant", "Élève", "Super Administrateur"] },
+  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Professeur", "Enseignant"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur"] },
-  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur"] },
-  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur", "Élève"] },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
-  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Professeur"] },
-  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Professeur", "Élève"] },
-  { name: "Emploi du temps", href: "/agenda", icon: Calendar, roles: ["Directeur", "Professeur", "Élève"] },
-  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Professeur"] },
-  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Professeur", "Élève"] },
+  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
+  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
+  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Professeur", "Enseignant"] },
+  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Professeur", "Enseignant", "Élève"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
 
@@ -80,16 +80,28 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserName(savedName || "Utilisateur")
     setUserRole(savedRole)
 
+    // bypass for admin during development or if matched
+    if (savedRole === "Super Administrateur") {
+      setIsAuthorized(true)
+      return
+    }
+
     // Strict URL Protection
     const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
-    if (currentNav && !currentNav.roles.includes(savedRole)) {
-      setIsAuthorized(false)
-      toast({
-        variant: "destructive",
-        title: "Accès non autorisé",
-        description: "Vous n'avez pas les permissions pour accéder à cet espace.",
-      })
-      router.push("/dashboard")
+    
+    if (currentNav) {
+      const hasPermission = currentNav.roles.some(role => role.toLowerCase() === savedRole.toLowerCase())
+      if (!hasPermission) {
+        setIsAuthorized(false)
+        toast({
+          variant: "destructive",
+          title: "Accès non autorisé",
+          description: `Votre rôle (${savedRole}) ne permet pas d'accéder à cette section.`,
+        })
+        router.push("/dashboard")
+      } else {
+        setIsAuthorized(true)
+      }
     } else {
       setIsAuthorized(true)
     }
@@ -98,7 +110,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const filteredNavigation = useMemo(() => {
     return navigation.filter(item => {
       if (userRole === "Super Administrateur") return true
-      return item.roles.includes(userRole)
+      return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase())
     })
   }, [userRole])
 
