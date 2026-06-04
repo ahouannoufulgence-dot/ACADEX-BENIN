@@ -14,11 +14,15 @@ import {
   CheckCircle2,
   Clock,
   UserX,
-  ChevronRight
+  ChevronRight,
+  FileDown
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import { toast } from "@/hooks/use-toast"
 
 const incidents = [
   { id: "1", name: "Dossou Marc", class: "4ème C", type: "Retard", description: "3ème retard cette semaine", date: "Aujourd'hui, 08:15", severity: "low", status: "Sanctionné" },
@@ -29,6 +33,29 @@ const incidents = [
 ]
 
 export default function DisciplinePage() {
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF()
+      doc.setFillColor(20, 83, 45)
+      doc.rect(0, 0, 210, 30, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(18)
+      doc.text("ACADEX - JOURNAL DE DISCIPLINE", 105, 20, { align: "center" })
+
+      autoTable(doc, {
+        startY: 40,
+        head: [['Élève', 'Classe', 'Type', 'Description', 'Date', 'Statut']],
+        body: incidents.map(i => [i.name, i.class, i.type, i.description, i.date, i.status]),
+        headStyles: { fillColor: [20, 83, 45] }
+      })
+
+      doc.save("ACADEX_Discipline.pdf")
+      toast({ title: "Succès", description: "Le journal disciplinaire a été exporté." })
+    } catch (e) {
+      toast({ title: "Erreur", description: "Échec de l'exportation PDF.", variant: "destructive" })
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-700">
@@ -38,9 +65,9 @@ export default function DisciplinePage() {
             <p className="text-muted-foreground mt-2 font-medium">Suivi comportemental et éthique des élèves Acadex.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6">
-              <History className="mr-2 size-4" />
-              Historique Sanctions
+            <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6">
+              <FileDown className="mr-2 size-4" />
+              Rapport PDF
             </Button>
             <Button className="bg-destructive hover:bg-destructive/90 shadow-xl shadow-destructive/20 rounded-2xl h-12 px-8 font-bold">
               <Plus className="mr-2 size-5" />
@@ -49,7 +76,6 @@ export default function DisciplinePage() {
           </div>
         </div>
 
-        {/* Stats Summary */}
         <div className="grid gap-6 md:grid-cols-4">
           {[
             { label: "Total Incidents", value: "24", icon: ShieldAlert, color: "text-primary" },
@@ -72,7 +98,6 @@ export default function DisciplinePage() {
           ))}
         </div>
 
-        {/* Incident List */}
         <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
           <CardHeader className="p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -132,11 +157,6 @@ export default function DisciplinePage() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="p-8 bg-muted/20 border-t border-muted/30">
-              <Button variant="ghost" className="w-full text-primary font-black h-12 rounded-2xl hover:bg-primary hover:text-white transition-all">
-                Voir tous les records disciplinaires
-              </Button>
             </div>
           </CardContent>
         </Card>

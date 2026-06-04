@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -16,10 +17,14 @@ import {
   ChevronRight,
   MoreVertical,
   ShieldCheck,
-  Zap
+  Zap,
+  FileDown
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
+import { toast } from "@/hooks/use-toast"
 
 const teachers = [
   { id: "ENS-MATH-001", name: "M. Dossou Marc", subject: "Mathématiques", classes: ["3D1", "Tle D2", "4C"], phone: "+229 97 01 02 03", status: "Actif", isFormTeacher: true },
@@ -29,6 +34,30 @@ const teachers = [
 ]
 
 export default function TeachersPage() {
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF()
+      doc.setFillColor(20, 83, 45)
+      doc.rect(0, 0, 210, 30, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(18)
+      doc.text("ACADEX - LISTE DU CORPS ENSEIGNANT", 105, 20, { align: "center" })
+
+      autoTable(doc, {
+        startY: 40,
+        head: [['ID', 'Nom & Prénoms', 'Matière', 'Classes', 'Contact', 'Statut']],
+        body: teachers.map(t => [t.id, t.name, t.subject, t.classes.join(', '), t.phone, t.status]),
+        headStyles: { fillColor: [20, 83, 45] },
+        styles: { fontSize: 8 }
+      })
+
+      doc.save("ACADEX_Enseignants.pdf")
+      toast({ title: "Succès", description: "La liste des enseignants a été exportée." })
+    } catch (e) {
+      toast({ title: "Erreur", description: "Échec de l'exportation PDF.", variant: "destructive" })
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-700">
@@ -38,8 +67,9 @@ export default function TeachersPage() {
             <p className="text-muted-foreground mt-2 font-medium">Gestion des professeurs et attribution des classes.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6">
-              Emploi du temps Global
+            <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6">
+              <FileDown className="mr-2 size-5" />
+              Exporter PDF
             </Button>
             <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold">
               <Plus className="mr-2 size-5" />
@@ -48,7 +78,6 @@ export default function TeachersPage() {
           </div>
         </div>
 
-        {/* Quick Insights */}
         <div className="grid gap-6 md:grid-cols-4">
           {[
             { label: "Total Profs", value: "48", icon: UserSquare2, color: "bg-primary" },
@@ -71,7 +100,6 @@ export default function TeachersPage() {
           ))}
         </div>
 
-        {/* Teachers List */}
         <div className="space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="relative group flex-1 max-w-md">
@@ -140,11 +168,6 @@ export default function TeachersPage() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="p-8 bg-muted/20 border-t border-muted/30 text-center">
-              <Button variant="ghost" className="text-primary font-black h-12 rounded-2xl hover:bg-transparent">
-                Afficher tous les collaborateurs (48)
-              </Button>
             </div>
           </Card>
         </div>

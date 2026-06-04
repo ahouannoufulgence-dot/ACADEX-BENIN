@@ -17,7 +17,8 @@ import {
   ArrowUpRight,
   Eye,
   Lock,
-  Sparkles
+  Sparkles,
+  FileDown
 } from "lucide-react"
 import { 
   ResponsiveContainer, 
@@ -30,6 +31,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useEffect, useState } from "react"
+import { jsPDF } from "jspdf"
+import { toast } from "@/hooks/use-toast"
 
 const stats = [
   { title: "Élèves", value: "1,248", change: "+12", trend: "up", icon: Users, color: "text-primary" },
@@ -57,6 +60,34 @@ export default function DashboardPage() {
     if (savedName) setUserName(savedName)
   }, [])
 
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF()
+      doc.setFillColor(20, 83, 45)
+      doc.rect(0, 0, 210, 30, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(18)
+      doc.text("ACADEX - RAPPORT DE PILOTAGE", 105, 20, { align: "center" })
+      
+      doc.setTextColor(0, 0, 0)
+      doc.setFontSize(12)
+      doc.text(`Directeur : ${userName}`, 20, 45)
+      doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 190, 45, { align: "right" })
+      
+      doc.setFontSize(14)
+      doc.text("Statistiques Globales", 20, 60)
+      stats.forEach((stat, index) => {
+        doc.setFontSize(10)
+        doc.text(`${stat.title} : ${stat.value} (${stat.change})`, 25, 75 + (index * 10))
+      })
+
+      doc.save(`ACADEX_Dashboard_${new Date().toISOString().split('T')[0]}.pdf`)
+      toast({ title: "Succès", description: "Le rapport dashboard a été généré." })
+    } catch (e) {
+      toast({ title: "Erreur", description: "Impossible de générer le PDF.", variant: "destructive" })
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-700">
@@ -72,8 +103,9 @@ export default function DashboardPage() {
             <p className="text-muted-foreground font-medium">Voici l'état actuel de votre établissement.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="border-2 rounded-2xl h-12 px-6 font-bold bg-white">
-              Année 2025-2026
+            <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-bold bg-white">
+              <FileDown className="mr-2 size-5" />
+              Rapport PDF
             </Button>
             <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-lg">
               <Zap className="mr-2 size-5 fill-white" />
@@ -82,7 +114,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Quick Stats Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Card key={stat.title} className="border-none shadow-sm rounded-3xl group bg-white hover:shadow-xl transition-all duration-300">
@@ -102,9 +133,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Assistant & Performance */}
         <div className="grid gap-8 lg:grid-cols-12">
-          {/* Security & Alerts Side */}
           <div className="lg:col-span-4 space-y-6">
             <div className="flex items-center gap-2 mb-4">
               <ShieldCheck className="size-5 text-primary fill-primary/20" />
@@ -130,24 +159,8 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             ))}
-
-            <Card className="border-none shadow-lg bg-foreground text-white rounded-[2rem] p-8 relative overflow-hidden group">
-              <div className="relative z-10">
-                <h3 className="text-lg font-black mb-2 flex items-center gap-2">
-                  <Lock className="size-5 text-primary" /> Intégrité Système
-                </h3>
-                <p className="text-sm text-white/70 font-medium mb-6">
-                  Toutes les notes du Trimestre 1 sont verrouillées et archivées.
-                </p>
-                <Button className="w-full bg-primary hover:bg-primary/90 font-black rounded-xl h-11">
-                  Journal d'Audit Complet
-                </Button>
-              </div>
-              <ShieldCheck className="absolute -bottom-6 -right-6 size-32 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-            </Card>
           </div>
 
-          {/* Performance Charts */}
           <div className="lg:col-span-8 space-y-8">
             <div className="grid gap-8 md:grid-cols-2">
               <Card className="border-none shadow-sm bg-white rounded-[2rem]">
@@ -198,39 +211,6 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
             </div>
-
-            <Card className="border-none shadow-sm bg-white rounded-[2.5rem]">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-bold">Activité Récente de l'Établissement</CardTitle>
-                  <CardDescription>Dernières actions pédagogiques et administratives</CardDescription>
-                </div>
-                <Activity className="size-6 text-primary" />
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-muted/30">
-                  {[
-                    { user: "M. Dossou", action: "Saisie des notes", target: "Terminale D1", time: "Il y a 12 min" },
-                    { user: "Admin", action: "Validation paiement", target: "Koffi Djimon", time: "Il y a 45 min" },
-                    { user: "Mme. Amoussou", action: "Signalement absence", target: "3 élèves de 4ème", time: "Il y a 1h" },
-                    { user: "Direction", action: "Clôture Trimestre 1", target: "Global", time: "Il y a 3h" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center justify-between p-6 hover:bg-muted/10 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="size-10 bg-muted rounded-xl flex items-center justify-center text-primary font-bold">
-                          {item.user[0]}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-foreground">{item.user}</p>
-                          <p className="text-xs text-muted-foreground">{item.action} • <span className="text-primary font-bold">{item.target}</span></p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{item.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </div>
