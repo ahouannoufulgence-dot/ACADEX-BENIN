@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -98,7 +97,7 @@ export default function AvailabilityPage() {
     }
 
     setPlannedCourses([...plannedCourses, course])
-    toast({ title: "Cours ajouté", description: `Session du ${course.day} enregistrée.` })
+    toast({ title: "Session ajoutée", description: `Cours du ${course.day} enregistré.` })
   }
 
   const removeCourse = (id: string) => {
@@ -112,7 +111,7 @@ export default function AvailabilityPage() {
   const handleSave = () => {
     toast({
       title: "Planning enregistré",
-      description: "Votre emploi du temps personnalisé a été soumis.",
+      description: "Vos heures de cours ont été soumises pour synchronisation.",
     })
   }
 
@@ -126,18 +125,18 @@ export default function AvailabilityPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">
-              {isDirector ? "Pilotage des Emplois du Temps" : "Gestion de mes Heures"}
+              {isDirector ? "Pilotage des Emplois du Temps" : "Mes Heures de Cours"}
             </h1>
             <p className="text-muted-foreground mt-2 font-medium">
               {isDirector 
                 ? "Gérez les créneaux des enseignants et générez l'emploi du temps sans conflits." 
-                : `Planification précise de vos cours de ${teacherSubject}.`}
+                : `Planification précise de vos sessions de ${teacherSubject}.`}
             </p>
           </div>
           {!isDirector && (
             <Button onClick={handleSave} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black">
               <Save className="mr-2 size-5" />
-              Soumettre le planning
+              Soumettre mes heures
             </Button>
           )}
         </div>
@@ -148,14 +147,14 @@ export default function AvailabilityPage() {
               <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
                 <CardHeader className="p-8">
                   <CardTitle className="text-2xl font-black">Soumissions Enseignants</CardTitle>
-                  <CardDescription>Flux de validation des disponibilités hebdomadaires</CardDescription>
+                  <CardDescription>Flux de validation des heures de cours hebdomadaires</CardDescription>
                 </CardHeader>
                 <CardContent className="p-12 text-center space-y-4">
                   <div className="size-20 bg-muted rounded-full flex items-center justify-center mx-auto">
                     <UserCheck className="size-10 text-muted-foreground" />
                   </div>
                   <h3 className="text-xl font-black">Aucune soumission en attente</h3>
-                  <p className="text-muted-foreground font-medium max-w-xs mx-auto">Les propositions de planning des professeurs apparaîtront ici pour validation.</p>
+                  <p className="text-muted-foreground font-medium max-w-xs mx-auto">Les propositions d'heures de cours des professeurs apparaîtront ici pour validation.</p>
                 </CardContent>
               </Card>
             </div>
@@ -178,9 +177,9 @@ export default function AvailabilityPage() {
               <Card className="premium-card p-8 space-y-6">
                 <div className="space-y-2">
                   <h3 className="text-xl font-black flex items-center gap-2">
-                    <Plus className="text-primary size-5" /> Ajouter un cours
+                    <Plus className="text-primary size-5" /> Ajouter une session
                   </h3>
-                  <p className="text-xs font-medium text-muted-foreground">Saisissez les heures exactes de votre session.</p>
+                  <p className="text-xs font-medium text-muted-foreground">Saisissez les heures exactes de votre cours.</p>
                 </div>
                 
                 <div className="space-y-4">
@@ -228,7 +227,7 @@ export default function AvailabilityPage() {
                   </div>
 
                   <Button onClick={handleAddCourse} className="w-full h-14 rounded-2xl bg-primary shadow-lg shadow-primary/20 font-black text-lg">
-                    Enregistrer ce cours
+                    Enregistrer cette session
                   </Button>
                 </div>
               </Card>
@@ -238,7 +237,7 @@ export default function AvailabilityPage() {
                   <div className="p-3 bg-white/10 rounded-2xl">
                     <CheckCircle2 className="size-6 text-primary" />
                   </div>
-                  <Badge className="bg-primary text-white border-none">RÉCAPITULATIF</Badge>
+                  <Badge className="bg-primary text-white border-none">VOLUME HORAIRE</Badge>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-black uppercase text-white/40 tracking-widest">Total Hebdomadaire</p>
@@ -246,7 +245,7 @@ export default function AvailabilityPage() {
                 </div>
                 <div className="mt-6 pt-6 border-t border-white/10">
                   <p className="text-xs font-medium text-white/60">
-                    Ces heures seront utilisées par le Cerveau ACADEX pour détecter vos absences et retards automatiquement.
+                    Ces heures de cours seront utilisées par le Cerveau ACADEX pour détecter vos absences et retards automatiquement.
                   </p>
                 </div>
               </Card>
@@ -262,7 +261,7 @@ export default function AvailabilityPage() {
                       <CardDescription className="font-medium">Liste des sessions de cours planifiées pour la semaine.</CardDescription>
                     </div>
                     <Badge variant="outline" className="h-10 px-6 rounded-full border-2 font-black">
-                      {plannedCourses.length} COURS
+                      {plannedCourses.length} SESSIONS
                     </Badge>
                   </div>
                 </CardHeader>
@@ -272,7 +271,7 @@ export default function AvailabilityPage() {
                       <div className="size-24 bg-muted rounded-[2rem] flex items-center justify-center">
                         <CalendarDays className="size-12 text-muted-foreground" />
                       </div>
-                      <p className="text-lg font-black text-muted-foreground">Aucun cours planifié pour le moment.</p>
+                      <p className="text-lg font-black text-muted-foreground">Aucune session planifiée pour le moment.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -319,9 +318,9 @@ export default function AvailabilityPage() {
                 <CardFooter className="p-8 bg-muted/20 border-t flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <ShieldCheck className="size-5 text-emerald-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Planification certifiée Acadex</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Certification de planning Acadex</span>
                   </div>
-                  <Button onClick={handleSave} className="rounded-xl font-bold bg-foreground text-white">Confirmer le planning</Button>
+                  <Button onClick={handleSave} className="rounded-xl font-bold bg-foreground text-white">Confirmer mes heures</Button>
                 </CardFooter>
               </Card>
             </div>
