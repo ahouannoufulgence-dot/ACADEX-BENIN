@@ -19,13 +19,13 @@ import {
   MessageSquare,
   BarChart3,
   BookOpen,
-  UserCircle2,
   Menu,
   ChevronRight,
   Clock,
   Zap,
   Archive,
-  Database
+  Database,
+  PenTool
 } from "lucide-react"
 import {
   Sidebar,
@@ -60,17 +60,12 @@ import { cn } from "@/lib/utils"
 
 const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
-  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Disponibilités", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur"] },
-  { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Enseignant", "Professeur"] },
-  { name: "Discipline", href: "/discipline", icon: ShieldAlert, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
-  { name: "IA & Bulletins", href: "/feedback", icon: Sparkles, roles: ["Directeur", "Enseignant", "Professeur"] },
-  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
-  { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Archives", href: "/archives", icon: Archive, roles: ["Directeur"] },
   { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
@@ -95,15 +90,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setUserId(savedId)
       setMounted(true)
 
-      // Protection des routes
       const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
       if (currentNav) {
+        const roleLower = savedRole.toLowerCase()
         const isAuthorized = currentNav.roles.some(role => 
-          role.toLowerCase() === savedRole.toLowerCase() || 
-          savedRole.toLowerCase() === "directeur" ||
-          (savedRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant")
+          role.toLowerCase() === roleLower || 
+          roleLower === "directeur" ||
+          (roleLower === "professeur" && role.toLowerCase() === "enseignant") ||
+          (roleLower === "enseignant" && role.toLowerCase() === "professeur")
         )
-        if (!isAuthorized && savedRole.toLowerCase() !== "directeur") {
+        if (!isAuthorized && roleLower !== "directeur") {
           router.push("/dashboard")
         }
       }
@@ -120,7 +116,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       if (role === "directeur" || role === "super administrateur") return true
       return item.roles.some(r => 
         r.toLowerCase() === role ||
-        (role === "professeur" && r.toLowerCase() === "enseignant")
+        (role === "professeur" && r.toLowerCase() === "enseignant") ||
+        (role === "enseignant" && r.toLowerCase() === "professeur")
       )
     })
   }, [userRole])
@@ -129,14 +126,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!userRole) return []
     const role = userRole.toLowerCase()
     const base = [
-      { name: "Home", href: "/dashboard", icon: LayoutDashboard },
-      { name: "Messages", href: "/messagerie", icon: MessageSquare },
+      { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard },
       { name: "Agenda", href: "/agenda", icon: Calendar },
     ]
     if (role === "directeur" || role === "enseignant" || role === "professeur") {
       base.splice(1, 0, { name: "Élèves", href: "/eleves", icon: Users })
+      base.push({ name: "Notes", href: "/notes", icon: PenTool })
     } else {
-      base.splice(1, 0, { name: "Notes", href: "/documents", icon: FileText })
+      base.splice(1, 0, { name: "Mes Notes", href: "/documents", icon: FileText })
+      base.push({ name: "Paiements", href: "/paiements", icon: CreditCard })
     }
     return base
   }, [userRole])
@@ -151,9 +149,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
-        {/* Sidebar Desktop */}
-        <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0">
-          <SidebarHeader className="h-24 flex items-center px-8">
+        <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0" collapsible="none">
+          <SidebarHeader className="h-24 flex items-center px-8 bg-primary">
             <Link href="/" className="flex items-center gap-3">
               <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg">
                 <span className="text-primary font-black text-2xl">A</span>
@@ -161,7 +158,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <span className="text-2xl font-black text-white tracking-tight">ACADEX</span>
             </Link>
           </SidebarHeader>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 bg-primary">
             <SidebarContent className="px-4 py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
@@ -192,7 +189,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroup>
             </SidebarContent>
           </ScrollArea>
-          <SidebarFooter className="p-6">
+          <SidebarFooter className="p-6 bg-primary">
             <Button 
               onClick={handleLogout}
               variant="ghost" 
@@ -209,7 +206,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4">
               <div className="flex flex-col">
                 <h2 className="text-base md:text-lg font-black text-foreground line-clamp-1">
-                  Bonjour Monsieur <span className="text-primary italic">{userName.split(' ')[0]}</span>
+                  Bonjour <span className="text-primary italic">{userName.split(' ')[0]}</span>
                 </h2>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-[8px] md:text-[10px] h-4 py-0 font-black border-primary/20 text-primary uppercase">
@@ -243,7 +240,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
-                    <Link href="/settings" className="flex items-center gap-2"><UserCircle2 className="size-4" /> Paramètres</Link>
+                    <Link href="/settings" className="flex items-center gap-2"><UserSquare2 className="size-4" /> Paramètres</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 rounded-2xl h-11 px-4 font-black">
                     <LogOut className="size-4 mr-2" /> Déconnexion
@@ -259,7 +256,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
 
-          {/* Bottom Nav Mobile */}
           <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-border/40 safe-area-bottom">
             <div className="flex justify-around items-center h-16">
               {bottomNavItems.map((item) => {
