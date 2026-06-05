@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -18,44 +17,22 @@ import {
   MoreVertical,
   ShieldCheck,
   Zap,
-  FileDown
+  FileDown,
+  Users
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { jsPDF } from "jspdf"
-import autoTable from "jspdf-autotable"
+import { useState } from "react"
 import { toast } from "@/hooks/use-toast"
 
-const teachers = [
-  { id: "ENS-MATH-001", name: "M. Dossou Marc", subject: "Mathématiques", classes: ["3D1", "Tle D2", "4C"], phone: "+229 97 01 02 03", status: "Actif", isFormTeacher: true },
-  { id: "ENS-FR-001", name: "Mme. Amoussou Julie", subject: "Français", classes: ["6A", "5B", "3D2"], phone: "+229 96 11 22 33", status: "Actif", isFormTeacher: false },
-  { id: "ENS-PC-001", name: "M. Tidjani Amadou", subject: "Physique-Chimie", classes: ["Tle C", "1ère D1", "2nde C"], phone: "+229 95 44 55 66", status: "En Congé", isFormTeacher: true },
-  { id: "ENS-SVT-001", name: "Mme. Sossa Marie", subject: "SVT", classes: ["3D1", "3D2", "4A"], phone: "+229 94 77 88 99", status: "Actif", isFormTeacher: false },
-]
+// Mock data initialisé à zéro comme demandé précédemment
+const teachers: any[] = []
 
 export default function TeachersPage() {
-  const handleExportPDF = () => {
-    try {
-      const doc = new jsPDF()
-      doc.setFillColor(20, 83, 45)
-      doc.rect(0, 0, 210, 30, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(18)
-      doc.text("ACADEX - LISTE DU CORPS ENSEIGNANT", 105, 20, { align: "center" })
+  const [searchTerm, setSearchTerm] = useState("")
 
-      autoTable(doc, {
-        startY: 40,
-        head: [['ID', 'Nom & Prénoms', 'Matière', 'Classes', 'Contact', 'Statut']],
-        body: teachers.map(t => [t.id, t.name, t.subject, t.classes.join(', '), t.phone, t.status]),
-        headStyles: { fillColor: [20, 83, 45] },
-        styles: { fontSize: 8 }
-      })
-
-      doc.save("ACADEX_Enseignants.pdf")
-      toast({ title: "Succès", description: "La liste des enseignants a été exportée." })
-    } catch (e) {
-      toast({ title: "Erreur", description: "Échec de l'exportation PDF.", variant: "destructive" })
-    }
+  const handleAddNew = () => {
+    toast({ title: "Module Inscription", description: "L'ajout manuel sera disponible après configuration des classes." })
   }
 
   return (
@@ -64,34 +41,35 @@ export default function TeachersPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Corps Enseignant</h1>
-            <p className="text-muted-foreground mt-2 font-medium">Gestion des professeurs et attribution des classes.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Gestion et pilotage de l'équipe pédagogique.</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6">
+            <Button variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6 bg-white">
               <FileDown className="mr-2 size-5" />
-              Exporter PDF
+              Exporter Liste
             </Button>
-            <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold">
+            <Button onClick={handleAddNew} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold">
               <Plus className="mr-2 size-5" />
               Nouvel Enseignant
             </Button>
           </div>
         </div>
 
+        {/* Stats Grid */}
         <div className="grid gap-6 md:grid-cols-4">
           {[
-            { label: "Total Profs", value: "48", icon: UserSquare2, color: "bg-primary" },
-            { label: "Matières", value: "18", icon: BookOpen, color: "bg-primary" },
-            { label: "Cours / Sem", value: "240h", icon: Zap, color: "bg-amber-500" },
-            { label: "Pr. Principaux", value: "24", icon: ShieldCheck, color: "bg-emerald-500" },
+            { label: "Total Professeurs", value: "0", icon: UserSquare2, color: "text-primary" },
+            { label: "Matières Actives", value: "0", icon: BookOpen, color: "text-primary" },
+            { label: "Heures / Semaine", value: "0h", icon: Zap, color: "text-amber-500" },
+            { label: "Prof. Principaux", value: "0", icon: ShieldCheck, color: "text-emerald-500" },
           ].map((stat, i) => (
             <Card key={i} className="border-none shadow-sm rounded-3xl bg-white group overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 ${stat.color} text-white rounded-2xl group-hover:scale-110 transition-transform`}>
+                  <div className={`p-3 bg-muted rounded-2xl group-hover:bg-primary group-hover:text-white transition-all`}>
                     <stat.icon className="size-6" />
                   </div>
-                  <Badge variant="ghost" className="text-[10px] font-black">2025-2026</Badge>
+                  <Badge variant="ghost" className="text-[10px] font-black uppercase">V1.0</Badge>
                 </div>
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.label}</p>
                 <p className="text-2xl font-black text-foreground mt-1">{stat.value}</p>
@@ -100,77 +78,45 @@ export default function TeachersPage() {
           ))}
         </div>
 
-        <div className="space-y-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="relative group flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input placeholder="Chercher par nom, matière ou ID..." className="pl-12 h-12 bg-white border-none shadow-sm rounded-2xl font-bold" />
-            </div>
-            <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6">
-              <Filter className="mr-2 size-4" /> Filtres
-            </Button>
+        {/* Search & Filter */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative group flex-1 max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+            <Input 
+              placeholder="Chercher un enseignant..." 
+              className="pl-12 h-12 bg-white border-none shadow-sm rounded-2xl font-bold"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-
-          <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
-            <div className="divide-y divide-muted/30">
-              {teachers.map((teacher) => (
-                <div key={teacher.id} className="flex flex-col lg:flex-row lg:items-center justify-between p-8 hover:bg-muted/10 transition-all group">
-                  <div className="flex items-center gap-6 mb-4 lg:mb-0">
-                    <div className="relative">
-                      <Avatar className="size-16 border-4 border-white shadow-md group-hover:border-primary/20 transition-all">
-                        <AvatarImage src={`https://picsum.photos/seed/${teacher.id}/200/200`} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-xl">{teacher.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                      </Avatar>
-                      {teacher.isFormTeacher && (
-                        <div className="absolute -top-2 -right-2 bg-amber-400 text-white p-1.5 rounded-full shadow-lg border-2 border-white" title="Professeur Principal">
-                          <ShieldCheck className="size-4" />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <h4 className="text-xl font-black text-foreground group-hover:text-primary transition-colors">{teacher.name}</h4>
-                        <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-black text-[10px] uppercase">{teacher.id}</Badge>
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-xs font-bold text-muted-foreground">
-                        <span className="flex items-center gap-1"><BookOpen className="size-3" /> {teacher.subject}</span>
-                        <span className="flex items-center gap-1"><Phone className="size-3" /> {teacher.phone}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 lg:mx-12 mb-4 lg:mb-0">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3">Classes Assignées</p>
-                    <div className="flex flex-wrap gap-2">
-                      {teacher.classes.map((cls) => (
-                        <Badge key={cls} className="bg-muted text-foreground hover:bg-primary hover:text-white rounded-xl font-bold px-3 py-1 cursor-default transition-colors">
-                          {cls}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between lg:justify-end gap-6">
-                    <div className="text-right">
-                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Status</p>
-                      <Badge className={`rounded-full px-4 font-black ${teacher.status === 'Actif' ? 'bg-primary' : 'bg-destructive/10 text-destructive border-none'}`}>
-                        {teacher.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                        <ChevronRight className="size-5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="rounded-xl">
-                        <MoreVertical className="size-5" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
+            <Filter className="mr-2 size-4" /> Filtres Avancés
+          </Button>
         </div>
+
+        {/* Teachers List / Empty State */}
+        <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
+          {teachers.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-24 text-center space-y-6">
+               <div className="size-24 bg-muted rounded-full flex items-center justify-center">
+                 <Users className="size-12 text-muted-foreground" />
+               </div>
+               <div className="space-y-2">
+                 <h3 className="text-2xl font-black">Aucun enseignant enregistré</h3>
+                 <p className="text-muted-foreground font-medium max-w-sm mx-auto">
+                   Commencez par ajouter les membres de votre équipe pédagogique pour piloter les classes et les notes.
+                 </p>
+               </div>
+               <Button onClick={handleAddNew} className="bg-primary rounded-2xl h-12 px-10 font-bold">
+                 Ajouter le premier enseignant
+               </Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-muted/30">
+              {/* Le rendu de la liste irait ici si teachers n'était pas vide */}
+            </div>
+          )}
+        </Card>
       </div>
     </DashboardLayout>
   )

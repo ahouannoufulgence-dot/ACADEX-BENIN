@@ -63,6 +63,7 @@ const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant"] },
+  { name: "Corps Enseignant", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
   { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant"] },
   { name: "Présence", href: "/presence", icon: UserCheck, roles: ["Directeur", "Enseignant"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
