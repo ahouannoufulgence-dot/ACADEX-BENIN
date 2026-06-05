@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -65,7 +66,9 @@ const navigation = [
   { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant"] },
   { name: "Corps Enseignant", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
   { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant"] },
+  { name: "Emploi du Temps", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant"] },
   { name: "Présence", href: "/presence", icon: UserCheck, roles: ["Directeur", "Enseignant"] },
+  { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
   { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Archives", href: "/archives", icon: Archive, roles: ["Directeur"] },

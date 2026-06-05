@@ -16,7 +16,8 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  UserCheck
+  UserCheck,
+  ChevronRight
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
@@ -51,16 +52,12 @@ export default function AvailabilityPage() {
     partTime: false
   })
 
-  // Director State (Mock)
-  const [teacherSubmissions, setTeacherSubmissions] = useState([
-    { id: "1", name: "M. Dossou Marc", subject: "Mathématiques", volume: 18, status: "En attente", date: "Aujourd'hui" },
-    { id: "2", name: "Mme. Amoussou Julie", subject: "Français", volume: 15, status: "Approuvé", date: "Hier" },
-    { id: "3", name: "M. Tidjani Amadou", subject: "Physique", volume: 20, status: "Modification demandée", date: "Il y a 2 jours" },
-  ])
+  // Mock State à zéro
+  const [teacherSubmissions, setTeacherSubmissions] = useState([])
 
   useEffect(() => {
-    setUserRole(localStorage.getItem('acadex_user_role') || "Enseignant")
-    setUserName(localStorage.getItem('acadex_user_name') || "Professeur")
+    setUserRole(localStorage.getItem('acadex_user_role') || "Directeur")
+    setUserName(localStorage.getItem('acadex_user_name') || "Utilisateur")
     setTeacherSubject(localStorage.getItem('acadex_user_subject') || "Mathématiques")
     setMounted(true)
   }, [])
@@ -73,7 +70,7 @@ export default function AvailabilityPage() {
   const handleSave = () => {
     toast({
       title: "Disponibilités enregistrées",
-      description: "Votre planning a été envoyé pour validation à la direction.",
+      description: "Votre planning a été envoyé pour validation.",
     })
   }
 
@@ -91,7 +88,7 @@ export default function AvailabilityPage() {
             </h1>
             <p className="text-muted-foreground mt-2 font-medium">
               {isDirector 
-                ? "Gérez les créneaux des enseignants et évitez les conflits horaires." 
+                ? "Gérez les créneaux des enseignants et générez l'emploi du temps sans conflits." 
                 : `Définissez vos heures de présence pour la matière : ${teacherSubject}.`}
             </p>
           </div>
@@ -104,7 +101,6 @@ export default function AvailabilityPage() {
         </div>
 
         {isDirector ? (
-          /* DIRECTOR VIEW */
           <div className="grid gap-8 lg:grid-cols-12">
             <div className="lg:col-span-8 space-y-6">
               <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
@@ -112,35 +108,12 @@ export default function AvailabilityPage() {
                   <CardTitle className="text-2xl font-black">Soumissions Enseignants</CardTitle>
                   <CardDescription>Flux de validation des disponibilités hebdomadaires</CardDescription>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <div className="divide-y divide-muted/30">
-                    {teacherSubmissions.map((sub) => (
-                      <div key={sub.id} className="p-8 hover:bg-muted/5 transition-all group flex items-center justify-between">
-                        <div className="flex items-center gap-6">
-                          <div className="size-14 bg-primary/10 rounded-2xl flex items-center justify-center text-primary font-black text-xl">
-                            {sub.name[0]}
-                          </div>
-                          <div>
-                            <h4 className="font-black text-lg">{sub.name}</h4>
-                            <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                              {sub.subject} • {sub.volume}H / Semaine
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <Badge className={`rounded-full px-4 font-black ${
-                            sub.status === 'Approuvé' ? 'bg-primary' : 
-                            sub.status === 'En attente' ? 'bg-amber-500' : 'bg-destructive'
-                          }`}>
-                            {sub.status}
-                          </Badge>
-                          <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary/10 group-hover:text-primary">
-                            <ChevronRight className="size-5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                <CardContent className="p-12 text-center space-y-4">
+                  <div className="size-20 bg-muted rounded-full flex items-center justify-center mx-auto">
+                    <UserCheck className="size-10 text-muted-foreground" />
                   </div>
+                  <h3 className="text-xl font-black">Aucune soumission en attente</h3>
+                  <p className="text-muted-foreground font-medium max-w-xs mx-auto">Les propositions de planning des professeurs apparaîtront ici pour validation.</p>
                 </CardContent>
               </Card>
 
@@ -152,8 +125,7 @@ export default function AvailabilityPage() {
                   <div className="flex-1 space-y-2">
                     <h3 className="text-2xl font-black">Algorithme Anti-Conflit</h3>
                     <p className="text-white/70 font-medium leading-relaxed">
-                      L'intelligence ACADEX vérifie en temps réel les chevauchements de salles et d'enseignants. 
-                      L'emploi du temps généré respecte 100% des contraintes de disponibilité.
+                      L'intelligence ACADEX garantit qu'aucun enseignant ne soit affecté à deux classes simultanément.
                     </p>
                   </div>
                 </div>
@@ -167,36 +139,23 @@ export default function AvailabilityPage() {
                   <AlertCircle className="size-5 text-amber-500" />
                   Alertes Planning
                 </CardTitle>
-                <div className="space-y-4">
-                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200">
-                    <p className="text-xs font-bold text-amber-800">3 enseignants n'ont pas encore rempli leurs disponibilités.</p>
-                  </div>
-                  <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                    <p className="text-xs font-bold text-primary">Conflit détecté : Salle 12 (Maths vs Français) le Lundi à 08h.</p>
-                  </div>
+                <div className="p-4 bg-muted/20 rounded-2xl border-2 border-dashed border-muted-foreground/10 text-center">
+                  <p className="text-xs font-bold text-muted-foreground">Aucune alerte active.</p>
                 </div>
               </Card>
 
               <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
-                <CardTitle className="text-xl font-black mb-6">Contraintes Globales</CardTitle>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <Label className="font-bold text-sm">Verrouiller après Publication</Label>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="font-bold text-sm">Priorité Professeurs Principaux</Label>
-                    <Switch defaultChecked />
-                  </div>
-                  <Button className="w-full h-12 rounded-xl bg-primary font-black shadow-lg shadow-primary/20">
-                    Générer Emploi du Temps IA
-                  </Button>
-                </div>
+                <CardTitle className="text-xl font-black mb-6">Action Rapide</CardTitle>
+                <Button className="w-full h-14 rounded-xl bg-primary font-black shadow-lg shadow-primary/20" disabled>
+                  Générer Emploi du Temps IA
+                </Button>
+                <p className="text-[10px] text-center text-muted-foreground mt-4 font-bold uppercase tracking-widest">
+                  Nécessite au moins 1 soumission
+                </p>
               </Card>
             </div>
           </div>
         ) : (
-          /* TEACHER VIEW */
           <div className="grid gap-8 lg:grid-cols-12">
             <div className="lg:col-span-4 space-y-6">
               <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
@@ -234,13 +193,6 @@ export default function AvailabilityPage() {
                       <p className="text-[10px] text-muted-foreground font-bold">Cessation à 12h</p>
                     </div>
                     <Switch checked={options.morningOnly} onCheckedChange={(v) => setOptions({...options, morningOnly: v})} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="font-black text-sm">Temps Partiel</Label>
-                      <p className="text-[10px] text-muted-foreground font-bold">Volume réduit</p>
-                    </div>
-                    <Switch checked={options.partTime} onCheckedChange={(v) => setOptions({...options, partTime: v})} />
                   </div>
                 </div>
               </Card>
@@ -299,19 +251,10 @@ export default function AvailabilityPage() {
                   </div>
                 </CardContent>
                 <CardFooter className="bg-muted/30 p-8 flex justify-between items-center">
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 bg-primary rounded-full" />
-                      <span className="text-[10px] font-black uppercase text-muted-foreground">Disponible</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="size-3 bg-muted rounded-full" />
-                      <span className="text-[10px] font-black uppercase text-muted-foreground">Indisponible</span>
-                    </div>
-                  </div>
                   <Badge variant="outline" className="border-primary/20 text-primary font-black px-4 py-1 rounded-full">
                     {Object.values(slots).filter(Boolean).length} Créneaux Sélectionnés
                   </Badge>
+                  <Button onClick={handleSave} className="bg-primary rounded-xl font-bold">Soumettre mon planning</Button>
                 </CardFooter>
               </Card>
             </div>

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -41,16 +42,6 @@ import { Badge } from "@/components/ui/badge"
 import { jsPDF } from "jspdf"
 import { toast } from "@/hooks/use-toast"
 
-const academicPerformance = [
-  { level: "6ème", moyenne: 0, success: 0 },
-  { level: "5ème", moyenne: 0, success: 0 },
-  { level: "4ème", moyenne: 0, success: 0 },
-  { level: "3ème", moyenne: 0, success: 0 },
-  { level: "2nde", moyenne: 0, success: 0 },
-  { level: "1ère", moyenne: 0, success: 0 },
-  { level: "Tle", moyenne: 0, success: 0 },
-]
-
 export default function StatisticsPage() {
   const handleExportPDF = () => {
     try {
@@ -60,7 +51,7 @@ export default function StatisticsPage() {
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(18)
       doc.text("ACADEX - ANALYSE STATISTIQUE GLOBALE", 105, 20, { align: "center" })
-      doc.save("ACADEX_Statistiques_Zero.pdf")
+      doc.save("ACADEX_Statistiques_Initiales.pdf")
       toast({ title: "Succès", description: "Le rapport statistique a été généré." })
     } catch (e) {
       toast({ title: "Erreur", description: "Échec de l'exportation PDF.", variant: "destructive" })
@@ -77,7 +68,7 @@ export default function StatisticsPage() {
           </div>
           <div className="flex items-center gap-3">
             <Button variant="outline" className="border-2 rounded-2xl h-12 font-bold px-6 bg-white">
-              Année 2025-2026
+              Année 2024-2025
             </Button>
             <Button onClick={handleExportPDF} className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-bold text-lg">
               <FileDown className="mr-2 size-5" />
@@ -119,17 +110,15 @@ export default function StatisticsPage() {
           </TabsList>
 
           <TabsContent value="academique" className="space-y-8">
-            <div className="grid gap-8 lg:grid-cols-12">
-              <Card className="lg:col-span-12 border-none shadow-sm bg-white rounded-[2.5rem] p-10">
-                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                   <div className="size-20 bg-muted rounded-full flex items-center justify-center">
-                     <BarChart3 className="size-10 text-muted-foreground" />
-                   </div>
-                   <h3 className="text-2xl font-black">Aucune donnée disponible</h3>
-                   <p className="text-muted-foreground font-medium max-w-sm">Les graphiques de performance apparaîtront dès que les premières notes seront enregistrées.</p>
+            <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-10">
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                <div className="size-20 bg-muted rounded-full flex items-center justify-center">
+                  <BarChart3 className="size-10 text-muted-foreground" />
                 </div>
-              </Card>
-            </div>
+                <h3 className="text-2xl font-black">Aucune donnée statistique</h3>
+                <p className="text-muted-foreground font-medium max-w-sm">Les graphiques de performance apparaîtront dès que les premières notes et émargements seront enregistrés.</p>
+              </div>
+            </Card>
           </TabsContent>
         </Tabs>
 
@@ -141,7 +130,7 @@ export default function StatisticsPage() {
             <div className="flex-1 space-y-4">
               <h3 className="text-3xl font-black">Analyse Prédictive ACADEX</h3>
               <p className="text-lg text-white/70 font-medium leading-relaxed">
-                "L'IA attend plus de données pour générer des prédictions sur le taux de réussite et les tendances académiques."
+                "Le Cerveau ACADEX attend une accumulation de données pour générer des prédictions fiables sur les taux de réussite par classe."
               </p>
             </div>
           </div>
