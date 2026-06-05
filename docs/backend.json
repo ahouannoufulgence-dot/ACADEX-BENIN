@@ -19,6 +19,18 @@
       },
       "required": ["matricule", "classId", "academicYear"]
     },
+    "Teacher": {
+      "title": "Enseignant",
+      "description": "Profil professionnel du professeur",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "subject": { "type": "string" },
+        "phone": { "type": "string" },
+        "classes": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["Actif", "En attente", "Suspendu"] }
+      }
+    },
     "SchoolSettings": {
       "title": "Paramètres École",
       "description": "Identité visuelle et informations institutionnelles",
@@ -41,18 +53,15 @@
       }
     },
     "TeacherAvailability": {
-      "title": "Disponibilité Enseignant",
-      "description": "Planning et charge horaire d'un enseignant",
+      "title": "Heure de cours",
+      "description": "Planning hebdomadaire d'un enseignant",
       "type": "object",
       "properties": {
         "teacherId": { "type": "string" },
-        "teacherName": { "type": "string" },
-        "subject": { "type": "string" },
-        "weeklyVolume": { "type": "number" },
-        "slots": { "type": "object" },
-        "options": { "type": "object" },
-        "status": { "type": "string", "enum": ["En attente", "Approuvé", "Modification demandée"] },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "day": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "duration": { "type": "string" }
       }
     },
     "TeacherPresence": {
@@ -64,11 +73,7 @@
         "teacherName": { "type": "string" },
         "date": { "type": "string", "format": "date" },
         "checkInTime": { "type": "string", "format": "date-time" },
-        "expectedTime": { "type": "string" },
-        "status": { "type": "string", "enum": ["Présent", "Retard", "Absent", "Absence Autorisée"] },
-        "latenessMinutes": { "type": "number" },
-        "justification": { "type": "string" },
-        "deviceInfo": { "type": "string" }
+        "status": { "type": "string", "enum": ["Présent", "Retard", "Absent", "Absence Autorisée"] }
       }
     },
     "Grade": {
@@ -85,8 +90,6 @@
         "dev1": { "type": "number" },
         "dev2": { "type": "number" },
         "average": { "type": "number" },
-        "rankInSubject": { "type": "number" },
-        "teacherComment": { "type": "string" },
         "term": { "type": "string", "enum": ["T1", "T2", "T3"] }
       }
     },
@@ -97,9 +100,7 @@
       "properties": {
         "participants": { "type": "array", "items": { "type": "string" } },
         "lastMessage": { "type": "string" },
-        "lastMessageTime": { "type": "string", "format": "date-time" },
-        "unreadCount": { "type": "object" },
-        "type": { "type": "string", "enum": ["direct", "group"] }
+        "lastMessageTime": { "type": "string", "format": "date-time" }
       }
     },
     "Message": {
@@ -113,50 +114,30 @@
         "timestamp": { "type": "string", "format": "date-time" }
       }
     },
-    "AuditLog": {
-      "title": "Journal d'Audit",
-      "description": "Trace de toutes les actions critiques",
-      "type": "object",
-      "properties": {
-        "authorId": { "type": "string" },
-        "authorName": { "type": "string" },
-        "action": { "type": "string" },
-        "entityType": { "type": "string" },
-        "entityId": { "type": "string" },
-        "oldValue": { "type": "object" },
-        "newValue": { "type": "object" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "ipAddress": { "type": "string" }
-      }
-    },
     "Payment": {
       "title": "Paiement",
       "description": "Suivi des tranches de scolarité",
       "type": "object",
       "properties": {
         "studentId": { "type": "string" },
-        "totalAmount": { "type": "number" },
         "amountPaid": { "type": "number" },
-        "tranche": { "type": "string", "enum": ["Inscription", "Tranche 1", "Tranche 2", "Examen"] },
-        "status": { "type": "string", "enum": ["Payé", "Partiel", "Impayé"] },
+        "tranche": { "type": "string" },
         "date": { "type": "string", "format": "date" },
-        "receiptNo": { "type": "string" },
-        "verificationCode": { "type": "string" }
+        "status": { "type": "string" }
       }
     }
   },
   "auth": {
-    "providers": ["password", "google"]
+    "providers": ["password"]
   },
   "firestore": {
-    "/school_settings/{schoolId}": { "schema": "SchoolSettings", "description": "Paramètres de personnalisation" },
+    "/school_settings/{schoolId}": { "schema": "SchoolSettings", "description": "Paramètres de l'école" },
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
-    "/teacher_availabilities/{teacherId}": { "schema": "TeacherAvailability", "description": "Disponibilités" },
-    "/teacher_presence/{presenceId}": { "schema": "TeacherPresence", "description": "Émargement enseignants" },
-    "/students/{studentId}/grades/{gradeId}": { "schema": "Grade", "description": "Notes de l'élève" },
-    "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Journal de sécurité" },
+    "/teachers/{teacherId}": { "schema": "Teacher", "description": "Base enseignants" },
+    "/teacher_presence/{presenceId}": { "schema": "TeacherPresence", "description": "Émargement" },
+    "/students/{studentId}/grades/{gradeId}": { "schema": "Grade", "description": "Notes" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },
-    "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions actives" },
-    "/conversations/{convId}/messages/{msgId}": { "schema": "Message", "description": "Messages d'une discussion" }
+    "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions" },
+    "/conversations/{convId}/messages/{msgId}": { "schema": "Message", "description": "Messages" }
   }
 }
