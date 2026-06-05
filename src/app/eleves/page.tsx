@@ -13,7 +13,9 @@ import {
   Printer,
   Loader2,
   Users,
-  Files
+  Files,
+  CheckCircle2,
+  AlertCircle
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -57,14 +59,18 @@ export default function StudentsPage() {
   const [userClasses, setUserClasses] = useState<string[]>([])
   const [batchClass, setBatchClass] = useState("")
   const [bulkClass, setBulkClass] = useState("")
+  const [selectedTerm, setSelectedTerm] = useState("1er Trimestre")
 
   const db = useFirestore()
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role') || "Directeur"
     setUserRole(role)
-    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
+    const classesStr = localStorage.getItem('acadex_user_classes')
+    setUserClasses(classesStr ? JSON.parse(classesStr) : [])
   }, [])
+
+  const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
 
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
@@ -92,9 +98,7 @@ export default function StudentsPage() {
     )
   }, [students, searchTerm])
 
-  const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
-
-  const handleGenerateBatchPDF = async () => {
+  const handleGenerateBatchIDs = async () => {
     if (!batchClass) {
       toast({ title: "Erreur", description: "Veuillez sélectionner une classe.", variant: "destructive" });
       return;
@@ -103,9 +107,8 @@ export default function StudentsPage() {
     setLoadingPdf(true);
     try {
       const doc = new jsPDF();
-      const quantity = 40;
+      const quantity = 35;
       const classSlug = batchClass.replace(/[^a-zA-Z0-9]/g, "");
-      
       const newStudentsData = []
       
       for (let i = 0; i < quantity; i++) {
@@ -165,11 +168,20 @@ export default function StudentsPage() {
     }
 
     setLoadingPdf(true)
-    toast({ title: "Génération en série", description: `Préparation des bulletins pour la classe ${bulkClass}...` })
+    toast({ title: "Génération automatique", description: `Préparation des bulletins pour la classe ${bulkClass}...` })
     
     try {
-      // Simulate multiple generation
-      for (let i = 0; i < 3; i++) {
+      // Simulate bulk process with auto-calculations
+      const studentsInClass = students?.filter((s: any) => s.classId === bulkClass) || []
+      
+      if (studentsInClass.length === 0) {
+        toast({ title: "Info", description: "Aucun élève trouvé dans cette classe." })
+        setLoadingPdf(false)
+        return
+      }
+
+      for (let i = 0; i < Math.min(studentsInClass.length, 5); i++) {
+        const s = studentsInClass[i]
         const mockData: BulletinData = {
           schoolInfo: {
             name: "Collège Acadex Elite",
@@ -179,27 +191,34 @@ export default function StudentsPage() {
             academicYear: "2024-2025"
           },
           student: {
-            id: `ELV-${i}`,
-            fullName: i === 0 ? "Koffi Djimon" : i === 1 ? "Amoussou Marie" : "Tidjani Amadou",
-            matricule: `AC-2024-0${42 + i}`,
+            id: s.id,
+            fullName: s.fullName || "Élève Nouveau",
+            matricule: s.matricule,
             classId: bulkClass,
             dob: "12/04/2006",
             sex: "M",
             rank: i + 1,
-            effectif: 42,
+            effectif: studentsInClass.length,
             principalTeacher: "M. Dossou Marc"
           },
-          term: "1er Trimestre",
+          term: selectedTerm,
           grades: [
-            { subject: "Mathématiques", coef: 5, quiz: 18, exam: 17, avg: 17.5, weighted: 87.5, rank: i + 1, appreciation: "Excellent." },
-            { subject: "Français", coef: 3, quiz: 14, exam: 13, avg: 13.5, weighted: 40.5, rank: i + 5, appreciation: "Satisfaisant." },
+            { subject: "Mathématiques", coef: 5, quiz: 15 + Math.random() * 5, exam: 14 + Math.random() * 4, avg: 0, weighted: 0, rank: i + 1 },
+            { subject: "Français", coef: 3, quiz: 12 + Math.random() * 6, exam: 11 + Math.random() * 5, avg: 0, weighted: 0, rank: i + 3 },
           ],
-          discipline: { absencesJustified: 0, absencesUnjustified: 0, delays: 0, behavior: "Excellent" },
-          councilDecision: "Félicitations du jury"
+          discipline: { absencesJustified: 0, absencesUnjustified: 0, delays: 0, behavior: "Excellent" }
         }
+
+        // Auto-calculating fields before generation
+        mockData.grades = mockData.grades.map(g => {
+          const avg = (g.quiz + g.exam) / 2
+          return { ...g, avg, weighted: avg * g.coef }
+        })
+
         await generateBulletinPDF(mockData)
       }
-      toast({ title: "Succès", description: "Bulletins de classe générés avec succès." })
+
+      toast({ title: "Succès", description: `${studentsInClass.length} bulletins générés automatiquement.` })
       setIsBulkBulletins(false)
     } catch (e) {
       toast({ title: "Erreur", description: "Échec lors de la génération groupée.", variant: "destructive" })
@@ -214,12 +233,12 @@ export default function StudentsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">
-              {isDirector ? "Base de Données Élèves" : "Mes Classes assignées"}
+              {isDirector ? "Pilotage Base Élèves" : "Mes Classes assignées"}
             </h1>
             <p className="text-muted-foreground mt-2 font-medium">
               {isDirector 
-                ? "Pilotage global et édition des bulletins officiels." 
-                : `Gestion pédagogique de vos classes (${userClasses.join(', ')}).`}
+                ? "Gestion centrale et édition automatisée des bulletins officiels." 
+                : `Accès pédagogique restreint à vos classes (${userClasses.join(', ')}).`}
             </p>
           </div>
           
@@ -228,29 +247,91 @@ export default function StudentsPage() {
               <>
                 <Dialog open={isGeneratingIDs} onOpenChange={setIsGeneratingIDs}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
+                    <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white hover:bg-muted transition-all">
                       <FileDown className="mr-2 size-5 text-primary" />
                       IDs par Lot
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-                    <DialogHeader><DialogTitle className="text-2xl font-black">Générer Identifiants</DialogTitle></DialogHeader>
-                    <div className="py-6"><Select onValueChange={setBatchClass}><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Choisir une classe" /></SelectTrigger><SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                    <DialogFooter><Button onClick={handleGenerateBatchPDF} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">{loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Printer className="mr-2 size-5" />} Générer & PDF</Button></DialogFooter>
+                  <DialogContent className="sm:max-w-[450px] rounded-[2.5rem] p-10">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-black">Générer Identifiants</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-8 space-y-4">
+                      <div className="space-y-2">
+                        <Label className="font-bold">Choisir la classe</Label>
+                        <Select onValueChange={setBatchClass}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                            <SelectValue placeholder="Sélectionner..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex gap-3 items-start">
+                        <CheckCircle2 className="size-5 text-primary shrink-0 mt-0.5" />
+                        <p className="text-xs font-bold text-foreground">Génère automatiquement 35 nouveaux élèves en attente d'activation avec codes uniques.</p>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleGenerateBatchIDs} disabled={loadingPdf || !batchClass} className="bg-primary rounded-2xl font-black px-8 h-14 w-full shadow-xl shadow-primary/20">
+                        {loadingPdf ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Printer className="mr-2 size-6" />}
+                        Générer & PDF
+                      </Button>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
 
                 <Dialog open={isBulkBulletins} onOpenChange={setIsBulkBulletins}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white border-primary text-primary hover:bg-primary/5">
+                    <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white border-primary text-primary hover:bg-primary/5 shadow-sm">
                       <Files className="mr-2 size-5" />
-                      Bulletins de Classe
+                      Bulletins Automatiques
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[450px] rounded-[2.5rem]">
-                    <DialogHeader><DialogTitle className="text-2xl font-black">Bulletins Massifs</DialogTitle></DialogHeader>
-                    <div className="py-6"><Select onValueChange={setBulkClass}><SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Choisir la classe entière" /></SelectTrigger><SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select></div>
-                    <DialogFooter><Button onClick={handleBulkBulletins} disabled={loadingPdf} className="bg-primary rounded-xl font-black px-8 h-12 w-full">{loadingPdf ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Download className="mr-2 size-5" />} Générer Série PDF</Button></DialogFooter>
+                  <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-10">
+                    <DialogHeader>
+                      <DialogTitle className="text-3xl font-black">Génération Massive</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-8 space-y-6">
+                      <div className="space-y-2">
+                        <Label className="font-bold">Classe concernée</Label>
+                        <Select onValueChange={setBulkClass}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                            <SelectValue placeholder="Choisir la classe" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="font-bold">Période</Label>
+                        <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                          <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1er Trimestre" className="font-bold">1er Trimestre</SelectItem>
+                            <SelectItem value="2ème Trimestre" className="font-bold">2ème Trimestre</SelectItem>
+                            <SelectItem value="3ème Trimestre" className="font-bold">3ème Trimestre</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="p-5 bg-amber-50 rounded-2xl border border-amber-200 flex gap-4">
+                        <AlertCircle className="size-6 text-amber-600 shrink-0" />
+                        <div className="space-y-1">
+                          <p className="text-sm font-black text-amber-900">Vérification Automatique</p>
+                          <p className="text-xs text-amber-800 font-medium">Le système calculera les moyennes et rangs avant l'exportation.</p>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleBulkBulletins} disabled={loadingPdf || !bulkClass} className="bg-primary rounded-2xl font-black px-8 h-14 w-full shadow-xl shadow-primary/20 text-lg">
+                        {loadingPdf ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Download className="mr-2 size-6" />}
+                        Générer Série PDF
+                      </Button>
+                    </DialogFooter>
                   </DialogContent>
                 </Dialog>
               </>
@@ -275,9 +356,12 @@ export default function StudentsPage() {
           {loadingStudents ? (
             <div className="flex items-center justify-center p-12"><Loader2 className="size-8 animate-spin text-primary" /></div>
           ) : filteredStudents.length === 0 ? (
-            <Card className="p-16 text-center bg-white rounded-[2rem] border-none shadow-sm">
-              <div className="size-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4"><Users className="size-8 text-muted-foreground" /></div>
-              <p className="text-muted-foreground italic font-bold">Aucun élève trouvé.</p>
+            <Card className="p-16 text-center bg-white rounded-[2.5rem] border-none shadow-sm">
+              <div className="size-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+                <Users className="size-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-black mb-2">Aucun élève trouvé</h3>
+              <p className="text-muted-foreground italic font-medium">Ajustez votre recherche ou inscrivez un nouvel élève.</p>
             </Card>
           ) : (
             filteredStudents.map((student: any) => (
@@ -286,23 +370,26 @@ export default function StudentsPage() {
                   <CardContent className="p-5">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                       <div className="flex items-center gap-6">
-                        <Avatar className="size-14 border-4 border-muted group-hover:border-primary/20 transition-all">
-                          <AvatarImage src={`https://picsum.photos/seed/${student.id}/150/150`} />
+                        <Avatar className="size-16 border-4 border-muted group-hover:border-primary/20 transition-all shadow-sm">
+                          <AvatarImage src={`https://picsum.photos/seed/${student.id}/200/200`} />
                           <AvatarFallback className="bg-primary/5 text-primary font-black text-xl">{(student.fullName || "??").substring(0, 2)}</AvatarFallback>
                         </Avatar>
                         <div className="space-y-1">
-                          <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors">{student.fullName || student.matricule}</h3>
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-muted text-foreground font-black px-3 py-0.5 rounded-full text-[10px]">{student.classId}</Badge>
-                            <span className="text-xs font-bold text-muted-foreground">{student.matricule}</span>
+                          <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors">{student.fullName || "Compte en attente"}</h3>
+                          <div className="flex items-center gap-3">
+                            <Badge className="bg-primary/10 text-primary border-none font-black px-3 py-1 rounded-full text-[10px]">{student.classId}</Badge>
+                            <span className="text-xs font-bold text-muted-foreground tracking-widest">{student.matricule}</span>
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <Badge variant="outline" className={`font-black rounded-full px-4 py-1 border-2 ${student.status === "Actif" ? "border-primary text-primary" : "border-amber-500 text-amber-600"}`}>
-                          {student.status}
-                        </Badge>
-                        <Button variant="ghost" size="icon" className="rounded-xl group-hover:text-primary bg-muted/20">
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Statut</p>
+                          <Badge variant="outline" className={`font-black rounded-full px-4 border-2 mt-1 ${student.status === "Actif" ? "border-emerald-200 text-emerald-600 bg-emerald-50" : "border-amber-200 text-amber-600 bg-amber-50"}`}>
+                            {student.status}
+                          </Badge>
+                        </div>
+                        <Button variant="ghost" size="icon" className="size-12 rounded-2xl group-hover:text-primary bg-muted/20">
                           <ChevronRight className="size-6" />
                         </Button>
                       </div>
