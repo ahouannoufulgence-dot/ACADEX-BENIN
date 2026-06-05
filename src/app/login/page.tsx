@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -22,11 +21,15 @@ export default function LoginPage() {
 
   useEffect(() => {
     const fetchSchool = async () => {
-      const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
-      if (docSnap.exists()) {
-        const data = docSnap.data()
-        setSchoolName(data.schoolName || "ACADEX")
-        setSchoolLogo(data.logoUrl || "")
+      try {
+        const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          setSchoolName(data.schoolName || "ACADEX")
+          setSchoolLogo(data.logoUrl || "")
+        }
+      } catch (err) {
+        console.warn("Impossible de récupérer la config école (Mode Hors-ligne probable)", err)
       }
     }
     fetchSchool()

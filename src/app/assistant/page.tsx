@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -45,14 +44,18 @@ export default function AssistantPage() {
 
   useEffect(() => {
     const fetchSchool = async () => {
-      const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
-      if (docSnap.exists()) {
-        const data = docSnap.data()
-        setSchoolInfo({
-          name: data.schoolName || "ACADEX",
-          motto: data.motto || "",
-          year: data.academicYear || "2024-2025"
-        })
+      try {
+        const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          setSchoolInfo({
+            name: data.schoolName || "ACADEX",
+            motto: data.motto || "",
+            year: data.academicYear || "2024-2025"
+          })
+        }
+      } catch (err) {
+        console.warn("Erreur chargement config école assistant", err)
       }
     }
     fetchSchool()
