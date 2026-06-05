@@ -10,8 +10,9 @@ import {
   GraduationCap, 
   Sparkles, 
   BrainCircuit,
+  ArrowUpRight,
   TrendingUp,
-  ArrowUpRight
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -29,25 +30,18 @@ export default function DirectorDashboard() {
   const { data: students } = useCollection(collection(db, "students"))
   const { data: teachers } = useCollection(collection(db, "teachers"))
   const { data: payments } = useCollection(collection(db, "payments"))
-  const { data: presences } = useCollection(collection(db, "teacher_presence"))
 
   const stats = useMemo(() => {
     if (!mounted) return []
-    
-    const totalStudents = students?.length || 0
-    const totalTeachers = teachers?.length || 0
     const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
-    const today = new Date().toISOString().split('T')[0]
-    const presentToday = presences?.filter((p: any) => p.date === today && p.status === "Présent").length || 0
-
     return [
-      { title: "Effectif Total", value: totalStudents.toString(), label: "Élèves inscrits", icon: Users, color: "text-blue-600" },
-      { title: "Corps Enseignant", value: totalTeachers.toString(), label: "Professeurs actifs", icon: GraduationCap, color: "text-emerald-600" },
-      { title: "Trésorerie", value: totalRevenue.toLocaleString(), sub: "FCFA", label: "Recouvrement total", icon: CreditCard, color: "text-amber-600" },
-      { title: "Présence Profs", value: `${presentToday}/${totalTeachers}`, label: "Pointage ce jour", icon: UserCheck, color: "text-primary" },
+      { title: "Effectif Global", value: (students?.length || 0).toString(), label: "Élèves inscrits", icon: Users, color: "text-blue-600" },
+      { title: "Corps Enseignant", value: (teachers?.length || 0).toString(), label: "Professeurs actifs", icon: GraduationCap, color: "text-emerald-600" },
+      { title: "Recouvrement", value: totalRevenue.toLocaleString(), sub: "FCFA", label: "Trésorerie réelle", icon: CreditCard, color: "text-amber-600" },
+      { title: "Performance", value: "Audit", label: "Moyenne école", icon: TrendingUp, color: "text-primary" },
     ]
-  }, [students, teachers, payments, presences, mounted])
+  }, [students, teachers, payments, mounted])
 
   if (!mounted) return null
 
@@ -56,31 +50,15 @@ export default function DirectorDashboard() {
       <div className="space-y-10 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-foreground">Cockpit <span className="text-primary italic">Directeur</span></h1>
-            <p className="text-muted-foreground font-medium">Pilotage en temps réel de votre établissement.</p>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">Cockpit <span className="text-primary italic">Directeur</span></h1>
+            <p className="text-muted-foreground font-medium">Pilotage centralisé de votre établissement béninois.</p>
           </div>
           <Button asChild className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
             <Link href="/assistant">
-              <Sparkles className="mr-2 size-5 fill-white" /> Cerveau ACADEX
+              <Sparkles className="mr-2 size-5 fill-white" /> Demander à l'IA
             </Link>
           </Button>
         </div>
-
-        <Card className="border-none shadow-xl bg-foreground text-white p-10 rounded-[3rem] relative overflow-hidden group">
-          <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
-            <div className="size-24 bg-primary/20 rounded-[2rem] flex items-center justify-center backdrop-blur-xl">
-              <BrainCircuit className="size-12 text-primary" />
-            </div>
-            <div className="flex-1 space-y-2">
-              <h3 className="text-3xl font-black italic">"Zéro donnée fictive."</h3>
-              <p className="text-white/60 font-medium">Les chiffres ci-dessous proviennent exclusivement de vos saisies réelles ({students?.length || 0} élèves enregistrés).</p>
-            </div>
-            <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">
-              <Link href="/eleves">Gérer les Élèves</Link>
-            </Button>
-          </div>
-          <Sparkles className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-        </Card>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat) => (
@@ -102,6 +80,29 @@ export default function DirectorDashboard() {
             </Card>
           ))}
         </div>
+
+        <Card className="border-none shadow-xl bg-foreground text-white p-12 rounded-[3.5rem] relative overflow-hidden group">
+          <div className="flex flex-col md:flex-row items-center gap-10 relative z-10">
+            <div className="size-28 bg-primary/20 rounded-[2.5rem] flex items-center justify-center backdrop-blur-xl border border-white/10">
+              <BrainCircuit className="size-14 text-primary" />
+            </div>
+            <div className="flex-1 space-y-4">
+              <h3 className="text-3xl font-black italic">"Zéro donnée fictive."</h3>
+              <p className="text-xl text-white/60 font-medium leading-relaxed max-w-2xl">
+                Toutes les statistiques affichées proviennent de vos saisies réelles. Le système attend vos premières notes pour calculer les tendances.
+              </p>
+              <div className="pt-4 flex gap-4">
+                 <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">
+                   <Link href="/eleves">Gérer les Élèves</Link>
+                 </Button>
+                 <Button asChild variant="outline" className="rounded-2xl h-14 px-10 font-black text-lg bg-transparent border-white/20 hover:bg-white/5">
+                   <Link href="/personalisation">Branding École</Link>
+                 </Button>
+              </div>
+            </div>
+          </div>
+          <Sparkles className="absolute -bottom-16 -right-16 size-64 text-white/5 pointer-events-none group-hover:scale-125 transition-transform duration-1000" />
+        </Card>
       </div>
     </DashboardLayout>
   )

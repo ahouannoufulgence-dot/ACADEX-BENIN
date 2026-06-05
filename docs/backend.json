@@ -9,13 +9,10 @@
         "fullName": { "type": "string" },
         "matricule": { "type": "string" },
         "classId": { "type": "string" },
-        "subdivision": { "type": "string" },
-        "serie": { "type": "string", "enum": ["Général", "A", "C", "D", "G2", "G3"] },
-        "status": { "type": "string", "enum": ["Actif", "En attente d'activation", "Transféré", "Exclu", "Diplômé", "Archivé"] },
-        "isRepeater": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["Actif", "En attente d'activation", "Transféré", "Exclu"] },
         "academicYear": { "type": "string" },
-        "deletedAt": { "type": "string", "format": "date-time" },
-        "validationCode": { "type": "string" }
+        "validationCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["matricule", "classId", "academicYear"]
     },
@@ -26,54 +23,8 @@
       "properties": {
         "fullName": { "type": "string" },
         "subject": { "type": "string" },
-        "phone": { "type": "string" },
         "classes": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string", "enum": ["Actif", "En attente", "Suspendu"] }
-      }
-    },
-    "SchoolSettings": {
-      "title": "Paramètres École",
-      "description": "Identité visuelle et informations institutionnelles",
-      "type": "object",
-      "properties": {
-        "schoolName": { "type": "string" },
-        "motto": { "type": "string" },
-        "address": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string" },
-        "city": { "type": "string" },
-        "academicYear": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "signatureUrl": { "type": "string" },
-        "stampUrl": { "type": "string" },
-        "primaryColor": { "type": "string" },
-        "secondaryColor": { "type": "string" },
-        "accentColor": { "type": "string" },
-        "heroImageUrl": { "type": "string" }
-      }
-    },
-    "TeacherAvailability": {
-      "title": "Heure de cours",
-      "description": "Planning hebdomadaire d'un enseignant",
-      "type": "object",
-      "properties": {
-        "teacherId": { "type": "string" },
-        "day": { "type": "string" },
-        "startTime": { "type": "string" },
-        "endTime": { "type": "string" },
-        "duration": { "type": "string" }
-      }
-    },
-    "TeacherPresence": {
-      "title": "Présence Enseignant",
-      "description": "Suivi de ponctualité et pointage",
-      "type": "object",
-      "properties": {
-        "teacherId": { "type": "string" },
-        "teacherName": { "type": "string" },
-        "date": { "type": "string", "format": "date" },
-        "checkInTime": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["Présent", "Retard", "Absent", "Absence Autorisée"] }
+        "status": { "type": "string", "enum": ["Actif", "Suspendu"] }
       }
     },
     "Grade": {
@@ -81,37 +32,16 @@
       "description": "Évaluation académique par matière",
       "type": "object",
       "properties": {
+        "studentId": { "type": "string" },
         "subjectId": { "type": "string" },
-        "subjectLabel": { "type": "string" },
-        "coefficient": { "type": "number" },
+        "term": { "type": "string" },
         "int1": { "type": "number" },
         "int2": { "type": "number" },
         "int3": { "type": "number" },
         "dev1": { "type": "number" },
         "dev2": { "type": "number" },
         "average": { "type": "number" },
-        "term": { "type": "string", "enum": ["T1", "T2", "T3"] }
-      }
-    },
-    "Conversation": {
-      "title": "Discussion",
-      "description": "Canal de communication entre utilisateurs",
-      "type": "object",
-      "properties": {
-        "participants": { "type": "array", "items": { "type": "string" } },
-        "lastMessage": { "type": "string" },
-        "lastMessageTime": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Message": {
-      "title": "Message",
-      "description": "Contenu d'une discussion",
-      "type": "object",
-      "properties": {
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "text": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "coefficient": { "type": "number" }
       }
     },
     "Payment": {
@@ -121,9 +51,20 @@
       "properties": {
         "studentId": { "type": "string" },
         "amountPaid": { "type": "number" },
-        "tranche": { "type": "string" },
         "date": { "type": "string", "format": "date" },
-        "status": { "type": "string" }
+        "label": { "type": "string" }
+      }
+    },
+    "SchoolSettings": {
+      "title": "Paramètres École",
+      "description": "Identité visuelle et institutionnelle",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "motto": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "academicYear": { "type": "string" }
       }
     }
   },
@@ -131,13 +72,11 @@
     "providers": ["password"]
   },
   "firestore": {
-    "/school_settings/{schoolId}": { "schema": "SchoolSettings", "description": "Paramètres de l'école" },
+    "/school_settings/{schoolId}": { "schema": "SchoolSettings", "description": "Configuration école" },
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
     "/teachers/{teacherId}": { "schema": "Teacher", "description": "Base enseignants" },
-    "/teacher_presence/{presenceId}": { "schema": "TeacherPresence", "description": "Émargement" },
-    "/students/{studentId}/grades/{gradeId}": { "schema": "Grade", "description": "Notes" },
+    "/grades/{gradeId}": { "schema": "Grade", "description": "Notes centralisées" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },
-    "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions" },
-    "/conversations/{convId}/messages/{msgId}": { "schema": "Message", "description": "Messages" }
+    "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions" }
   }
 }
