@@ -34,6 +34,22 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
+    "TeacherPresence": {
+      "title": "Présence Enseignant",
+      "description": "Suivi de ponctualité et pointage",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "checkInTime": { "type": "string", "format": "date-time" },
+        "expectedTime": { "type": "string" },
+        "status": { "type": "string", "enum": ["Présent", "Retard", "Absent", "Absence Autorisée"] },
+        "latenessMinutes": { "type": "number" },
+        "justification": { "type": "string" },
+        "deviceInfo": { "type": "string" }
+      }
+    },
     "Grade": {
       "title": "Note",
       "description": "Évaluation académique par matière",
@@ -42,8 +58,11 @@
         "subjectId": { "type": "string" },
         "subjectLabel": { "type": "string" },
         "coefficient": { "type": "number" },
-        "quizScore": { "type": "number" },
-        "examScore": { "type": "number" },
+        "int1": { "type": "number" },
+        "int2": { "type": "number" },
+        "int3": { "type": "number" },
+        "dev1": { "type": "number" },
+        "dev2": { "type": "number" },
         "average": { "type": "number" },
         "rankInSubject": { "type": "number" },
         "teacherComment": { "type": "string" },
@@ -111,6 +130,7 @@
   "firestore": {
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
     "/teacher_availabilities/{teacherId}": { "schema": "TeacherAvailability", "description": "Disponibilités" },
+    "/teacher_presence/{presenceId}": { "schema": "TeacherPresence", "description": "Émargement enseignants" },
     "/students/{studentId}/grades/{gradeId}": { "schema": "Grade", "description": "Notes de l'élève" },
     "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Journal de sécurité" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },

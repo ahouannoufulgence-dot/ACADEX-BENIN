@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Le "Cerveau ACADEX" - Assistant IA interne spécialisé.
@@ -50,7 +51,7 @@ Votre mission est d'assister la direction, les enseignants et les élèves en an
 **INSTRUCTIONS DE RÉPONSE :**
 1. Soyez précis, professionnel et direct.
 2. Si des données manquent dans le contexte, signalez-le poliment.
-3. Donnez des analyses (forces, faiblesses, alertes).
+3. Donnez des analyses sur la ponctualité, les notes, les paiements ou les effectifs.
 4. Formatez votre réponse en JSON valide.`,
 });
 

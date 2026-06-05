@@ -26,7 +26,8 @@ import {
   Archive,
   Database,
   PenTool,
-  BrainCircuit
+  BrainCircuit,
+  UserCheck
 } from "lucide-react"
 import {
   Sidebar,
@@ -64,6 +65,7 @@ const navigation = [
   { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Présence", href: "/presence", icon: UserCheck, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Disponibilités", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
@@ -133,7 +135,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       { name: "Agenda", href: "/agenda", icon: Calendar },
     ]
     if (role === "directeur" || role === "enseignant" || role === "professeur") {
-      base.splice(1, 0, { name: "Élèves", href: "/eleves", icon: Users })
+      base.splice(1, 0, { name: "Présence", href: "/presence", icon: UserCheck })
     } else {
       base.splice(1, 0, { name: "Notes", href: "/documents", icon: FileText })
     }

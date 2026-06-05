@@ -20,7 +20,8 @@ import {
   ChevronRight,
   AlertCircle,
   BrainCircuit,
-  MessageSquare
+  MessageSquare,
+  UserCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -57,17 +58,17 @@ export default function DashboardPage() {
     
     if (role === "directeur" || role === "super administrateur") {
       return [
-        { title: "Effectif", value: "1,248", change: "+12", trend: "up", icon: Users },
-        { title: "Pédagogie", value: "94.2%", change: "+2%", trend: "up", icon: TrendingUp },
+        { title: "Présence Profs", value: "24/29", change: "En poste", trend: "up", icon: UserCheck },
+        { title: "Moyenne École", value: "13.2", change: "+0.4", trend: "up", icon: GraduationCap },
         { title: "Trésorerie", value: "84.2M", sub: "FCFA", change: "84%", trend: "up", icon: CreditCard },
-        { title: "Vigilance", value: "4", change: "Alertes", trend: "down", icon: ShieldAlert },
+        { title: "Vigilance", value: "2", change: "Alertes", trend: "down", icon: ShieldAlert },
       ]
     } else if (role === "enseignant" || role === "professeur") {
       return [
-        { title: "Mes Élèves", value: "156", change: `${userClasses.length} Cls`, trend: "up", icon: Users },
-        { title: "Moyenne", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
-        { title: "Heures / Sem", value: "18h", change: "Validé", trend: "up", icon: Clock },
-        { title: "Examens", value: "2", change: "Prévus", trend: "up", icon: Calendar },
+        { title: "Statut Pointage", value: "Validé", change: "07:54", trend: "up", icon: Clock },
+        { title: "Moyenne Classes", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
+        { title: "Heures / Sem", value: "18h", change: "Validé", trend: "up", icon: BookOpen },
+        { title: "Prochain Cours", value: "08:00", change: "Salle 12", trend: "up", icon: Calendar },
       ]
     } else {
       return [
@@ -77,12 +78,11 @@ export default function DashboardPage() {
         { title: "Absences", value: "2", change: "Total", trend: "down", icon: Clock },
       ]
     }
-  }, [userRole, userClasses])
+  }, [userRole])
 
   if (!mounted) return null
 
   const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
-  const isTeacher = userRole.toLowerCase() === "enseignant" || userRole.toLowerCase() === "professeur"
 
   return (
     <DashboardLayout>
@@ -115,7 +115,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex-1 space-y-2 text-center md:text-left">
               <h3 className="text-2xl font-black italic">"Posez-moi une question sur votre école."</h3>
-              <p className="text-white/60 font-medium">Je connais vos notes, vos paiements et vos statistiques en temps réel.</p>
+              <p className="text-white/60 font-medium">Je connais vos notes, vos présences et vos statistiques en temps réel.</p>
             </div>
             <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">
               <Link href="/assistant">Lancer l'Assistant</Link>
@@ -124,29 +124,35 @@ export default function DashboardPage() {
           <Sparkles className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
         </Card>
 
-        {/* Alerts for Director */}
+        {/* Attendance Alerts for Director */}
         {isDirector && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-none shadow-sm bg-amber-50 rounded-3xl p-6 border-l-8 border-amber-500">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-amber-500 rounded-2xl text-white">
-                  <AlertCircle className="size-6" />
+                  <Clock className="size-6" />
                 </div>
-                <div>
-                  <h4 className="font-black text-amber-900">Disponibilités manquantes</h4>
-                  <p className="text-xs text-amber-700 font-bold">3 enseignants n'ont pas encore rempli leur planning.</p>
+                <div className="flex-1">
+                  <h4 className="font-black text-amber-900">3 Retards ce matin</h4>
+                  <p className="text-xs text-amber-700 font-bold">Les cours de Français (6ème A) ont débuté avec 14min de retard.</p>
                 </div>
+                <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold">
+                  <Link href="/presence">Gérer</Link>
+                </Button>
               </div>
             </Card>
             <Card className="border-none shadow-sm bg-destructive/5 rounded-3xl p-6 border-l-8 border-destructive">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-destructive rounded-2xl text-white">
-                  <ShieldAlert className="size-6" />
+                  <UserX className="size-6" />
                 </div>
-                <div>
-                  <h4 className="font-black text-destructive">Conflit de planning</h4>
-                  <p className="text-xs text-destructive/70 font-bold">Un chevauchement détecté en Salle 12 (Maths vs Français).</p>
+                <div className="flex-1">
+                  <h4 className="font-black text-destructive">Absence non justifiée</h4>
+                  <p className="text-xs text-destructive/70 font-bold">M. Tidjani n'a pas pointé pour son cours de Physique à 10h.</p>
                 </div>
+                <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold text-destructive hover:bg-destructive/10">
+                  <Link href="/presence">Alerter</Link>
+                </Button>
               </div>
             </Card>
           </div>
@@ -166,64 +172,12 @@ export default function DashboardPage() {
               <div>
                 <h3 className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">{stat.title}</h3>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-xl md:text-3xl font-black text-foreground">{stat.value}</span>
+                  <span className="text-xl md:text-2xl font-black text-foreground">{stat.value}</span>
                   {stat.sub && <span className="text-[10px] font-black text-muted-foreground">{stat.sub}</span>}
                 </div>
               </div>
             </Card>
           ))}
-        </div>
-
-        <div className="grid gap-6 md:gap-8 lg:grid-cols-12">
-          {isDirector && (
-            <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="md:col-span-1 premium-card p-6 md:p-8 bg-foreground text-white">
-                <ShieldAlert className="size-8 text-primary mb-4" />
-                <h3 className="text-xl font-black mb-2">Sécurité Notes</h3>
-                <p className="text-xs text-white/60 mb-6 font-medium">Le 1er Trimestre est ouvert. Surveillez les modifications en temps réel.</p>
-                <Button variant="secondary" asChild className="w-full rounded-xl font-black text-xs h-10">
-                  <Link href="/settings">Consulter l'Audit</Link>
-                </Button>
-              </Card>
-              <Card className="md:col-span-2 premium-card p-6 md:p-8 flex flex-col justify-center items-center text-center space-y-4">
-                <h3 className="text-2xl font-black">Performance Établissement</h3>
-                <p className="text-muted-foreground font-medium max-w-sm">Analyse complète des taux de réussite et de recouvrement.</p>
-                <Button asChild className="bg-primary rounded-xl h-12 px-8 font-black">
-                  <Link href="/statistiques">Voir Intelligence Globale</Link>
-                </Button>
-              </Card>
-            </div>
-          )}
-
-          {isTeacher && (
-            <div className="lg:col-span-12 space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-black">Mes Classes Actives</h2>
-                <Badge variant="outline" className="rounded-full font-black border-primary text-primary">{userClasses.length} CLASSES</Badge>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {userClasses.length > 0 ? userClasses.map((cls, i) => (
-                  <Card key={i} className="premium-card p-6 group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <BookOpen className="size-6" />
-                      </div>
-                      <Badge className="bg-primary font-black px-4">{cls}</Badge>
-                    </div>
-                    <h4 className="font-black text-lg mb-1">Rapport de Classe</h4>
-                    <p className="text-xs text-muted-foreground font-medium">Saisie des notes & Assiduité</p>
-                    <Button asChild variant="link" className="p-0 h-auto font-black text-xs text-primary mt-4 group-hover:translate-x-1 transition-transform">
-                      <Link href={`/eleves?class=${cls}`}>Gérer la classe <ChevronRight className="size-3 ml-1" /></Link>
-                    </Button>
-                  </Card>
-                )) : (
-                  <Card className="col-span-full p-8 text-center bg-muted/20 rounded-3xl border-2 border-dashed">
-                    <p className="font-bold text-muted-foreground">Aucune classe ne vous est encore attribuée.</p>
-                  </Card>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </DashboardLayout>
