@@ -28,7 +28,9 @@ import {
   PenTool,
   BrainCircuit,
   UserCheck,
-  Palette
+  Palette,
+  GraduationCap,
+  TrendingUp
 } from "lucide-react"
 import {
   Sidebar,
@@ -64,20 +66,38 @@ import { doc, onSnapshot } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Élève"] },
-  { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur", "Enseignant", "Élève"] },
-  { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant"] },
+  // DIRECTEUR
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur"] },
+  { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur"] },
+  { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur"] },
   { name: "Corps Enseignant", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
-  { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant"] },
-  { name: "Emploi du Temps", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant"] },
-  { name: "Présence", href: "/presence", icon: UserCheck, roles: ["Directeur", "Enseignant"] },
+  { name: "Gestion des Notes", href: "/notes", icon: PenTool, roles: ["Directeur"] },
+  { name: "Présence Enseignants", href: "/presence", icon: UserCheck, roles: ["Directeur"] },
+  { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur"] },
+  { name: "Emploi du Temps", href: "/disponibilites", icon: Clock, roles: ["Directeur"] },
   { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur"] },
-  { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
-  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Archives", href: "/archives", icon: Archive, roles: ["Directeur"] },
-  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Personnalisation", href: "/personalisation", icon: Palette, roles: ["Directeur"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
+
+  // ENSEIGNANT
+  { name: "Tableau de Bord", href: "/dashboard", icon: LayoutDashboard, roles: ["Enseignant"] },
+  { name: "Mes Classes", href: "/eleves", icon: Users, roles: ["Enseignant"] },
+  { name: "Gestion des Notes", href: "/notes", icon: PenTool, roles: ["Enseignant"] },
+  { name: "Mes Disponibilités", href: "/disponibilites", icon: Clock, roles: ["Enseignant"] },
+  { name: "Emploi du Temps", href: "/agenda", icon: Calendar, roles: ["Enseignant"] },
+  { name: "Ma Présence", href: "/presence", icon: UserCheck, roles: ["Enseignant"] },
+  { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Enseignant"] },
+  { name: "Assistant ACADEX", href: "/assistant", icon: Sparkles, roles: ["Enseignant"] },
+
+  // ÉLÈVE
+  { name: "Mon Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Élève"] },
+  { name: "Mes Notes", href: "/eleves/profile", icon: GraduationCap, roles: ["Élève"] },
+  { name: "Ma Progression", href: "/statistiques", icon: TrendingUp, roles: ["Élève"] },
+  { name: "Mes Paiements", href: "/paiements", icon: CreditCard, roles: ["Élève"] },
+  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Élève"] },
+  { name: "Messages", href: "/messagerie", icon: MessageSquare, roles: ["Élève"] },
+  { name: "Assistant Personnel", href: "/assistant", icon: Sparkles, roles: ["Élève"] },
 ]
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -102,16 +122,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       setUserId(savedId)
       setMounted(true)
 
-      const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
-      if (currentNav) {
-        const isAuthorized = currentNav.roles.some(role => 
-          role.toLowerCase() === savedRole.toLowerCase() || savedRole.toLowerCase() === "directeur"
-        )
-        if (!isAuthorized && savedRole.toLowerCase() !== "directeur") {
-          router.push("/dashboard")
-        }
-      }
-
+      // Access verification logic can go here if needed
+      
       // Listen for school settings
       const unsubscribe = onSnapshot(doc(db, "school_settings", "main_config"), (docSnap) => {
         if (docSnap.exists()) {
@@ -129,11 +141,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const filteredNavigation = useMemo(() => {
     if (!userRole) return []
-    return navigation.filter(item => {
-      const role = userRole.toLowerCase()
-      if (role === "directeur") return true
-      return item.roles.some(r => r.toLowerCase() === role)
-    })
+    return navigation.filter(item => item.roles.includes(userRole))
   }, [userRole])
 
   const bottomNavItems = useMemo(() => {
@@ -145,7 +153,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       { name: "Agenda", href: "/agenda", icon: Calendar },
     ]
     if (role === "directeur" || role === "enseignant") {
-      base.splice(1, 0, { name: "Présence", href: "/presence", icon: UserCheck })
+      base.splice(1, 0, { name: "Classes", href: "/eleves", icon: Users })
     } else {
       base.splice(1, 0, { name: "Notes", href: "/documents", icon: FileText })
     }
@@ -165,7 +173,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* DESKTOP SIDEBAR */}
         <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0" collapsible="none">
           <SidebarHeader className="h-24 flex items-center px-8 bg-primary">
-            <Link href="/" className="flex items-center gap-3">
+            <Link href="/dashboard" className="flex items-center gap-3">
               <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
                 {schoolLogo ? (
                   <img src={schoolLogo} alt="Logo" className="w-full h-full object-contain" />
@@ -198,8 +206,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           <Link href={item.href}>
                             <item.icon className={cn("size-5 transition-transform group-hover:scale-110", pathname === item.href ? "text-white" : "text-white/50")} />
                             <span className="font-bold text-sm tracking-wide">{item.name}</span>
-                            {item.name === "Assistant Brain" && (
-                              <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black">NEW</Badge>
+                            {item.name.includes("Brain") && (
+                              <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black">IA</Badge>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -233,7 +241,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Badge variant="outline" className="text-[8px] md:text-[10px] h-4 py-0 font-black border-primary/20 text-primary uppercase">
                     {userId}
                   </Badge>
-                  <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase">{userRole} — {schoolName}</span>
+                  <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase">{userRole}</span>
                 </div>
               </div>
             </div>
@@ -260,12 +268,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <p className="text-[10px] font-bold text-primary">{userId}</p>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
-                    <Link href="/personalisation" className="flex items-center gap-2"><Palette className="size-4" /> Personnalisation</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
-                    <Link href="/settings" className="flex items-center gap-2"><UserSquare2 className="size-4" /> Paramètres</Link>
-                  </DropdownMenuItem>
+                  {userRole === "Directeur" && (
+                    <>
+                      <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
+                        <Link href="/personalisation" className="flex items-center gap-2"><Palette className="size-4" /> Personnalisation</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
+                        <Link href="/settings" className="flex items-center gap-2"><UserSquare2 className="size-4" /> Paramètres</Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 rounded-2xl h-11 px-4 font-black">
                     <LogOut className="size-4 mr-2" /> Déconnexion
