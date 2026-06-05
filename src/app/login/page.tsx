@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Loader2, Sparkles, School } from 'lucide-react';
+import { ShieldCheck, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
@@ -29,7 +29,7 @@ export default function LoginPage() {
           setSchoolLogo(data.logoUrl || "")
         }
       } catch (err) {
-        console.warn("Impossible de récupérer la config école (Mode Hors-ligne probable)", err)
+        console.warn("Mode Hors-ligne / Config par défaut")
       }
     }
     fetchSchool()
@@ -40,23 +40,26 @@ export default function LoginPage() {
     if (!id.trim()) return;
     setLoading(true);
     
+    // Simulation authentification et détection rôle
     setTimeout(() => {
       setLoading(false);
-      localStorage.setItem('acadex_user_id', id.toUpperCase());
+      const upperId = id.toUpperCase();
+      localStorage.setItem('acadex_user_id', upperId);
 
-      if (id.toUpperCase().startsWith('DIR')) {
+      if (upperId.startsWith('DIR')) {
         localStorage.setItem('acadex_user_role', 'Directeur');
         localStorage.setItem('acadex_user_name', 'Directeur ' + schoolName);
-      } else if (id.toUpperCase().startsWith('ENS')) {
+        router.push('/dashboard/directeur');
+      } else if (upperId.startsWith('ENS')) {
         localStorage.setItem('acadex_user_role', 'Enseignant');
         localStorage.setItem('acadex_user_name', 'Professeur Marc');
         localStorage.setItem('acadex_user_classes', JSON.stringify(['3D1', 'Terminale D1']));
+        router.push('/dashboard/enseignant');
       } else {
         localStorage.setItem('acadex_user_role', 'Élève');
-        localStorage.setItem('acadex_user_name', 'Élève ' + schoolName);
+        localStorage.setItem('acadex_user_name', 'Élève ' + (upperId || "Béninois"));
+        router.push('/dashboard/eleve');
       }
-      
-      router.push('/dashboard');
     }, 1200);
   };
 
@@ -103,10 +106,6 @@ export default function LoginPage() {
           </CardFooter>
         </Card>
       </div>
-      
-      {/* Background Decor */}
-      <div className="absolute -bottom-20 -left-20 size-80 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -top-20 -right-20 size-80 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
     </div>
   );
 }
