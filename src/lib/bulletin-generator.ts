@@ -28,8 +28,11 @@ export interface BulletinData {
   grades: Array<{
     subject: string;
     coef: number;
-    quiz: number;
-    exam: number;
+    int1: number;
+    int2: number;
+    int3: number;
+    dev1: number;
+    dev2: number;
     avg: number;
     weighted: number;
     rank: number;
@@ -44,20 +47,6 @@ export interface BulletinData {
   councilDecision?: string;
 }
 
-/**
- * Generates an automatic appreciation based on average
- */
-function getAutoAppreciation(avg: number): string {
-  if (avg >= 16) return "Excellent travail, continuez ainsi.";
-  if (avg >= 14) return "Très bon trimestre, élève sérieux.";
-  if (avg >= 12) return "Bon travail, quelques efforts à maintenir.";
-  if (avg >= 10) return "Résultats acceptables, plus d’efforts nécessaires.";
-  return "Travail insuffisant, efforts indispensables pour réussir.";
-}
-
-/**
- * Generates a mention based on average
- */
 function getMention(avg: number): string {
   if (avg >= 16) return 'TRÈS BIEN';
   if (avg >= 14) return 'BIEN';
@@ -74,126 +63,76 @@ export async function generateBulletinPDF(data: BulletinData) {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  
-  // --- CALCULS AUTOMATIQUES ---
   const totalCoef = data.grades.reduce((acc, g) => acc + g.coef, 0);
   const totalWeighted = data.grades.reduce((acc, g) => acc + g.weighted, 0);
   const generalAvg = totalWeighted / totalCoef;
   const mention = getMention(generalAvg);
 
-  // --- HEADER ---
+  // HEADER
   doc.setFillColor(245, 245, 245);
   doc.rect(0, 0, pageWidth, 45, 'F');
-
-  doc.setTextColor(20, 83, 45); // ACADEX Primary
+  doc.setTextColor(20, 83, 45);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
   doc.text(data.schoolInfo.name.toUpperCase(), pageWidth / 2, 15, { align: 'center' });
-  
   doc.setFontSize(10);
   doc.setFont('helvetica', 'italic');
   doc.text(`"${data.schoolInfo.motto}"`, pageWidth / 2, 22, { align: 'center' });
-  
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
   doc.text(`${data.schoolInfo.address} | Tél: ${data.schoolInfo.phone}`, pageWidth / 2, 28, { align: 'center' });
   doc.text(`Année Scolaire: ${data.schoolInfo.academicYear} | ${data.term}`, pageWidth / 2, 34, { align: 'center' });
 
-  doc.setDrawColor(20, 83, 45);
-  doc.setLineWidth(0.5);
-  doc.line(10, 45, pageWidth - 10, 45);
-
-  // --- STUDENT IDENTITY ---
+  // STUDENT INFO
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
   doc.text(`BULLETIN DE NOTES - ${data.term.toUpperCase()}`, pageWidth / 2, 55, { align: 'center' });
 
   doc.setFontSize(10);
-  doc.text('Identité de l\'Élève', 15, 65);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Nom & Prénoms : ${data.student.fullName}`, 15, 72);
-  doc.text(`Né(e) le : ${data.student.dob} | Sexe : ${data.student.sex}`, 15, 78);
-  doc.text(`Matricule : ${data.student.matricule}`, 15, 84);
+  doc.text(`Nom & Prénoms : ${data.student.fullName}`, 15, 65);
+  doc.text(`Matricule : ${data.student.matricule}`, 15, 72);
+  doc.text(`Classe : ${data.student.classId}`, 120, 65);
+  doc.text(`Effectif : ${data.student.effectif}`, 120, 72);
 
-  doc.text(`Classe : ${data.student.classId}`, 120, 72);
-  doc.text(`Effectif : ${data.student.effectif}`, 120, 78);
-  doc.text(`Prof. Principal : ${data.student.principalTeacher}`, 120, 84);
-
-  // --- GRADES TABLE ---
+  // GRADES TABLE (Simplified for space)
   const tableBody = data.grades.map(g => [
     g.subject,
     g.coef,
-    g.quiz.toFixed(2),
-    g.exam.toFixed(2),
+    ((g.int1 + g.int2 + g.int3) / 3).toFixed(2), // Moyenne Int.
+    g.dev1.toFixed(2),
+    g.dev2.toFixed(2),
     g.avg.toFixed(2),
     g.weighted.toFixed(2),
-    g.rank === 1 ? '1er' : `${g.rank}è`,
-    g.appreciation || getAutoAppreciation(g.avg)
+    g.rank === 1 ? '1er' : `${g.rank}è`
   ]);
 
   autoTable(doc, {
-    startY: 95,
-    head: [['Matière', 'Coef', 'Devoir', 'Comp.', 'Moy/20', 'Pondéré', 'Rang', 'Appréciation']],
+    startY: 85,
+    head: [['Matière', 'Coef', 'Moy Int.', 'Dev 1', 'Dev 2', 'Moy/20', 'Pondéré', 'Rang']],
     body: tableBody,
     theme: 'grid',
-    headStyles: { fillColor: [20, 83, 45], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9 },
-    bodyStyles: { fontSize: 8, textColor: [0, 0, 0] },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 35 },
-      1: { halign: 'center' },
-      2: { halign: 'center' },
-      3: { halign: 'center' },
-      4: { halign: 'center', fontStyle: 'bold' },
-      5: { halign: 'center', fontStyle: 'bold' },
-      6: { halign: 'center' },
-    },
-    styles: { cellPadding: 2 }
+    headStyles: { fillColor: [20, 83, 45], textColor: [255, 255, 255], fontSize: 9 },
+    bodyStyles: { fontSize: 8 },
+    styles: { halign: 'center' },
+    columnStyles: { 0: { halign: 'left', fontStyle: 'bold' } }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY;
 
-  // --- SUMMARY BOX ---
+  // SUMMARY
   doc.setFillColor(245, 245, 245);
-  doc.rect(10, finalY + 5, pageWidth - 20, 25, 'F');
-  
+  doc.rect(10, finalY + 5, pageWidth - 20, 20, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text(`TOTAL POINTS : ${totalWeighted.toFixed(2)} / ${totalCoef * 20}`, 15, finalY + 13);
-  doc.text(`MOYENNE GÉNÉRALE : ${generalAvg.toFixed(2)} / 20`, 15, finalY + 20);
-  doc.text(`MENTION : ${mention}`, 15, finalY + 27);
+  doc.text(`MOYENNE GÉNÉRALE : ${generalAvg.toFixed(2)} / 20`, 15, finalY + 13);
+  doc.text(`MENTION : ${mention}`, 15, finalY + 18);
+  doc.text(`RANG GLOBAL : ${data.student.rank} / ${data.student.effectif}`, 120, finalY + 13);
 
-  doc.text(`RANG GLOBAL : ${data.student.rank === 1 ? '1er' : data.student.rank + 'è'} / ${data.student.effectif}`, 120, finalY + 13);
-  doc.text(`DÉCISION : ${data.councilDecision || (generalAvg >= 10 ? 'Admis' : 'Redouble')}`, 120, finalY + 20);
-
-  // --- DISCIPLINE ---
-  doc.setFontSize(9);
-  doc.text('DISCIPLINE & ASSIDUITÉ', 15, finalY + 40);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Absences : ${data.discipline.absencesUnjustified} (Injust.) | ${data.discipline.absencesJustified} (Just.)`, 15, finalY + 46);
-  doc.text(`Retards : ${data.discipline.delays} | Conduite : ${data.discipline.behavior}`, 15, finalY + 52);
-
-  // --- SIGNATURES ---
-  const sigY = finalY + 70;
-  doc.setFont('helvetica', 'bold');
-  doc.text('Le Professeur Principal', 15, sigY);
-  doc.text('Le Directeur', pageWidth - 50, sigY);
-
-  // Cachet Simulation
-  doc.setDrawColor(20, 83, 45);
-  doc.setLineWidth(1);
-  doc.ellipse(pageWidth - 35, sigY + 5, 20, 10);
-  doc.setFontSize(6);
-  doc.text('CACHET OFFICIEL', pageWidth - 35, sigY + 6, { align: 'center' });
-
-  // QR Code Verification
-  const qrData = `VERIFY-ACADEX-${data.student.matricule}-${data.term}-2025`;
+  // QR Code
+  const qrData = `ACADEX-${data.student.matricule}-${data.term}`;
   const qrCodeDataUrl = await QRCode.toDataURL(qrData);
-  doc.addImage(qrCodeDataUrl, 'PNG', pageWidth / 2 - 15, sigY - 10, 30, 30);
-  doc.setFontSize(7);
-  doc.text('Scanner pour vérification officielle', pageWidth / 2, sigY + 22, { align: 'center' });
+  doc.addImage(qrCodeDataUrl, 'PNG', pageWidth / 2 - 10, finalY + 30, 20, 20);
 
-  // SAVE
-  doc.save(`BULLETIN_${data.student.matricule}_${data.term}.pdf`);
+  doc.save(`BULLETIN_${data.student.matricule}.pdf`);
 }
