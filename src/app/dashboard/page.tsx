@@ -56,24 +56,24 @@ export default function DashboardPage() {
     
     if (role === "directeur") {
       return [
-        { title: "Présence Profs", value: "24/29", change: "En poste", trend: "up", icon: UserCheck },
-        { title: "Moyenne École", value: "13.2", change: "+0.4", trend: "up", icon: GraduationCap },
-        { title: "Trésorerie", value: "84.2M", sub: "FCFA", change: "84%", trend: "up", icon: CreditCard },
-        { title: "Vigilance", value: "2", change: "Alertes", trend: "down", icon: ShieldAlert },
+        { title: "Présence Profs", value: "0/0", change: "Initialisation", trend: "up", icon: UserCheck },
+        { title: "Moyenne École", value: "0.0", change: "---", trend: "up", icon: GraduationCap },
+        { title: "Trésorerie", value: "0", sub: "FCFA", change: "0%", trend: "up", icon: CreditCard },
+        { title: "Vigilance", value: "0", change: "Alertes", trend: "down", icon: ShieldAlert },
       ]
     } else if (role === "enseignant") {
       return [
-        { title: "Statut Pointage", value: "Validé", change: "07:54", trend: "up", icon: Clock },
-        { title: "Moyenne Classes", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
-        { title: "Heures / Sem", value: "18h", change: "Contrat", trend: "up", icon: BookOpen },
-        { title: "Prochain Cours", value: "08:00", change: "Salle 12", trend: "up", icon: Calendar },
+        { title: "Statut Pointage", value: "---", change: "--:--", trend: "up", icon: Clock },
+        { title: "Moyenne Classes", value: "0.0", change: "---", trend: "up", icon: TrendingUp },
+        { title: "Heures / Sem", value: "0h", change: "Contrat", trend: "up", icon: BookOpen },
+        { title: "Prochain Cours", value: "--:--", change: "---", trend: "up", icon: Calendar },
       ]
     } else {
       return [
-        { title: "Ma Moyenne", value: "15.42", change: "+0.8", trend: "up", icon: GraduationCap },
-        { title: "Mon Rang", value: "4ème", change: "Classe", trend: "up", icon: Trophy },
-        { title: "Scolarité", value: "À jour", change: "Payé", trend: "up", icon: CreditCard },
-        { title: "Absences", value: "2", change: "Total", trend: "down", icon: Clock },
+        { title: "Ma Moyenne", value: "0.00", change: "---", trend: "up", icon: GraduationCap },
+        { title: "Mon Rang", value: "---", change: "Classe", trend: "up", icon: Trophy },
+        { title: "Scolarité", value: "Non Payé", change: "Attente", trend: "up", icon: CreditCard },
+        { title: "Absences", value: "0", change: "Total", trend: "down", icon: Clock },
       ]
     }
   }, [userRole])
@@ -122,36 +122,15 @@ export default function DashboardPage() {
           <Sparkles className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
         </Card>
 
-        {/* ATTENDANCE ALERTS FOR DIRECTOR */}
+        {/* EMPTY STATE ALERTS FOR DIRECTOR */}
         {isDirector && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-none shadow-sm bg-amber-50 rounded-3xl p-6 border-l-8 border-amber-500">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-500 rounded-2xl text-white">
-                  <Clock className="size-6" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-black text-amber-900">3 Retards ce matin</h4>
-                  <p className="text-xs text-amber-700 font-bold">Les cours de Français ont débuté avec 14min de retard.</p>
-                </div>
-                <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold">
-                  <Link href="/presence">Gérer</Link>
-                </Button>
-              </div>
-            </Card>
-            <Card className="border-none shadow-sm bg-destructive/5 rounded-3xl p-6 border-l-8 border-destructive">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-destructive rounded-2xl text-white">
-                  <UserX className="size-6" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-black text-destructive">Absence non justifiée</h4>
-                  <p className="text-xs text-destructive/70 font-bold">M. Tidjani n'a pas pointé pour son cours de 10h.</p>
-                </div>
-                <Button asChild variant="ghost" size="sm" className="rounded-xl font-bold text-destructive hover:bg-destructive/10">
-                  <Link href="/presence">Alerter</Link>
-                </Button>
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+            <Card className="border-none shadow-sm bg-muted/20 rounded-3xl p-8 border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center text-center">
+               <div className="size-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                 <AlertCircle className="size-8 text-muted-foreground" />
+               </div>
+               <h4 className="font-black text-foreground text-lg">Aucune activité récente</h4>
+               <p className="text-sm text-muted-foreground font-medium max-w-md">Commencez par inscrire des élèves ou configurer les enseignants pour voir les statistiques s'actualiser ici.</p>
             </Card>
           </div>
         )}

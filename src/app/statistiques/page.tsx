@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -43,32 +42,13 @@ import { jsPDF } from "jspdf"
 import { toast } from "@/hooks/use-toast"
 
 const academicPerformance = [
-  { level: "6ème", moyenne: 12.5, success: 88 },
-  { level: "5ème", moyenne: 11.8, success: 82 },
-  { level: "4ème", moyenne: 13.2, success: 91 },
-  { level: "3ème", moyenne: 10.9, success: 75 },
-  { level: "2nde", moyenne: 14.1, success: 94 },
-  { level: "1ère", moyenne: 12.8, success: 85 },
-  { level: "Tle", moyenne: 15.2, success: 98 },
-]
-
-const financialCollection = [
-  { tranche: "Inscription", rate: 100, color: "#14532D" },
-  { tranche: "Tranche 1", rate: 84, color: "#166534" },
-  { tranche: "Tranche 2", rate: 45, color: "#15803d" },
-  { tranche: "Examen", rate: 12, color: "#B91C1C" },
-]
-
-const genderDistribution = [
-  { name: "Filles", value: 642, color: "#14532D" },
-  { name: "Garçons", value: 606, color: "#111827" },
-]
-
-const seriesDistribution = [
-  { series: "Série A", count: 245 },
-  { series: "Série C", count: 82 },
-  { series: "Série D", count: 320 },
-  { series: "G2/G3", count: 115 },
+  { level: "6ème", moyenne: 0, success: 0 },
+  { level: "5ème", moyenne: 0, success: 0 },
+  { level: "4ème", moyenne: 0, success: 0 },
+  { level: "3ème", moyenne: 0, success: 0 },
+  { level: "2nde", moyenne: 0, success: 0 },
+  { level: "1ère", moyenne: 0, success: 0 },
+  { level: "Tle", moyenne: 0, success: 0 },
 ]
 
 export default function StatisticsPage() {
@@ -80,16 +60,7 @@ export default function StatisticsPage() {
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(18)
       doc.text("ACADEX - ANALYSE STATISTIQUE GLOBALE", 105, 20, { align: "center" })
-
-      doc.setTextColor(0,0,0)
-      doc.setFontSize(14)
-      doc.text("Performance Académique par Niveau", 20, 45)
-      academicPerformance.forEach((p, i) => {
-        doc.setFontSize(10)
-        doc.text(`${p.level} : Moyenne ${p.moyenne}/20 - Taux Réussite ${p.success}%`, 25, 55 + (i * 8))
-      })
-
-      doc.save("ACADEX_Statistiques.pdf")
+      doc.save("ACADEX_Statistiques_Zero.pdf")
       toast({ title: "Succès", description: "Le rapport statistique a été généré." })
     } catch (e) {
       toast({ title: "Erreur", description: "Échec de l'exportation PDF.", variant: "destructive" })
@@ -117,15 +88,15 @@ export default function StatisticsPage() {
 
         <div className="grid gap-6 md:grid-cols-4">
           {[
-            { label: "Effectif Global", value: "1,248", sub: "Élèves", icon: Users, trend: "+12%" },
-            { label: "Moyenne École", value: "13.24", sub: "/20", icon: GraduationCap, trend: "+0.4" },
-            { label: "Taux de Réussite", value: "86.4%", sub: "Objectif 90%", icon: CheckCircle2, trend: "+2.1%" },
-            { label: "Recouvrement", value: "84.2M", sub: "FCFA", icon: CreditCard, trend: "+14%" },
+            { label: "Effectif Global", value: "0", sub: "Élèves", icon: Users, trend: "0%" },
+            { label: "Moyenne École", value: "0.00", sub: "/20", icon: GraduationCap, trend: "0.0" },
+            { label: "Taux de Réussite", value: "0.0%", sub: "Objectif 90%", icon: CheckCircle2, trend: "0.0%" },
+            { label: "Recouvrement", value: "0", sub: "FCFA", icon: CreditCard, trend: "0%" },
           ].map((kpi, i) => (
             <Card key={i} className="border-none shadow-sm rounded-3xl bg-white group hover:shadow-xl transition-all duration-300">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-muted rounded-2xl group-hover:bg-primary group-hover:text-white transition-all">
+                  <div className={`p-3 bg-muted rounded-2xl group-hover:bg-primary group-hover:text-white transition-all`}>
                     <kpi.icon className="size-6" />
                   </div>
                   <Badge className="bg-primary/5 text-primary border-none font-black text-[10px]">{kpi.trend}</Badge>
@@ -145,41 +116,17 @@ export default function StatisticsPage() {
             <TabsTrigger value="academique" className="rounded-2xl font-bold px-8 flex gap-2">
               <GraduationCap className="size-4" /> Académique
             </TabsTrigger>
-            <TabsTrigger value="finance" className="rounded-2xl font-bold px-8 flex gap-2">
-              <CreditCard className="size-4" /> Finance
-            </TabsTrigger>
-            <TabsTrigger value="effectifs" className="rounded-2xl font-bold px-8 flex gap-2">
-              <Users className="size-4" /> Effectifs
-            </TabsTrigger>
-            <TabsTrigger value="vie-scolaire" className="rounded-2xl font-bold px-8 flex gap-2">
-              <Calendar className="size-4" /> Vie Scolaire
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="academique" className="space-y-8">
             <div className="grid gap-8 lg:grid-cols-12">
-              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2.5rem] p-10">
-                <CardHeader className="px-0 pt-0">
-                  <CardTitle className="text-2xl font-black">Performance par Niveau</CardTitle>
-                  <CardDescription>Comparaison des moyennes générales du 1er Trimestre.</CardDescription>
-                </CardHeader>
-                <div className="h-[400px] mt-8">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={academicPerformance}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="level" axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 700}} />
-                      <YAxis domain={[0, 20]} axisLine={false} tickLine={false} tick={{fontSize: 12, fontWeight: 700}} />
-                      <Tooltip 
-                        cursor={{fill: '#f8fafc'}}
-                        contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Bar dataKey="moyenne" radius={[8, 8, 0, 0]}>
-                        {academicPerformance.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.moyenne >= 12 ? '#14532D' : entry.moyenne >= 10 ? '#15803d' : '#B91C1C'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+              <Card className="lg:col-span-12 border-none shadow-sm bg-white rounded-[2.5rem] p-10">
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                   <div className="size-20 bg-muted rounded-full flex items-center justify-center">
+                     <BarChart3 className="size-10 text-muted-foreground" />
+                   </div>
+                   <h3 className="text-2xl font-black">Aucune donnée disponible</h3>
+                   <p className="text-muted-foreground font-medium max-w-sm">Les graphiques de performance apparaîtront dès que les premières notes seront enregistrées.</p>
                 </div>
               </Card>
             </div>
@@ -194,13 +141,8 @@ export default function StatisticsPage() {
             <div className="flex-1 space-y-4">
               <h3 className="text-3xl font-black">Analyse Prédictive ACADEX</h3>
               <p className="text-lg text-white/70 font-medium leading-relaxed">
-                "Sur la base des tendances actuelles, nous projetons un taux de réussite de 92% pour le BEPC si le soutien en Mathématiques est maintenu."
+                "L'IA attend plus de données pour générer des prédictions sur le taux de réussite et les tendances académiques."
               </p>
-            </div>
-            <div className="flex flex-col gap-4">
-              <Button className="bg-primary hover:bg-primary/90 text-white font-black rounded-2xl h-16 px-12 text-lg shadow-xl shadow-primary/20">
-                Rapport Détaillé IA
-              </Button>
             </div>
           </div>
           <BarChart3 className="absolute -bottom-16 -right-16 size-80 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />

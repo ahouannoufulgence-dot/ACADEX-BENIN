@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -15,7 +14,8 @@ import {
   Clock,
   UserX,
   ChevronRight,
-  FileDown
+  FileDown,
+  Scale
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -24,36 +24,9 @@ import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { toast } from "@/hooks/use-toast"
 
-const incidents = [
-  { id: "1", name: "Dossou Marc", class: "4ème C", type: "Retard", description: "3ème retard cette semaine", date: "Aujourd'hui, 08:15", severity: "low", status: "Sanctionné" },
-  { id: "2", name: "Koffi Djimon", class: "Terminale S1", type: "Excellent", description: "Félicitations du conseil pour son attitude", date: "Hier", severity: "positive", status: "Validé" },
-  { id: "3", name: "Sossa Luc", class: "6ème B", type: "Bavardage", description: "Perturbation répétée en classe de SVT", date: "Il y a 2 jours", severity: "medium", status: "Averti" },
-  { id: "4", name: "Tidjani Amadou", class: "Terminale S1", type: "Retard", description: "Retard 10min", date: "Il y a 3 jours", severity: "low", status: "Classé" },
-  { id: "5", name: "Amoussou Marie", class: "3ème A", type: "Sanction", description: "Non-respect du règlement (uniforme)", date: "Il y a 1 semaine", severity: "high", status: "Exclusion temporaire" },
-]
-
 export default function DisciplinePage() {
   const handleExportPDF = () => {
-    try {
-      const doc = new jsPDF()
-      doc.setFillColor(20, 83, 45)
-      doc.rect(0, 0, 210, 30, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(18)
-      doc.text("ACADEX - JOURNAL DE DISCIPLINE", 105, 20, { align: "center" })
-
-      autoTable(doc, {
-        startY: 40,
-        head: [['Élève', 'Classe', 'Type', 'Description', 'Date', 'Statut']],
-        body: incidents.map(i => [i.name, i.class, i.type, i.description, i.date, i.status]),
-        headStyles: { fillColor: [20, 83, 45] }
-      })
-
-      doc.save("ACADEX_Discipline.pdf")
-      toast({ title: "Succès", description: "Le journal disciplinaire a été exporté." })
-    } catch (e) {
-      toast({ title: "Erreur", description: "Échec de l'exportation PDF.", variant: "destructive" })
-    }
+    toast({ title: "Info", description: "Aucun incident à exporter." })
   }
 
   return (
@@ -78,15 +51,15 @@ export default function DisciplinePage() {
 
         <div className="grid gap-6 md:grid-cols-4">
           {[
-            { label: "Total Incidents", value: "24", icon: ShieldAlert, color: "text-primary" },
-            { label: "Exclusions", value: "2", icon: UserX, color: "text-destructive" },
-            { label: "Retards Mois", value: "48", icon: Clock, color: "text-amber-600" },
-            { label: "Taux Conduite", value: "96.4%", icon: CheckCircle2, color: "text-primary" },
+            { label: "Total Incidents", value: "0", icon: ShieldAlert, color: "text-primary" },
+            { label: "Exclusions", value: "0", icon: UserX, color: "text-destructive" },
+            { label: "Retards Mois", value: "0", icon: Clock, color: "text-amber-600" },
+            { label: "Taux Conduite", value: "---", icon: CheckCircle2, color: "text-primary" },
           ].map((stat, i) => (
             <Card key={i} className="border-none shadow-sm rounded-3xl bg-white overflow-hidden group">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`p-3 bg-muted rounded-2xl group-hover:${stat.color.replace('text', 'bg')} group-hover:text-white transition-all`}>
+                  <div className={`p-3 bg-muted rounded-2xl group-hover:bg-primary group-hover:text-white transition-all`}>
                     <stat.icon className="size-6" />
                   </div>
                   <Badge className="bg-primary/10 text-primary border-none font-bold">Hebdo</Badge>
@@ -99,66 +72,13 @@ export default function DisciplinePage() {
         </div>
 
         <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div>
-                <CardTitle className="text-2xl font-black">Journal des Incidents</CardTitle>
-                <CardDescription className="font-medium">Dernières observations comportementales enregistrées</CardDescription>
-              </div>
-              <div className="relative w-full md:w-80 group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary" />
-                <Input placeholder="Rechercher un élève..." className="pl-12 h-12 bg-muted/50 border-none rounded-2xl font-bold shadow-none" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="divide-y divide-muted/30">
-              {incidents.map((incident) => (
-                <div key={incident.id} className="flex flex-col md:flex-row md:items-center justify-between p-8 hover:bg-muted/10 transition-colors group">
-                  <div className="flex items-center gap-6 mb-4 md:mb-0">
-                    <Avatar className="size-14 border-4 border-white shadow-md group-hover:border-primary/20 transition-all">
-                      <AvatarImage src={`https://picsum.photos/seed/${incident.id}/150/150`} />
-                      <AvatarFallback>{incident.name.substring(0, 2)}</AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-1">
-                      <h4 className="text-lg font-black text-foreground group-hover:text-primary transition-colors">{incident.name}</h4>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="rounded-full border-muted text-muted-foreground font-black text-[10px]">{incident.class}</Badge>
-                        <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
-                          <Clock className="size-3" />
-                          {incident.date}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1 md:mx-12 mb-4 md:mb-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge className={`font-black rounded-full px-4 ${
-                        incident.severity === 'high' ? 'bg-destructive' : 
-                        incident.severity === 'medium' ? 'bg-amber-500' : 
-                        incident.severity === 'positive' ? 'bg-primary' : 'bg-foreground'
-                      }`}>
-                        {incident.type}
-                      </Badge>
-                      {incident.severity === 'high' && <AlertTriangle className="size-4 text-destructive animate-pulse" />}
-                    </div>
-                    <p className="text-sm font-medium text-foreground/80 italic">"{incident.description}"</p>
-                  </div>
-
-                  <div className="flex items-center justify-between md:justify-end gap-6">
-                    <div className="text-right">
-                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">Statut Dossier</p>
-                      <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-black bg-primary/5">{incident.status}</Badge>
-                    </div>
-                    <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                      <ChevronRight className="size-5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+          <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
+             <div className="size-20 bg-muted rounded-full flex items-center justify-center">
+               <Scale className="size-10 text-muted-foreground" />
+             </div>
+             <h3 className="text-2xl font-black">Journal de discipline vierge</h3>
+             <p className="text-muted-foreground font-medium max-w-sm">Tous les élèves ont une conduite exemplaire. Les rapports d'incidents apparaîtront ici.</p>
+          </div>
         </Card>
       </div>
     </DashboardLayout>

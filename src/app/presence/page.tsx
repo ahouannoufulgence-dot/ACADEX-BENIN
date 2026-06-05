@@ -12,16 +12,11 @@ import {
   History, 
   Loader2,
   Smartphone,
-  ShieldCheck
+  ShieldCheck,
+  CalendarDays
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-
-const mockPresence = [
-  { id: "1", name: "M. Dossou Marc", subject: "Maths", expected: "08:00", actual: "07:54", status: "Présent", lateness: 0 },
-  { id: "2", name: "Mme. Amoussou Julie", subject: "Français", expected: "08:00", actual: "08:14", status: "Retard", lateness: 14 },
-  { id: "3", name: "M. Tidjani Amadou", subject: "Physique", expected: "10:00", actual: "--:--", status: "Absent", lateness: 0 },
-]
 
 export default function PresencePage() {
   const [userRole, setUserRole] = useState("")
@@ -58,10 +53,10 @@ export default function PresencePage() {
           <div className="space-y-8">
             <div className="grid gap-6 md:grid-cols-4">
               {[
-                { label: "Présents", value: "24", icon: UserCheck, color: "text-primary" },
-                { label: "En Retard", value: "3", icon: Clock, color: "text-amber-500" },
-                { label: "Absents", value: "2", icon: UserX, color: "text-destructive" },
-                { label: "Taux Ponctualité", value: "92%", icon: ShieldCheck, color: "text-primary" },
+                { label: "Présents", value: "0", icon: UserCheck, color: "text-primary" },
+                { label: "En Retard", value: "0", icon: Clock, color: "text-amber-500" },
+                { label: "Absents", value: "0", icon: UserX, color: "text-destructive" },
+                { label: "Taux Ponctualité", value: "---", icon: ShieldCheck, color: "text-primary" },
               ].map((stat, i) => (
                 <Card key={i} className="border-none shadow-sm rounded-3xl bg-white p-6">
                   <div className={`p-3 bg-muted rounded-2xl w-fit mb-4 ${stat.color}`}><stat.icon className="size-6" /></div>
@@ -72,26 +67,13 @@ export default function PresencePage() {
             </div>
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
-              <CardHeader className="p-8 border-b">
-                <CardTitle className="text-2xl font-black">Émargement du Jour</CardTitle>
-                <CardDescription>Flux de présence temps réel</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-muted/30">
-                  {mockPresence.map((p) => (
-                    <div key={p.id} className="p-7 flex items-center justify-between group">
-                      <div className="flex items-center gap-6">
-                        <div className={`size-14 rounded-2xl flex items-center justify-center font-black text-xl ${p.status === 'Présent' ? 'bg-primary/10 text-primary' : p.status === 'Retard' ? 'bg-amber-50 text-amber-600' : 'bg-destructive/10 text-destructive'}`}>{p.name[0]}</div>
-                        <div>
-                          <h4 className="text-lg font-black text-foreground">{p.name}</h4>
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase">{p.subject} • Prévu : {p.expected}</span>
-                        </div>
-                      </div>
-                      <Badge className={`rounded-full px-4 font-black ${p.status === 'Présent' ? 'bg-primary' : p.status === 'Retard' ? 'bg-amber-500' : 'bg-destructive'}`}>{p.status} {p.lateness > 0 && `(${p.lateness} min)`}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
+              <div className="flex flex-col items-center justify-center p-20 text-center space-y-4">
+                 <div className="size-20 bg-muted rounded-full flex items-center justify-center">
+                   <CalendarDays className="size-10 text-muted-foreground" />
+                 </div>
+                 <h3 className="text-2xl font-black">Aucun émargement aujourd'hui</h3>
+                 <p className="text-muted-foreground font-medium max-w-sm">Le flux de présence s'actualisera en temps réel dès que les enseignants pointeront.</p>
+              </div>
             </Card>
           </div>
         ) : (
