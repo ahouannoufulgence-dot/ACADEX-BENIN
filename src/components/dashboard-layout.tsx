@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -24,7 +25,8 @@ import {
   TrendingUp,
   FileText,
   ShieldCheck,
-  Shapes
+  Shapes,
+  Calculator
 } from "lucide-react"
 import {
   Sidebar,
@@ -65,7 +67,7 @@ const navigationConfig = {
     { name: "Élèves", href: "/eleves", icon: Users },
     { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
     { name: "Classes", href: "/classes", icon: Shapes },
-    { name: "Matières", href: "/matieres", icon: BookOpen },
+    { name: "Matières & Coefs", href: "/matieres", icon: Calculator },
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
     { name: "Présence Enseignants", href: "/presence", icon: UserCheck },
     { name: "Absences Élèves", href: "/absences", icon: FileText },
