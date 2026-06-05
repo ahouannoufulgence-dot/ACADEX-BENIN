@@ -19,6 +19,21 @@
       },
       "required": ["matricule", "classId", "academicYear"]
     },
+    "TeacherAvailability": {
+      "title": "Disponibilité Enseignant",
+      "description": "Planning et charge horaire d'un enseignant",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "subject": { "type": "string" },
+        "weeklyVolume": { "type": "number" },
+        "slots": { "type": "object" },
+        "options": { "type": "object" },
+        "status": { "type": "string", "enum": ["En attente", "Approuvé", "Modification demandée"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Grade": {
       "title": "Note",
       "description": "Évaluation académique par matière",
@@ -95,6 +110,7 @@
   },
   "firestore": {
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
+    "/teacher_availabilities/{teacherId}": { "schema": "TeacherAvailability", "description": "Disponibilités" },
     "/students/{studentId}/grades/{gradeId}": { "schema": "Grade", "description": "Notes de l'élève" },
     "/audit_logs/{logId}": { "schema": "AuditLog", "description": "Journal de sécurité" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },

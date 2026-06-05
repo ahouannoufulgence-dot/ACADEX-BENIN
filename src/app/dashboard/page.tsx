@@ -1,3 +1,4 @@
+
 'use client';
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -16,7 +17,8 @@ import {
   Trophy, 
   BookOpen,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -54,7 +56,7 @@ export default function DashboardPage() {
       return [
         { title: "Mes Élèves", value: "156", change: `${userClasses.length} Cls`, trend: "up", icon: Users },
         { title: "Moyenne", value: "13.8", change: "+0.5", trend: "up", icon: TrendingUp },
-        { title: "Absences", value: "4", change: "Jour", trend: "down", icon: Clock },
+        { title: "Heures / Sem", value: "18h", change: "Validé", trend: "up", icon: Clock },
         { title: "Examens", value: "2", change: "Prévus", trend: "up", icon: Calendar },
       ]
     } else {
@@ -75,7 +77,6 @@ export default function DashboardPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-8 animate-in">
-        {/* Mobile Header / Quick Actions */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2 text-primary font-black uppercase tracking-widest text-[10px]">
             <Sparkles className="size-3 fill-primary" />
@@ -83,7 +84,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground leading-tight">
-              Bienvenue, <span className="text-primary italic">{userName.split(' ')[0]}</span>
+              Bienvenue Monsieur <span className="text-primary italic">{userName.split(' ')[0]}</span>
             </h1>
             <div className="flex items-center gap-2">
               <Button variant="outline" className="flex-1 md:flex-none border-2 rounded-2xl h-12 font-bold bg-white">
@@ -91,16 +92,45 @@ export default function DashboardPage() {
                 Rapport
               </Button>
               {isDirector && (
-                <Button className="flex-1 md:flex-none bg-primary shadow-lg shadow-primary/20 rounded-2xl h-12 px-6 font-bold">
-                  <Zap className="mr-2 size-4 fill-white" />
-                  Audit
+                <Button asChild className="flex-1 md:flex-none bg-primary shadow-lg shadow-primary/20 rounded-2xl h-12 px-6 font-bold">
+                  <Link href="/disponibilites">
+                    <Zap className="mr-2 size-4 fill-white" />
+                    Planning IA
+                  </Link>
                 </Button>
               )}
             </div>
           </div>
         </div>
 
-        {/* Responsive Grid for KPIs */}
+        {/* Alerts for Director */}
+        {isDirector && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border-none shadow-sm bg-amber-50 rounded-3xl p-6 border-l-8 border-amber-500">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-amber-500 rounded-2xl text-white">
+                  <AlertCircle className="size-6" />
+                </div>
+                <div>
+                  <h4 className="font-black text-amber-900">Disponibilités manquantes</h4>
+                  <p className="text-xs text-amber-700 font-bold">3 enseignants n'ont pas encore rempli leur planning.</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="border-none shadow-sm bg-destructive/5 rounded-3xl p-6 border-l-8 border-destructive">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-destructive rounded-2xl text-white">
+                  <ShieldAlert className="size-6" />
+                </div>
+                <div>
+                  <h4 className="font-black text-destructive">Conflit de planning</h4>
+                  <p className="text-xs text-destructive/70 font-bold">Un chevauchement détecté en Salle 12 (Maths vs Français).</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {stats.map((stat) => (
             <Card key={stat.title} className="premium-card p-5 md:p-7 flex flex-col justify-between">
@@ -123,7 +153,6 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Contextual Modules */}
         <div className="grid gap-6 md:gap-8 lg:grid-cols-12">
           {isDirector && (
             <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -131,7 +160,9 @@ export default function DashboardPage() {
                 <ShieldAlert className="size-8 text-primary mb-4" />
                 <h3 className="text-xl font-black mb-2">Sécurité Notes</h3>
                 <p className="text-xs text-white/60 mb-6 font-medium">Le 1er Trimestre est ouvert. Surveillez les modifications en temps réel.</p>
-                <Button variant="secondary" className="w-full rounded-xl font-black text-xs h-10">Consulter l'Audit</Button>
+                <Button variant="secondary" asChild className="w-full rounded-xl font-black text-xs h-10">
+                  <Link href="/settings">Consulter l'Audit</Link>
+                </Button>
               </Card>
               <Card className="md:col-span-2 premium-card p-6 md:p-8 flex flex-col justify-center items-center text-center space-y-4">
                 <h3 className="text-2xl font-black">Performance Établissement</h3>

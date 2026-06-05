@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -20,7 +21,8 @@ import {
   BookOpen,
   UserCircle2,
   Menu,
-  ChevronRight
+  ChevronRight,
+  Clock
 } from "lucide-react"
 import {
   Sidebar,
@@ -57,6 +59,7 @@ import { cn } from "@/lib/utils"
 const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Disponibilités", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
   { name: "Statistiques", href: "/statistiques", icon: BarChart3, roles: ["Directeur"] },
   { name: "Classement", href: "/classement", icon: Trophy, roles: ["Directeur", "Enseignant", "Professeur"] },
@@ -93,7 +96,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (currentNav) {
       const isAuthorized = currentNav.roles.some(role => 
         role.toLowerCase() === savedRole.toLowerCase() || 
-        savedRole.toLowerCase() === "directeur"
+        savedRole.toLowerCase() === "directeur" ||
+        (savedRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant")
       )
       if (!isAuthorized && savedRole.toLowerCase() !== "directeur") {
         router.push("/dashboard")
@@ -105,11 +109,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!userRole) return []
     return navigation.filter(item => {
       if (userRole.toLowerCase() === "directeur") return true
-      return item.roles.some(role => role.toLowerCase() === userRole.toLowerCase())
+      return item.roles.some(role => 
+        role.toLowerCase() === userRole.toLowerCase() ||
+        (userRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant")
+      )
     })
   }, [userRole])
 
-  // Bottom Nav visible only on mobile
   const bottomNavItems = useMemo(() => {
     if (!userRole) return []
     const role = userRole.toLowerCase()
@@ -136,7 +142,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
-        {/* Sidebar - Desktop Only */}
         <div className="hidden md:flex">
           <Sidebar className="border-none shadow-2xl flex-shrink-0">
             <SidebarHeader className="h-24 flex items-center px-8">
@@ -191,19 +196,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </Sidebar>
         </div>
 
-        {/* Main Content Area */}
         <SidebarInset className="flex flex-col flex-1 min-w-0 pb-20 md:pb-0">
-          {/* Header */}
           <header className="sticky top-0 z-30 flex h-20 md:h-24 items-center justify-between bg-white/80 backdrop-blur-xl px-6 md:px-10 border-b border-border/40">
             <div className="flex items-center gap-4">
-              <div className="md:hidden flex items-center gap-3">
-                <div className="size-10 bg-primary rounded-lg flex items-center justify-center shadow-lg">
-                  <span className="text-white font-black text-xl">A</span>
-                </div>
-              </div>
               <div className="flex flex-col">
                 <h2 className="text-base md:text-lg font-black text-foreground line-clamp-1">
-                  Bonjour, <span className="text-primary italic">{userName.split(' ')[0]}</span>
+                  Bonjour Monsieur <span className="text-primary italic">{userName.split(' ')[0]}</span>
                 </h2>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="text-[8px] md:text-[10px] h-4 py-0 font-black border-primary/20 text-primary uppercase">
@@ -253,7 +251,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
 
-          {/* Bottom Nav - Mobile Only */}
           <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-border/40 safe-area-bottom">
             <div className="flex justify-around items-center h-16">
               {bottomNavItems.map((item) => {
