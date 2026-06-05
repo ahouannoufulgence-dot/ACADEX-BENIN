@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -60,6 +59,7 @@ import { cn } from "@/lib/utils"
 
 const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
+  { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant", "Professeur"] },
   { name: "Disponibilités", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant", "Professeur"] },
@@ -127,14 +127,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const role = userRole.toLowerCase()
     const base = [
       { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Brain", href: "/assistant", icon: Sparkles },
       { name: "Agenda", href: "/agenda", icon: Calendar },
     ]
     if (role === "directeur" || role === "enseignant" || role === "professeur") {
       base.splice(1, 0, { name: "Élèves", href: "/eleves", icon: Users })
-      base.push({ name: "Notes", href: "/notes", icon: PenTool })
     } else {
-      base.splice(1, 0, { name: "Mes Notes", href: "/documents", icon: FileText })
-      base.push({ name: "Paiements", href: "/paiements", icon: CreditCard })
+      base.splice(1, 0, { name: "Notes", href: "/documents", icon: FileText })
     }
     return base
   }, [userRole])
