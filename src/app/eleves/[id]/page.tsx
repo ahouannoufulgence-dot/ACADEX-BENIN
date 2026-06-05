@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,44 +14,121 @@ import {
   Loader2,
   CheckCircle2,
   FileText,
-  Zap
+  Zap,
+  Edit2,
+  Save,
+  Trash2
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { generateAcademicFeedback, type GenerateAcademicFeedbackOutput } from "@/ai/flows/generate-academic-feedback"
+import { useFirestore, useDoc } from "@/firebase"
+import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default function StudentDetailPage() {
   const { id } = useParams()
+  const router = useRouter()
+  const db = useFirestore()
+  const studentRef = doc(db, "students", id as string)
+  const { data: student, loading: loadingStudent } = useDoc(studentRef)
+  
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    fullName: "",
+    matricule: "",
+    classId: "",
+    status: ""
+  })
+
   const [analyzing, setAnalyzing] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState<GenerateAcademicFeedbackOutput | null>(null)
+  const [isDirector, setIsDirector] = useState(false)
+
+  useEffect(() => {
+    setIsDirector(localStorage.getItem('acadex_user_role') === "Directeur")
+    if (student) {
+      setEditForm({
+        fullName: student.fullName || "",
+        matricule: student.matricule || "",
+        classId: student.classId || "",
+        status: student.status || ""
+      })
+    }
+  }, [student])
+
+  const handleUpdate = async () => {
+    try {
+      await updateDoc(studentRef, editForm)
+      setIsEditing(false)
+      toast({ title: "Profil mis à jour", description: "Les modifications ont été enregistrées." })
+    } catch (e) {
+      toast({ title: "Erreur", description: "Impossible de mettre à jour le profil.", variant: "destructive" })
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteDoc(studentRef)
+      toast({ title: "Élève supprimé" })
+      router.push("/eleves")
+    } catch (e) {
+      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" })
+    }
+  }
 
   const handleAnalyzeResults = async () => {
+    if (!student) return
     setAnalyzing(true)
     try {
       const input = {
-        studentName: "Koffi Djimon",
+        studentName: student.fullName || "L'élève",
         grades: [
           { subject: "Mathématiques", grade: 18, maxGrade: 20 },
           { subject: "Français", grade: 12, maxGrade: 20 },
           { subject: "Physique", grade: 16, maxGrade: 20 },
           { subject: "SVT", grade: 15, maxGrade: 20 },
         ],
-        evaluationContext: "Bilan du premier semestre",
-        teacherComments: "Élève très sérieux en sciences, doit s'appliquer davantage en lettres."
+        evaluationContext: "Bilan académique actuel",
+        teacherComments: "Élève assidu. Continuez ainsi."
       }
       const result = await generateAcademicFeedback(input)
       setAiAnalysis(result)
-      toast({ title: "Analyse terminée", description: "L'IA a terminé l'analyse." })
+      toast({ title: "Analyse terminée" })
     } catch (e) {
-      toast({ title: "Erreur", description: "Échec de l'analyse IA.", variant: "destructive" })
+      toast({ title: "Erreur IA", variant: "destructive" })
     } finally {
       setAnalyzing(false)
     }
   }
+
+  if (loadingStudent) return (
+    <DashboardLayout>
+      <div className="h-full flex items-center justify-center p-20"><Loader2 className="animate-spin text-primary size-10" /></div>
+    </DashboardLayout>
+  )
+
+  if (!student) return (
+    <DashboardLayout>
+      <div className="p-20 text-center">Élève non trouvé.</div>
+    </DashboardLayout>
+  )
 
   return (
     <DashboardLayout>
@@ -62,16 +139,48 @@ export default function StudentDetailPage() {
             Retour à la liste
           </Link>
           <div className="flex items-center gap-3">
+            {isDirector && (
+              <>
+                <Button 
+                  variant={isEditing ? "outline" : "default"} 
+                  onClick={() => isEditing ? handleUpdate() : setIsEditing(true)}
+                  className="rounded-2xl h-12 px-8 font-black"
+                >
+                  {isEditing ? <Save className="mr-2 size-5" /> : <Edit2 className="mr-2 size-5" />}
+                  {isEditing ? "Sauvegarder" : "Modifier le Profil"}
+                </Button>
+                {isEditing && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="rounded-2xl h-12 px-6 font-black shadow-xl shadow-destructive/20">
+                        <Trash2 className="size-5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="rounded-[2.5rem]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-xl font-black">Supprimer définitivement ?</AlertDialogTitle>
+                        <AlertDialogDescription className="font-medium">
+                          Cette action effacera toutes les données scolaires de l'élève {student.fullName}.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl font-bold">Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90 rounded-xl font-black">
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
+            )}
             <Button 
               onClick={handleAnalyzeResults} 
               disabled={analyzing}
               className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-12 px-8 font-black"
             >
               {analyzing ? <Loader2 className="mr-2 size-5 animate-spin" /> : <Sparkles className="mr-2 size-5" />}
-              Analyser les résultats (IA)
-            </Button>
-            <Button variant="outline" className="h-12 rounded-2xl border-2 font-bold px-6 bg-white">
-              <Download className="mr-2 size-5" /> Export PDF
+              Analyser (IA)
             </Button>
           </div>
         </div>
@@ -82,35 +191,69 @@ export default function StudentDetailPage() {
           <CardContent className="pt-16 pb-10 px-8 md:px-16">
             <div className="absolute -top-12 left-8 md:left-16">
               <Avatar className="size-32 md:size-40 border-8 border-white shadow-2xl">
-                <AvatarImage src={`https://picsum.photos/seed/${id}/400/400`} />
-                <AvatarFallback className="bg-primary text-white text-5xl font-black">KD</AvatarFallback>
+                <AvatarImage src={`https://picsum.photos/seed/${student.id}/400/400`} />
+                <AvatarFallback className="bg-primary text-white text-5xl font-black">{(student.fullName || "??").substring(0, 2)}</AvatarFallback>
               </Avatar>
             </div>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8">
-              <div className="space-y-3">
-                <div className="flex items-center gap-4">
-                  <h1 className="text-3xl md:text-4xl font-black text-foreground">Koffi Djimon</h1>
-                  <Badge className="bg-primary px-5 py-1 rounded-full font-black text-sm">TERMINALE S1</Badge>
-                </div>
-                <p className="text-muted-foreground flex items-center gap-3 font-semibold">
-                  Matricule: AC-2024-042 • Né le 12/04/2006
-                </p>
+              <div className="space-y-3 flex-1 w-full max-w-md">
+                {isEditing ? (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <Label className="font-black text-[10px] uppercase text-muted-foreground">Nom complet</Label>
+                      <Input 
+                        value={editForm.fullName} 
+                        onChange={e => setEditForm({...editForm, fullName: e.target.value})} 
+                        className="h-12 rounded-xl font-bold"
+                        placeholder="Ex: Koffi Djimon"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="font-black text-[10px] uppercase text-muted-foreground">Classe</Label>
+                        <Input 
+                          value={editForm.classId} 
+                          onChange={e => setEditForm({...editForm, classId: e.target.value})} 
+                          className="h-11 rounded-xl font-bold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="font-black text-[10px] uppercase text-muted-foreground">Matricule</Label>
+                        <Input 
+                          value={editForm.matricule} 
+                          onChange={e => setEditForm({...editForm, matricule: e.target.value})} 
+                          className="h-11 rounded-xl font-bold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-4">
+                      <h1 className="text-3xl md:text-4xl font-black text-foreground">{student.fullName || "Compte à activer"}</h1>
+                      <Badge className="bg-primary px-5 py-1 rounded-full font-black text-sm">{student.classId}</Badge>
+                    </div>
+                    <p className="text-muted-foreground flex items-center gap-3 font-semibold">
+                      Matricule: {student.matricule} • Année: {student.academicYear}
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="flex gap-4">
                 <div className="text-center px-6 py-3 bg-muted/50 rounded-3xl border border-muted">
                   <p className="text-[10px] uppercase font-black text-muted-foreground mb-1">Moyenne</p>
-                  <p className="text-2xl font-black text-primary">16.54</p>
+                  <p className="text-2xl font-black text-primary">0.00</p>
                 </div>
                 <div className="text-center px-6 py-3 bg-muted/50 rounded-3xl border border-muted">
                   <p className="text-[10px] uppercase font-black text-muted-foreground mb-1">Rang</p>
-                  <p className="text-2xl font-black text-foreground">2<sup>ème</sup></p>
+                  <p className="text-2xl font-black text-foreground">---</p>
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="notes" className="space-y-8">
+        <Tabs defaultValue="informations" className="space-y-8">
           <TabsList className="bg-white border-2 rounded-[1.5rem] h-14 p-1 flex w-fit overflow-x-auto no-scrollbar">
             <TabsTrigger value="informations" className="rounded-2xl font-bold px-8">Informations</TabsTrigger>
             <TabsTrigger value="notes" className="rounded-2xl font-bold px-8">Notes</TabsTrigger>
@@ -124,24 +267,25 @@ export default function StudentDetailPage() {
           <TabsContent value="informations" className="space-y-6">
              <div className="grid md:grid-cols-2 gap-8">
                 <Card className="premium-card p-8 space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-3"><Info className="text-primary" /> Détails Personnels</h3>
+                  <h3 className="text-xl font-black flex items-center gap-3"><Info className="text-primary" /> Détails Officiels</h3>
                   <div className="grid grid-cols-2 gap-y-6">
-                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Sexe</p><p className="font-bold">Masculin</p></div>
+                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Statut Compte</p><Badge variant="outline" className="font-bold border-primary/20 text-primary">{student.status}</Badge></div>
+                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Code Activation</p><p className="font-mono font-black text-lg">{student.validationCode || "---"}</p></div>
                     <div><p className="text-[10px] font-black text-muted-foreground uppercase">Nationalité</p><p className="font-bold">Béninoise</p></div>
-                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Téléphone</p><p className="font-bold">+229 97 00 00 00</p></div>
-                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Adresse</p><p className="font-bold">Cotonou, Fidjrossè</p></div>
+                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Genre</p><p className="font-bold">---</p></div>
                   </div>
                 </Card>
                 <Card className="premium-card p-8 space-y-6">
-                  <h3 className="text-xl font-black flex items-center gap-3"><ShieldCheck className="text-primary" /> Responsables</h3>
+                  <h3 className="text-xl font-black flex items-center gap-3"><ShieldCheck className="text-primary" /> Sécurité des Données</h3>
                   <div className="space-y-4">
-                    <div className="p-4 bg-muted/30 rounded-2xl">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase">Père</p>
-                      <p className="font-bold">M. Mensah Paul</p>
-                    </div>
-                    <div className="p-4 bg-muted/30 rounded-2xl">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase">Mère</p>
-                      <p className="font-bold">Mme. Mensah Julie</p>
+                    <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                      L'identifiant matricule et le code d'activation permettent à l'élève de configurer son espace personnel sécurisé.
+                    </p>
+                    <div className="p-6 bg-muted/30 rounded-3xl border-2 border-dashed border-muted-foreground/10 text-center">
+                       <p className="text-[10px] font-black uppercase text-muted-foreground mb-2">QR Code de profil</p>
+                       <div className="size-32 bg-white rounded-xl mx-auto flex items-center justify-center opacity-30">
+                         <Zap className="size-10 text-muted-foreground" />
+                       </div>
                     </div>
                   </div>
                 </Card>
@@ -149,69 +293,18 @@ export default function StudentDetailPage() {
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
-            <Card className="premium-card overflow-hidden">
-               <div className="p-8 border-b bg-muted/5">
-                 <h3 className="text-xl font-black">Relevé de Notes (3 Int. / 2 Dev.)</h3>
-               </div>
-               <div className="p-0 overflow-x-auto">
-                  <table className="w-full min-w-[700px]">
-                    <thead className="bg-muted/30">
-                      <tr className="text-[10px] font-black uppercase text-muted-foreground border-b text-center">
-                        <th className="px-8 py-4 text-left">Matière</th>
-                        <th className="px-2 py-4">Int 1</th>
-                        <th className="px-2 py-4">Int 2</th>
-                        <th className="px-2 py-4">Int 3</th>
-                        <th className="px-2 py-4">Dev 1</th>
-                        <th className="px-2 py-4">Dev 2</th>
-                        <th className="px-8 py-4 text-right">Moyenne</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-muted/30 font-bold">
-                      {[
-                        { m: "Mathématiques", i1: 18, i2: 17, i3: 19, d1: 18, d2: 18, avg: 18.25 },
-                        { m: "Français", i1: 12, i2: 11, i3: 13, d1: 12, d2: 12.5, avg: 12.16 },
-                        { m: "Physique", i1: 15, i2: 16, i3: 17, d1: 15.5, d2: 16, avg: 15.83 },
-                        { m: "SVT", i1: 14, i2: 15, i3: 16, d1: 14, d2: 15, avg: 14.66 },
-                      ].map((r, i) => (
-                        <tr key={i} className="text-center">
-                          <td className="px-8 py-4 text-left">{r.m}</td>
-                          <td className="px-2 py-4">{r.i1}</td>
-                          <td className="px-2 py-4">{r.i2}</td>
-                          <td className="px-2 py-4">{r.i3}</td>
-                          <td className="px-2 py-4">{r.d1}</td>
-                          <td className="px-2 py-4">{r.d2}</td>
-                          <td className="px-8 py-4 text-right text-primary">{r.avg.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-               </div>
+            <Card className="premium-card p-20 text-center border-4 border-dashed bg-muted/10">
+              <FileText className="size-16 text-muted-foreground mx-auto mb-6" />
+              <h3 className="text-2xl font-black">Aucune note enregistrée</h3>
+              <p className="text-muted-foreground font-medium max-w-sm mx-auto">Les relevés de notes s'afficheront ici après la saisie par les professeurs.</p>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="absences" className="space-y-6">
-            <div className="grid md:grid-cols-3 gap-6">
-               <Card className="premium-card p-8 text-center"><p className="text-[10px] font-black text-muted-foreground uppercase mb-2">Total Heures</p><p className="text-4xl font-black">4h</p></Card>
-               <Card className="premium-card p-8 text-center"><p className="text-[10px] font-black text-muted-foreground uppercase mb-2">Justifiées</p><p className="text-4xl font-black text-primary">4h</p></Card>
-               <Card className="premium-card p-8 text-center border-l-8 border-destructive"><p className="text-[10px] font-black text-muted-foreground uppercase mb-2">Non Justifiées</p><p className="text-4xl font-black text-destructive">0h</p></Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="finance" className="space-y-6">
-             <Card className="premium-card p-8">
-               <h3 className="text-xl font-black mb-6">Suivi des Tranches</h3>
-               <div className="space-y-6">
-                  <div className="flex justify-between items-center"><div><p className="font-bold">Inscription</p><p className="text-xs text-muted-foreground italic">Payé le 12/09/2024</p></div><Badge className="bg-primary">PAYÉ</Badge></div>
-                  <div className="flex justify-between items-center"><div><p className="font-bold">Tranche 1</p><p className="text-xs text-muted-foreground italic">Payé le 15/11/2024</p></div><Badge className="bg-primary">PAYÉ</Badge></div>
-               </div>
-             </Card>
           </TabsContent>
 
           <TabsContent value="analyse" className="space-y-8">
             {!aiAnalysis ? (
               <Card className="premium-card p-12 text-center border-4 border-dashed bg-muted/20">
                 <div className="size-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm"><Sparkles className="size-10 text-muted-foreground" /></div>
-                <h3 className="text-2xl font-black mb-4">Besoin d'un éclairage pédagogique ?</h3>
+                <h3 className="text-2xl font-black mb-4">Prêt pour une analyse ?</h3>
                 <Button onClick={handleAnalyzeResults} disabled={analyzing} className="bg-primary hover:bg-primary/90 rounded-2xl h-14 px-12 font-black shadow-xl shadow-primary/20">
                   {analyzing ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Zap className="mr-2 size-6" />}
                   Lancer l'Analyse Maintenant
