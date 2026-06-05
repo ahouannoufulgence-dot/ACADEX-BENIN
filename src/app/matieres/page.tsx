@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -14,7 +13,8 @@ import {
   Filter,
   Save,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
