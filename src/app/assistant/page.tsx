@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -17,6 +18,8 @@ import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { doc, getDoc } from "firebase/firestore"
+import { useFirestore } from "@/firebase"
 
 interface Message {
   role: 'user' | 'assistant';
@@ -26,6 +29,7 @@ interface Message {
 }
 
 export default function AssistantPage() {
+  const db = useFirestore()
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -36,7 +40,23 @@ export default function AssistantPage() {
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", motto: "", year: "2024-2025" })
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const fetchSchool = async () => {
+      const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        setSchoolInfo({
+          name: data.schoolName || "ACADEX",
+          motto: data.motto || "",
+          year: data.academicYear || "2024-2025"
+        })
+      }
+    }
+    fetchSchool()
+  }, [db])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -61,7 +81,12 @@ export default function AssistantPage() {
         question: text,
         userRole,
         userId,
-        contextData: { system: "ACADEX V1", year: "2024-2025" }
+        contextData: { 
+          system: "ACADEX V1", 
+          year: schoolInfo.year,
+          schoolName: schoolInfo.name,
+          motto: schoolInfo.motto
+        }
       })
 
       const aiMessage: Message = {
@@ -88,7 +113,7 @@ export default function AssistantPage() {
               <Sparkles className="size-6 text-white fill-white/20" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-foreground tracking-tight">Cerveau ACADEX</h1>
+              <h1 className="text-2xl font-black text-foreground tracking-tight">Cerveau {schoolInfo.name}</h1>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                 <ShieldCheck className="size-3 text-emerald-500" />
                 Intelligence Sécurisée
@@ -96,7 +121,7 @@ export default function AssistantPage() {
             </div>
           </div>
           <Badge variant="outline" className="hidden sm:flex rounded-full border-primary/20 text-primary font-black px-4 bg-primary/5">
-            ONLINE • V1.0
+            ONLINE • {schoolInfo.year}
           </Badge>
         </div>
 
@@ -156,7 +181,7 @@ export default function AssistantPage() {
               className="flex items-center gap-4 bg-muted/30 p-2 pl-6 rounded-[2rem] border-2 border-transparent focus-within:border-primary/20 transition-all"
             >
               <Input 
-                placeholder="Posez une question..." 
+                placeholder={`Demandez n'importe quoi sur ${schoolInfo.name}...`} 
                 className="flex-1 bg-transparent border-none shadow-none h-12 font-bold placeholder:text-muted-foreground/50 focus-visible:ring-0"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}

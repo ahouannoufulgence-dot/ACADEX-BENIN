@@ -19,6 +19,27 @@
       },
       "required": ["matricule", "classId", "academicYear"]
     },
+    "SchoolSettings": {
+      "title": "Paramètres École",
+      "description": "Identité visuelle et informations institutionnelles",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string" },
+        "motto": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "city": { "type": "string" },
+        "academicYear": { "type": "string" },
+        "logoUrl": { "type": "string" },
+        "signatureUrl": { "type": "string" },
+        "stampUrl": { "type": "string" },
+        "primaryColor": { "type": "string" },
+        "secondaryColor": { "type": "string" },
+        "accentColor": { "type": "string" },
+        "heroImageUrl": { "type": "string" }
+      }
+    },
     "TeacherAvailability": {
       "title": "Disponibilité Enseignant",
       "description": "Planning et charge horaire d'un enseignant",
@@ -128,6 +149,7 @@
     "providers": ["password", "google"]
   },
   "firestore": {
+    "/school_settings/{schoolId}": { "schema": "SchoolSettings", "description": "Paramètres de personnalisation" },
     "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
     "/teacher_availabilities/{teacherId}": { "schema": "TeacherAvailability", "description": "Disponibilités" },
     "/teacher_presence/{presenceId}": { "schema": "TeacherPresence", "description": "Émargement enseignants" },

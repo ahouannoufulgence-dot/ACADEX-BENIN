@@ -27,7 +27,8 @@ import {
   Database,
   PenTool,
   BrainCircuit,
-  UserCheck
+  UserCheck,
+  Palette
 } from "lucide-react"
 import {
   Sidebar,
@@ -59,6 +60,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { doc, onSnapshot } from "firebase/firestore"
+import { useFirestore } from "@/firebase"
 
 const navigation = [
   { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Élève"] },
@@ -73,16 +76,20 @@ const navigation = [
   { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Archives", href: "/archives", icon: Archive, roles: ["Directeur"] },
   { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Élève"] },
+  { name: "Personnalisation", href: "/personalisation", icon: Palette, roles: ["Directeur"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const db = useFirestore()
   const [userName, setUserName] = useState("Utilisateur")
   const [userRole, setUserRole] = useState("")
   const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [schoolName, setSchoolName] = useState("ACADEX")
+  const [schoolLogo, setSchoolLogo] = useState("")
 
   useEffect(() => {
     try {
@@ -104,11 +111,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           router.push("/dashboard")
         }
       }
+
+      // Listen for school settings
+      const unsubscribe = onSnapshot(doc(db, "school_settings", "main_config"), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data()
+          setSchoolName(data.schoolName || "ACADEX")
+          setSchoolLogo(data.logoUrl || "")
+        }
+      })
+      return () => unsubscribe()
     } catch (e) {
       console.error("Erreur initialisation layout:", e)
       setMounted(true)
     }
-  }, [pathname, router])
+  }, [pathname, router, db])
 
   const filteredNavigation = useMemo(() => {
     if (!userRole) return []
@@ -149,10 +166,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0" collapsible="none">
           <SidebarHeader className="h-24 flex items-center px-8 bg-primary">
             <Link href="/" className="flex items-center gap-3">
-              <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-primary font-black text-2xl">A</span>
+              <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                {schoolLogo ? (
+                  <img src={schoolLogo} alt="Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <span className="text-primary font-black text-2xl">{schoolName[0]}</span>
+                )}
               </div>
-              <span className="text-2xl font-black text-white tracking-tight">ACADEX</span>
+              <span className="text-xl font-black text-white tracking-tight uppercase line-clamp-1">{schoolName}</span>
             </Link>
           </SidebarHeader>
           <ScrollArea className="flex-1 bg-primary">
@@ -212,7 +233,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <Badge variant="outline" className="text-[8px] md:text-[10px] h-4 py-0 font-black border-primary/20 text-primary uppercase">
                     {userId}
                   </Badge>
-                  <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase">{userRole}</span>
+                  <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase">{userRole} — {schoolName}</span>
                 </div>
               </div>
             </div>
@@ -240,8 +261,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
+                    <Link href="/personalisation" className="flex items-center gap-2"><Palette className="size-4" /> Personnalisation</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-2xl h-11 px-4 font-bold">
                     <Link href="/settings" className="flex items-center gap-2"><UserSquare2 className="size-4" /> Paramètres</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:bg-destructive/10 rounded-2xl h-11 px-4 font-black">
                     <LogOut className="size-4 mr-2" /> Déconnexion
                   </DropdownMenuItem>
