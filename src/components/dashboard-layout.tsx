@@ -23,7 +23,9 @@ import {
   Menu,
   ChevronRight,
   Clock,
-  Zap
+  Zap,
+  Archive,
+  Database
 } from "lucide-react"
 import {
   Sidebar,
@@ -69,6 +71,7 @@ const navigation = [
   { name: "Messagerie", href: "/messagerie", icon: MessageSquare, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Examens", href: "/examens", icon: History, roles: ["Directeur", "Enseignant", "Professeur"] },
+  { name: "Archives", href: "/archives", icon: Archive, roles: ["Directeur"] },
   { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
