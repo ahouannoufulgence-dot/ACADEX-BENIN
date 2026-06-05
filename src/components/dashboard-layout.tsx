@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -61,17 +60,15 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 const navigation = [
-  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
-  { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
-  { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant", "Professeur"] },
-  { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant", "Professeur"] },
-  { name: "Présence", href: "/presence", icon: UserCheck, roles: ["Directeur", "Enseignant", "Professeur"] },
-  { name: "Disponibilités", href: "/disponibilites", icon: Clock, roles: ["Directeur", "Enseignant", "Professeur"] },
-  { name: "Enseignants", href: "/enseignants", icon: UserSquare2, roles: ["Directeur"] },
+  { name: "Cockpit", href: "/dashboard", icon: LayoutDashboard, roles: ["Directeur", "Enseignant", "Élève"] },
+  { name: "Assistant Brain", href: "/assistant", icon: Sparkles, roles: ["Directeur", "Enseignant", "Élève"] },
+  { name: "Gestion Élèves", href: "/eleves", icon: Users, roles: ["Directeur", "Enseignant"] },
+  { name: "Saisie des Notes", href: "/notes", icon: PenTool, roles: ["Directeur", "Enseignant"] },
+  { name: "Présence", href: "/presence", icon: UserCheck, roles: ["Directeur", "Enseignant"] },
   { name: "Paiements", href: "/paiements", icon: CreditCard, roles: ["Directeur", "Élève"] },
-  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
+  { name: "Agenda", href: "/agenda", icon: Calendar, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Archives", href: "/archives", icon: Archive, roles: ["Directeur"] },
-  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Professeur", "Élève"] },
+  { name: "Documents", href: "/documents", icon: FileText, roles: ["Directeur", "Enseignant", "Élève"] },
   { name: "Paramètres", href: "/settings", icon: Settings, roles: ["Directeur"] },
 ]
 
@@ -96,14 +93,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
       if (currentNav) {
-        const roleLower = savedRole.toLowerCase()
         const isAuthorized = currentNav.roles.some(role => 
-          role.toLowerCase() === roleLower || 
-          roleLower === "directeur" ||
-          (roleLower === "professeur" && role.toLowerCase() === "enseignant") ||
-          (roleLower === "enseignant" && role.toLowerCase() === "professeur")
+          role.toLowerCase() === savedRole.toLowerCase() || savedRole.toLowerCase() === "directeur"
         )
-        if (!isAuthorized && roleLower !== "directeur") {
+        if (!isAuthorized && savedRole.toLowerCase() !== "directeur") {
           router.push("/dashboard")
         }
       }
@@ -117,12 +110,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     if (!userRole) return []
     return navigation.filter(item => {
       const role = userRole.toLowerCase()
-      if (role === "directeur" || role === "super administrateur") return true
-      return item.roles.some(r => 
-        r.toLowerCase() === role ||
-        (role === "professeur" && r.toLowerCase() === "enseignant") ||
-        (role === "enseignant" && r.toLowerCase() === "professeur")
-      )
+      if (role === "directeur") return true
+      return item.roles.some(r => r.toLowerCase() === role)
     })
   }, [userRole])
 
@@ -134,7 +123,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       { name: "Brain", href: "/assistant", icon: Sparkles },
       { name: "Agenda", href: "/agenda", icon: Calendar },
     ]
-    if (role === "directeur" || role === "enseignant" || role === "professeur") {
+    if (role === "directeur" || role === "enseignant") {
       base.splice(1, 0, { name: "Présence", href: "/presence", icon: UserCheck })
     } else {
       base.splice(1, 0, { name: "Notes", href: "/documents", icon: FileText })
@@ -152,6 +141,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
+        {/* DESKTOP SIDEBAR */}
         <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0" collapsible="none">
           <SidebarHeader className="h-24 flex items-center px-8 bg-primary">
             <Link href="/" className="flex items-center gap-3">
@@ -165,7 +155,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-4 py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
-                  Menu {userRole}
+                  Menu Principal
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-2">
@@ -262,6 +252,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
 
+          {/* MOBILE BOTTOM NAV */}
           <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-border/40 safe-area-bottom">
             <div className="flex justify-around items-center h-16">
               {bottomNavItems.map((item) => {
