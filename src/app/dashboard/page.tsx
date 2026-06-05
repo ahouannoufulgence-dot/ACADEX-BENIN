@@ -18,7 +18,9 @@ import {
   BookOpen,
   Sparkles,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  BrainCircuit,
+  MessageSquare
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -95,21 +97,32 @@ export default function DashboardPage() {
               Bienvenue Monsieur <span className="text-primary italic">{userName.split(' ')[0]}</span>
             </h1>
             <div className="flex items-center gap-2">
-              <Button variant="outline" className="flex-1 md:flex-none border-2 rounded-2xl h-12 font-bold bg-white">
-                <FileDown className="mr-2 size-5" />
-                Rapport
+              <Button asChild className="flex-1 md:flex-none bg-primary shadow-lg shadow-primary/20 rounded-2xl h-12 px-6 font-bold">
+                <Link href="/assistant">
+                  <Sparkles className="mr-2 size-4 fill-white" />
+                  Cerveau ACADEX
+                </Link>
               </Button>
-              {isDirector && (
-                <Button asChild className="flex-1 md:flex-none bg-primary shadow-lg shadow-primary/20 rounded-2xl h-12 px-6 font-bold">
-                  <Link href="/disponibilites">
-                    <Zap className="mr-2 size-4 fill-white" />
-                    Planning IA
-                  </Link>
-                </Button>
-              )}
             </div>
           </div>
         </div>
+
+        {/* AI Highlight Card */}
+        <Card className="border-none shadow-xl bg-foreground text-white p-8 rounded-[2.5rem] relative overflow-hidden group">
+          <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
+            <div className="size-20 bg-primary/20 rounded-3xl flex items-center justify-center backdrop-blur-md border border-white/10">
+              <BrainCircuit className="size-10 text-primary" />
+            </div>
+            <div className="flex-1 space-y-2 text-center md:text-left">
+              <h3 className="text-2xl font-black italic">"Posez-moi une question sur votre école."</h3>
+              <p className="text-white/60 font-medium">Je connais vos notes, vos paiements et vos statistiques en temps réel.</p>
+            </div>
+            <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">
+              <Link href="/assistant">Lancer l'Assistant</Link>
+            </Button>
+          </div>
+          <Sparkles className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+        </Card>
 
         {/* Alerts for Director */}
         {isDirector && (

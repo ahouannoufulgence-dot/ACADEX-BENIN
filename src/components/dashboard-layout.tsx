@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -24,7 +25,8 @@ import {
   Zap,
   Archive,
   Database,
-  PenTool
+  PenTool,
+  BrainCircuit
 } from "lucide-react"
 import {
   Sidebar,
@@ -179,6 +181,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           <Link href={item.href}>
                             <item.icon className={cn("size-5 transition-transform group-hover:scale-110", pathname === item.href ? "text-white" : "text-white/50")} />
                             <span className="font-bold text-sm tracking-wide">{item.name}</span>
+                            {item.name === "Assistant Brain" && (
+                              <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black">NEW</Badge>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
