@@ -34,18 +34,26 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const role = localStorage.getItem('acadex_user_role') || "Directeur"
-    setUserName(localStorage.getItem('acadex_user_name') || "Utilisateur")
-    setUserRole(role)
-    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
-    setMounted(true)
+    try {
+      const role = localStorage.getItem('acadex_user_role') || "Directeur"
+      const name = localStorage.getItem('acadex_user_name') || "Utilisateur"
+      const classesStr = localStorage.getItem('acadex_user_classes') || "[]"
+      
+      setUserName(name)
+      setUserRole(role)
+      setUserClasses(JSON.parse(classesStr))
+      setMounted(true)
+    } catch (e) {
+      console.error("Erreur chargement dashboard:", e)
+      setMounted(true)
+    }
   }, [])
 
   const stats = useMemo(() => {
     if (!userRole) return []
     const role = userRole.toLowerCase()
     
-    if (role === "directeur") {
+    if (role === "directeur" || role === "super administrateur") {
       return [
         { title: "Effectif", value: "1,248", change: "+12", trend: "up", icon: Users },
         { title: "Pédagogie", value: "94.2%", change: "+2%", trend: "up", icon: TrendingUp },
@@ -61,8 +69,8 @@ export default function DashboardPage() {
       ]
     } else {
       return [
-        { title: "Moyenne", value: "15.42", change: "+0.8", trend: "up", icon: GraduationCap },
-        { title: "Rang", value: "4ème", change: "Classe", trend: "up", icon: Trophy },
+        { title: "Ma Moyenne", value: "15.42", change: "+0.8", trend: "up", icon: GraduationCap },
+        { title: "Mon Rang", value: "4ème", change: "Classe", trend: "up", icon: Trophy },
         { title: "Scolarité", value: "À jour", change: "Payé", trend: "up", icon: CreditCard },
         { title: "Absences", value: "2", change: "Total", trend: "down", icon: Clock },
       ]
@@ -71,7 +79,7 @@ export default function DashboardPage() {
 
   if (!mounted) return null
 
-  const isDirector = userRole.toLowerCase() === "directeur"
+  const isDirector = userRole.toLowerCase() === "directeur" || userRole.toLowerCase() === "super administrateur"
   const isTeacher = userRole.toLowerCase() === "enseignant" || userRole.toLowerCase() === "professeur"
 
   return (
@@ -181,7 +189,7 @@ export default function DashboardPage() {
                 <Badge variant="outline" className="rounded-full font-black border-primary text-primary">{userClasses.length} CLASSES</Badge>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {userClasses.map((cls, i) => (
+                {userClasses.length > 0 ? userClasses.map((cls, i) => (
                   <Card key={i} className="premium-card p-6 group">
                     <div className="flex justify-between items-start mb-4">
                       <div className="size-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
@@ -195,7 +203,11 @@ export default function DashboardPage() {
                       <Link href={`/eleves?class=${cls}`}>Gérer la classe <ChevronRight className="size-3 ml-1" /></Link>
                     </Button>
                   </Card>
-                ))}
+                )) : (
+                  <Card className="col-span-full p-8 text-center bg-muted/20 rounded-3xl border-2 border-dashed">
+                    <p className="font-bold text-muted-foreground">Aucune classe ne vous est encore attribuée.</p>
+                  </Card>
+                )}
               </div>
             </div>
           )}

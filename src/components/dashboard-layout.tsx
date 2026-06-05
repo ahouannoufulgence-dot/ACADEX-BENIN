@@ -22,7 +22,8 @@ import {
   UserCircle2,
   Menu,
   ChevronRight,
-  Clock
+  Clock,
+  Zap
 } from "lucide-react"
 import {
   Sidebar,
@@ -37,7 +38,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -82,36 +82,42 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    const savedName = localStorage.getItem('acadex_user_name')
-    const savedRole = localStorage.getItem('acadex_user_role') || "Élève"
-    const savedId = localStorage.getItem('acadex_user_id') || ""
-    
-    setUserName(savedName || "Utilisateur")
-    setUserRole(savedRole)
-    setUserId(savedId)
-    setMounted(true)
+    try {
+      const savedName = localStorage.getItem('acadex_user_name')
+      const savedRole = localStorage.getItem('acadex_user_role') || "Directeur"
+      const savedId = localStorage.getItem('acadex_user_id') || "INV-000"
+      
+      setUserName(savedName || "Utilisateur")
+      setUserRole(savedRole)
+      setUserId(savedId)
+      setMounted(true)
 
-    // Role-based route protection
-    const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
-    if (currentNav) {
-      const isAuthorized = currentNav.roles.some(role => 
-        role.toLowerCase() === savedRole.toLowerCase() || 
-        savedRole.toLowerCase() === "directeur" ||
-        (savedRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant")
-      )
-      if (!isAuthorized && savedRole.toLowerCase() !== "directeur") {
-        router.push("/dashboard")
+      // Protection des routes
+      const currentNav = navigation.find(item => pathname === item.href || pathname.startsWith(item.href + '/'))
+      if (currentNav) {
+        const isAuthorized = currentNav.roles.some(role => 
+          role.toLowerCase() === savedRole.toLowerCase() || 
+          savedRole.toLowerCase() === "directeur" ||
+          (savedRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant")
+        )
+        if (!isAuthorized && savedRole.toLowerCase() !== "directeur") {
+          router.push("/dashboard")
+        }
       }
+    } catch (e) {
+      console.error("Erreur initialisation layout:", e)
+      setMounted(true)
     }
   }, [pathname, router])
 
   const filteredNavigation = useMemo(() => {
     if (!userRole) return []
     return navigation.filter(item => {
-      if (userRole.toLowerCase() === "directeur") return true
-      return item.roles.some(role => 
-        role.toLowerCase() === userRole.toLowerCase() ||
-        (userRole.toLowerCase() === "professeur" && role.toLowerCase() === "enseignant")
+      const role = userRole.toLowerCase()
+      if (role === "directeur" || role === "super administrateur") return true
+      return item.roles.some(r => 
+        r.toLowerCase() === role ||
+        (role === "professeur" && r.toLowerCase() === "enseignant")
       )
     })
   }, [userRole])
@@ -142,59 +148,58 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
-        <div className="hidden md:flex">
-          <Sidebar className="border-none shadow-2xl flex-shrink-0">
-            <SidebarHeader className="h-24 flex items-center px-8">
-              <Link href="/" className="flex items-center gap-3">
-                <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg">
-                  <span className="text-primary font-black text-2xl">A</span>
-                </div>
-                <span className="text-2xl font-black text-white tracking-tight">ACADEX</span>
-              </Link>
-            </SidebarHeader>
-            <ScrollArea className="flex-1">
-              <SidebarContent className="px-4 py-6">
-                <SidebarGroup>
-                  <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
-                    Menu {userRole}
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu className="gap-2">
-                      {filteredNavigation.map((item) => (
-                        <SidebarMenuItem key={item.name}>
-                          <SidebarMenuButton
-                            asChild
-                            isActive={pathname === item.href}
-                            className={`group transition-all duration-300 h-12 rounded-2xl px-4 ${
-                              pathname === item.href 
-                                ? "bg-white/15 text-white shadow-lg" 
-                                : "text-white/60 hover:bg-white/10 hover:text-white"
-                            }`}
-                          >
-                            <Link href={item.href}>
-                              <item.icon className={cn("size-5 transition-transform group-hover:scale-110", pathname === item.href ? "text-white" : "text-white/50")} />
-                              <span className="font-bold text-sm tracking-wide">{item.name}</span>
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </SidebarContent>
-            </ScrollArea>
-            <SidebarFooter className="p-6">
-              <Button 
-                onClick={handleLogout}
-                variant="ghost" 
-                className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold"
-              >
-                <LogOut className="size-5" />
-                <span>Quitter</span>
-              </Button>
-            </SidebarFooter>
-          </Sidebar>
-        </div>
+        {/* Sidebar Desktop */}
+        <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0">
+          <SidebarHeader className="h-24 flex items-center px-8">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-primary font-black text-2xl">A</span>
+              </div>
+              <span className="text-2xl font-black text-white tracking-tight">ACADEX</span>
+            </Link>
+          </SidebarHeader>
+          <ScrollArea className="flex-1">
+            <SidebarContent className="px-4 py-6">
+              <SidebarGroup>
+                <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
+                  Menu {userRole}
+                </SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu className="gap-2">
+                    {filteredNavigation.map((item) => (
+                      <SidebarMenuItem key={item.name}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={pathname === item.href}
+                          className={`group transition-all duration-300 h-12 rounded-2xl px-4 ${
+                            pathname === item.href 
+                              ? "bg-white/15 text-white shadow-lg" 
+                              : "text-white/60 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          <Link href={item.href}>
+                            <item.icon className={cn("size-5 transition-transform group-hover:scale-110", pathname === item.href ? "text-white" : "text-white/50")} />
+                            <span className="font-bold text-sm tracking-wide">{item.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+          </ScrollArea>
+          <SidebarFooter className="p-6">
+            <Button 
+              onClick={handleLogout}
+              variant="ghost" 
+              className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold"
+            >
+              <LogOut className="size-5" />
+              <span>Quitter</span>
+            </Button>
+          </SidebarFooter>
+        </Sidebar>
 
         <SidebarInset className="flex flex-col flex-1 min-w-0 pb-20 md:pb-0">
           <header className="sticky top-0 z-30 flex h-20 md:h-24 items-center justify-between bg-white/80 backdrop-blur-xl px-6 md:px-10 border-b border-border/40">
@@ -251,6 +256,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </main>
 
+          {/* Bottom Nav Mobile */}
           <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-md border-t border-border/40 safe-area-bottom">
             <div className="flex justify-around items-center h-16">
               {bottomNavItems.map((item) => {
@@ -260,13 +266,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     key={item.name} 
                     href={item.href}
                     className={cn(
-                      "flex flex-col items-center justify-center gap-1 transition-all flex-1 h-full",
+                      "flex flex-col items-center justify-center gap-1 transition-all flex-1 h-full relative",
                       isActive ? "text-primary scale-110" : "text-muted-foreground"
                     )}
                   >
                     <item.icon className={cn("size-6", isActive ? "fill-primary/10" : "")} />
                     <span className="text-[10px] font-black uppercase tracking-widest">{item.name}</span>
-                    {isActive && <div className="absolute -top-1 size-1 bg-primary rounded-full" />}
+                    {isActive && <div className="absolute top-0 size-1 bg-primary rounded-full" />}
                   </Link>
                 )
               })}
