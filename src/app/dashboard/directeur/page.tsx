@@ -6,13 +6,13 @@ import { Card } from "@/components/ui/card"
 import { 
   Users, 
   CreditCard, 
-  UserCheck, 
   GraduationCap, 
   Sparkles, 
   BrainCircuit,
   ArrowUpRight,
   TrendingUp,
-  AlertCircle
+  Zap,
+  UserCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -27,26 +27,25 @@ export default function DirectorDashboard() {
 
   useEffect(() => setMounted(true), [])
   
-  // Mémorisation des références pour éviter les boucles infinies
   const studentsRef = useMemo(() => collection(db, "students"), [db])
   const teachersRef = useMemo(() => collection(db, "teachers"), [db])
-  const paymentsRef = useMemo(() => collection(db, "payments"), [db])
+  const idsRef = useMemo(() => collection(db, "registration_ids"), [db])
 
   const { data: students } = useCollection(studentsRef)
   const { data: teachers } = useCollection(teachersRef)
-  const { data: payments } = useCollection(paymentsRef)
+  const { data: ids } = useCollection(idsRef)
 
   const stats = useMemo(() => {
     if (!mounted) return []
-    const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const unusedCount = ids?.filter((id: any) => id.status === "non utilisé").length || 0
     
     return [
-      { title: "Effectif Global", value: (students?.length || 0).toString(), label: "Élèves inscrits", icon: Users, color: "text-blue-600" },
-      { title: "Corps Enseignant", value: (teachers?.length || 0).toString(), label: "Professeurs actifs", icon: GraduationCap, color: "text-emerald-600" },
-      { title: "Recouvrement", value: totalRevenue.toLocaleString(), sub: "FCFA", label: "Trésorerie réelle", icon: CreditCard, color: "text-amber-600" },
-      { title: "Performance", value: "Audit", label: "Moyenne école", icon: TrendingUp, color: "text-primary" },
+      { title: "Élèves Inscrits", value: (students?.length || 0).toString(), label: "Profils complets", icon: Users, color: "text-primary" },
+      { title: "Codes à distribuer", value: unusedCount.toString(), label: "Prêts pour inscription", icon: Zap, color: "text-amber-600" },
+      { title: "Équipe Enseignante", value: (teachers?.length || 0).toString(), label: "Professeurs actifs", icon: GraduationCap, color: "text-blue-600" },
+      { title: "Performance Globale", value: "Audit", label: "Données en temps réel", icon: TrendingUp, color: "text-emerald-600" },
     ]
-  }, [students, teachers, payments, mounted])
+  }, [students, teachers, ids, mounted])
 
   if (!mounted) return null
 
@@ -56,13 +55,20 @@ export default function DirectorDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Cockpit <span className="text-primary italic">Directeur</span></h1>
-            <p className="text-muted-foreground font-medium">Pilotage centralisé de votre établissement béninois.</p>
+            <p className="text-muted-foreground font-medium">Pilotage centralisé et automatisé d'ACADEX.</p>
           </div>
-          <Button asChild className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
-            <Link href="/assistant">
-              <Sparkles className="mr-2 size-5 fill-white" /> Demander à l'IA
-            </Link>
-          </Button>
+          <div className="flex gap-3">
+             <Button asChild variant="outline" className="border-2 rounded-2xl h-14 px-8 font-black bg-white">
+               <Link href="/eleves/identifiants">
+                 <Zap className="mr-2 size-5" /> Générer Identifiants
+               </Link>
+             </Button>
+             <Button asChild className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
+               <Link href="/assistant">
+                 <Sparkles className="mr-2 size-5 fill-white" /> Demander à l'IA
+               </Link>
+             </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -78,7 +84,6 @@ export default function DirectorDashboard() {
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.title}</p>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-3xl font-black text-foreground">{stat.value}</span>
-                  {stat.sub && <span className="text-xs font-black text-muted-foreground ml-1">{stat.sub}</span>}
                 </div>
                 <p className="text-[10px] font-bold text-muted-foreground/60 mt-2">{stat.label}</p>
               </div>
@@ -92,16 +97,13 @@ export default function DirectorDashboard() {
               <BrainCircuit className="size-14 text-primary" />
             </div>
             <div className="flex-1 space-y-4">
-              <h3 className="text-3xl font-black italic">"Données réelles."</h3>
+              <h3 className="text-3xl font-black italic">"Inscriptions Simplifiées."</h3>
               <p className="text-xl text-white/60 font-medium leading-relaxed max-w-2xl">
-                Toutes les statistiques affichées proviennent de vos saisies réelles. Gérez vos élèves et vos professeurs pour alimenter le dashboard.
+                Vous n'avez plus besoin de saisir les fiches élèves. Générez simplement les identifiants et laissez les élèves s'en charger.
               </p>
               <div className="pt-4 flex gap-4">
                  <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">
-                   <Link href="/eleves">Gérer les Élèves</Link>
-                 </Button>
-                 <Button asChild variant="outline" className="rounded-2xl h-14 px-10 font-black text-lg bg-transparent border-white/20 hover:bg-white/5">
-                   <Link href="/personalisation">Branding École</Link>
+                   <Link href="/eleves">Voir les Élèves Inscrits</Link>
                  </Button>
               </div>
             </div>

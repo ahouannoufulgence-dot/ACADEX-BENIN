@@ -22,7 +22,8 @@ import {
   TrendingUp,
   FileText,
   Shapes,
-  Calculator
+  Calculator,
+  Zap
 } from "lucide-react"
 import {
   Sidebar,
@@ -40,14 +41,6 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -60,40 +53,26 @@ import { useFirestore } from "@/firebase"
 const navigationConfig = {
   Directeur: [
     { name: "Dashboard", href: "/dashboard/directeur", icon: LayoutDashboard },
-    { name: "Élèves", href: "/eleves", icon: Users },
-    { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
-    { name: "Classes", href: "/classes", icon: Shapes },
+    { name: "Gestion des Élèves", href: "/eleves", icon: Users },
+    { name: "Identifiants Élèves", href: "/eleves/identifiants", icon: Zap },
+    { name: "Corps Enseignant", href: "/enseignants", icon: UserSquare2 },
     { name: "Matières & Coefs", href: "/matieres", icon: Calculator },
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
-    { name: "Présence Enseignants", href: "/presence", icon: UserCheck },
-    { name: "Absences Élèves", href: "/absences", icon: FileText },
-    { name: "Paiements", href: "/paiements", icon: CreditCard },
-    { name: "Emplois du Temps", href: "/disponibilites", icon: Clock },
-    { name: "Archives", href: "/archives", icon: Archive },
-    { name: "Personnalisation", href: "/personalisation", icon: Palette },
+    { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Assistant Brain", href: "/assistant", icon: Sparkles, isIA: true },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
   Enseignant: [
     { name: "Tableau de Bord", href: "/dashboard/enseignant", icon: LayoutDashboard },
     { name: "Mes Classes", href: "/eleves", icon: Users },
-    { name: "Mes Matières", href: "/matieres", icon: FileText },
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
-    { name: "Absences Élèves", href: "/absences", icon: FileText },
-    { name: "Mes Heures de Cours", href: "/disponibilites", icon: Clock },
-    { name: "Ma Présence", href: "/presence", icon: UserCheck },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
-    { name: "Assistant ACADEX", href: "/assistant", icon: Sparkles, isIA: true },
   ],
   Élève: [
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
-    { name: "Mes Notes", href: "/eleves/profile", icon: GraduationCap },
     { name: "Ma Progression", href: "/statistiques", icon: TrendingUp },
-    { name: "Mes Absences", href: "/absences", icon: Clock },
-    { name: "Emploi du Temps", href: "/agenda", icon: Calendar },
-    { name: "Mes Paiements", href: "/paiements", icon: CreditCard },
+    { name: "Agenda Scolaire", href: "/agenda", icon: Calendar },
     { name: "Messages", href: "/messagerie", icon: MessageSquare },
-    { name: "Assistant Personnel", href: "/assistant", icon: Sparkles, isIA: true },
   ]
 }
 
@@ -163,7 +142,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-4 py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
-                  VOTRE ESPACE {userRole.toUpperCase()}
+                  Espace {userRole.toUpperCase()}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-2">
@@ -213,10 +192,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <div className="relative p-2 text-muted-foreground hover:text-primary transition-all bg-muted/30 rounded-xl">
-                <Bell className="size-5" />
-                <span className="absolute top-2 right-2 size-2 bg-destructive rounded-full ring-2 ring-white" />
-              </div>
               <Avatar className="size-10 border-2 border-primary/10 shadow-sm">
                 <AvatarImage src={`https://picsum.photos/seed/${userName}/200/200`} />
                 <AvatarFallback className="bg-primary text-white font-black">{userName[0]}</AvatarFallback>

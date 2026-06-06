@@ -3,17 +3,35 @@
   "entities": {
     "Student": {
       "title": "Élève",
-      "description": "Profil complet de l'élève béninois",
+      "description": "Profil complet de l'élève inscrit par lui-même",
       "type": "object",
       "properties": {
-        "fullName": { "type": "string" },
+        "matricule": { "type": "string" },
+        "lastName": { "type": "string" },
+        "firstName": { "type": "string" },
+        "gender": { "type": "string", "enum": ["Masculin", "Féminin"] },
+        "phone": { "type": "string" },
+        "cityOfBirth": { "type": "string" },
+        "dob": { "type": "string", "format": "date" },
+        "parentName": { "type": "string" },
+        "parentFirstName": { "type": "string" },
+        "classId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Actif", "Suspendu"] },
+        "academicYear": { "type": "string" },
+        "registeredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["matricule", "lastName", "firstName", "classId"]
+    },
+    "RegistrationId": {
+      "title": "Identifiant d'Inscription",
+      "description": "Clé générée par le directeur pour permettre une inscription",
+      "type": "object",
+      "properties": {
         "matricule": { "type": "string" },
         "classId": { "type": "string" },
-        "status": { "type": "string", "enum": ["Actif", "En attente d'activation", "Transféré", "Exclu"] },
-        "academicYear": { "type": "string" },
+        "status": { "type": "string", "enum": ["non utilisé", "utilisé"] },
         "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["matricule", "classId", "academicYear"]
+      }
     },
     "Teacher": {
       "title": "Enseignant",
@@ -34,11 +52,6 @@
         "studentId": { "type": "string" },
         "subjectId": { "type": "string" },
         "term": { "type": "string" },
-        "int1": { "type": "number" },
-        "int2": { "type": "number" },
-        "int3": { "type": "number" },
-        "dev1": { "type": "number" },
-        "dev2": { "type": "number" },
         "average": { "type": "number" },
         "coefficient": { "type": "number" }
       }
@@ -50,8 +63,7 @@
       "properties": {
         "studentId": { "type": "string" },
         "amountPaid": { "type": "number" },
-        "date": { "type": "string", "format": "date" },
-        "label": { "type": "string" }
+        "date": { "type": "string", "format": "date" }
       }
     },
     "SchoolSettings": {
@@ -62,18 +74,7 @@
         "schoolName": { "type": "string" },
         "motto": { "type": "string" },
         "logoUrl": { "type": "string" },
-        "primaryColor": { "type": "string" },
         "academicYear": { "type": "string" }
-      }
-    },
-    "Conversation": {
-      "title": "Conversation",
-      "description": "Structure d'une discussion",
-      "type": "object",
-      "properties": {
-        "participants": { "type": "array", "items": { "type": "string" } },
-        "lastMessage": { "type": "string" },
-        "lastMessageTime": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -82,10 +83,10 @@
   },
   "firestore": {
     "/school_settings/{schoolId}": { "schema": "SchoolSettings", "description": "Configuration école" },
-    "/students/{studentId}": { "schema": "Student", "description": "Base élèves" },
+    "/registration_ids/{regId}": { "schema": "RegistrationId", "description": "Identifiants à distribuer" },
+    "/students/{studentId}": { "schema": "Student", "description": "Profils élèves inscrits" },
     "/teachers/{teacherId}": { "schema": "Teacher", "description": "Base enseignants" },
     "/grades/{gradeId}": { "schema": "Grade", "description": "Notes centralisées" },
-    "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },
-    "/conversations/{convId}": { "schema": "Conversation", "description": "Discussions" }
+    "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" }
   }
 }
