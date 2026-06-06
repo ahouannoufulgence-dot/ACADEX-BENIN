@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -32,6 +31,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function MessagingPage() {
   const db = useFirestore()
@@ -198,7 +198,7 @@ export default function MessagingPage() {
                               className="w-full flex items-center gap-4 p-3 rounded-2xl hover:bg-muted transition-all text-left group"
                             >
                               <Avatar className="size-10 border-2 border-primary/10">
-                                <AvatarFallback className="bg-primary/5 text-primary font-black">{c.name[0]}</AvatarFallback>
+                                <AvatarFallback className="bg-primary/5 text-primary font-black">{c.name?.[0] || '?'}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1">
                                 <p className="font-black text-sm group-hover:text-primary transition-colors">{c.name}</p>
@@ -251,7 +251,7 @@ export default function MessagingPage() {
                     <Avatar className="size-14 border-4 border-white shadow-sm">
                       <AvatarImage src={`https://picsum.photos/seed/${chat.id}/100/100`} />
                       <AvatarFallback className={selectedChat?.id === chat.id ? "text-primary bg-white font-black" : "bg-primary/10 text-primary font-black"}> 
-                        {otherParticipantName[0]} 
+                        {otherParticipantName?.[0] || '?'} 
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -292,7 +292,7 @@ export default function MessagingPage() {
                     <ChevronLeft className="size-6" />
                   </Button>
                   <Avatar className="size-12 border-2 border-primary/10 shadow-sm">
-                    <AvatarFallback className="bg-primary text-white font-black"> {selectedChat.otherName?.[0]} </AvatarFallback>
+                    <AvatarFallback className="bg-primary text-white font-black"> {selectedChat.otherName?.[0] || '?'} </AvatarFallback>
                   </Avatar>
                   <div>
                     <h3 className="text-lg font-black text-foreground tracking-tight">{selectedChat.otherName}</h3>
