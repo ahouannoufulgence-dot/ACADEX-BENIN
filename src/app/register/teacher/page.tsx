@@ -13,7 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { useFirestore } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -38,7 +38,8 @@ export default function RegisterTeacherPage() {
   });
 
   const subjects = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie", "Philosophie", "Informatique", "EPS"];
-  const availableClasses = ["6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"];
+  // Nomenclature Unifiée ACADEX
+  const availableClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"];
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -77,9 +78,8 @@ export default function RegisterTeacherPage() {
       registeredAt: new Date().toISOString()
     };
 
-    // Sauvegarde automatique dans Firestore
     addDoc(collection(db, "teachers"), teacherData)
-      .catch(async (serverError) => {
+      .catch(async () => {
         const error = new FirestorePermissionError({
           path: 'teachers',
           operation: 'create',
@@ -88,7 +88,6 @@ export default function RegisterTeacherPage() {
         errorEmitter.emit('permission-error', error);
       });
 
-    // Sauvegarde en session locale pour le login immédiat
     localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
     localStorage.setItem('acadex_user_role', `Enseignant`);
     localStorage.setItem('acadex_user_id', newId);
@@ -97,10 +96,7 @@ export default function RegisterTeacherPage() {
 
     setLoading(false);
     nextStep();
-    toast({
-      title: "Compte Enseignant créé",
-      description: `Bienvenue dans l'équipe pédagogique ACADEX.`
-    });
+    toast({ title: "Compte créé avec succès" });
   };
 
   const copyId = () => {
@@ -135,7 +131,7 @@ export default function RegisterTeacherPage() {
                   <UserCircle2 className="size-8" />
                 </div>
                 <CardTitle className="text-3xl font-black">Identité Enseignant</CardTitle>
-                <CardDescription className="text-lg font-medium">Rejoignez l'équipe pédagogique de votre établissement.</CardDescription>
+                <CardDescription className="text-lg font-medium">Rejoignez l'équipe pédagogique ACADEX.</CardDescription>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -167,7 +163,7 @@ export default function RegisterTeacherPage() {
                   <BookOpen className="size-8" />
                 </div>
                 <CardTitle className="text-3xl font-black">Profil Pédagogique</CardTitle>
-                <CardDescription className="text-lg font-medium">Quelles matières et classes gérez-vous ?</CardDescription>
+                <CardDescription className="text-lg font-medium">Définissez vos classes réelles.</CardDescription>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="space-y-2">
@@ -182,37 +178,18 @@ export default function RegisterTeacherPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="font-bold block mb-4">Classes Enseignées</Label>
+                  <Label className="font-bold block mb-4">Classes Enseignées (Nomenclature Officielle)</Label>
                   <div className="grid grid-cols-3 gap-2">
                     {availableClasses.map(cls => (
                       <div 
                         key={cls}
                         onClick={() => toggleClass(cls)}
-                        className={`cursor-pointer p-3 rounded-xl border-2 text-center text-xs font-black transition-all ${form.classes.includes(cls) ? 'bg-foreground text-white border-foreground shadow-md' : 'bg-muted/50 border-transparent hover:border-muted'}`}
+                        className={`cursor-pointer p-3 rounded-xl border-2 text-center text-[10px] font-black transition-all ${form.classes.includes(cls) ? 'bg-foreground text-white border-foreground shadow-md' : 'bg-muted/50 border-transparent hover:border-muted'}`}
                       >
                         {cls}
                       </div>
                     ))}
                   </div>
-                </div>
-                <div className="pt-6 border-t border-dashed">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Checkbox id="formTeacher" checked={form.isFormTeacher} onCheckedChange={c => setForm({...form, isFormTeacher: !!c})} />
-                    <Label htmlFor="formTeacher" className="font-bold cursor-pointer">Je suis professeur principal</Label>
-                  </div>
-                  {form.isFormTeacher && (
-                    <div className="animate-in slide-in-from-top-2 duration-300">
-                      <Label className="text-xs font-black uppercase mb-2 block">Classe sous votre responsabilité</Label>
-                      <Select value={form.formClass} onValueChange={v => setForm({...form, formClass: v})}>
-                        <SelectTrigger className="h-11 rounded-xl">
-                          <SelectValue placeholder="Choisir la classe" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {form.classes.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/30 flex justify-between">
@@ -228,8 +205,7 @@ export default function RegisterTeacherPage() {
                 <div className="size-16 bg-muted text-foreground rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <Lock className="size-8" />
                 </div>
-                <CardTitle className="text-3xl font-black">Sécurité & Question</CardTitle>
-                <CardDescription className="text-lg font-medium">Définissez vos identifiants de connexion personnels.</CardDescription>
+                <CardTitle className="text-3xl font-black">Sécurité</CardTitle>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -240,25 +216,6 @@ export default function RegisterTeacherPage() {
                   <div className="space-y-2">
                     <Label className="font-bold">Confirmer</Label>
                     <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.confirmPassword} onChange={e => setForm({...form, confirmPassword: e.target.value})} />
-                  </div>
-                </div>
-                <div className="space-y-4 pt-4 border-t border-dashed">
-                  <div className="space-y-2">
-                    <Label className="font-bold">Question Secrète (Récupération)</Label>
-                    <Select value={form.secretQuestion} onValueChange={v => setForm({...form, secretQuestion: v})}>
-                      <SelectTrigger className="h-12 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mother">Nom de jeune fille de votre mère ?</SelectItem>
-                        <SelectItem value="teacher">Nom de votre premier enseignant ?</SelectItem>
-                        <SelectItem value="birth">Ville de votre naissance ?</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Réponse Secrète</Label>
-                    <Input placeholder="Votre réponse" className="h-12 rounded-xl" value={form.secretAnswer} onChange={e => setForm({...form, secretAnswer: e.target.value})} />
                   </div>
                 </div>
               </CardContent>
@@ -278,13 +235,11 @@ export default function RegisterTeacherPage() {
                 <CheckCircle2 className="size-12" />
               </div>
               <div className="space-y-3">
-                <h2 className="text-3xl font-black">Compte Activé !</h2>
-                <p className="text-muted-foreground font-medium text-lg leading-relaxed">
-                  Votre espace Enseignant est prêt. Utilisez cet identifiant pour vous connecter à votre cockpit.
-                </p>
+                <h2 className="text-3xl font-black">Inscription Réussie !</h2>
+                <p className="text-muted-foreground font-medium text-lg">Votre compte est en attente de validation par la direction.</p>
               </div>
               <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-foreground space-y-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Officiel</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Cockpit</p>
                 <p className="text-4xl font-black text-foreground tracking-tighter">{generatedId}</p>
                 <Button onClick={copyId} variant="outline" size="sm" className="rounded-full border-foreground/20 text-foreground font-bold h-10 px-6">
                   <Copy className="size-4 mr-2" /> Copier l'identifiant
@@ -292,9 +247,7 @@ export default function RegisterTeacherPage() {
               </div>
               <div className="pt-8">
                 <Button asChild className="w-full h-14 rounded-2xl bg-foreground text-white font-black text-lg shadow-xl">
-                  <Link href="/dashboard">
-                    Accéder au tableau de bord <ArrowRight className="ml-2 size-5" />
-                  </Link>
+                  <Link href="/dashboard">Entrer dans mon Cockpit <ArrowRight className="ml-2 size-5" /></Link>
                 </Button>
               </div>
             </div>

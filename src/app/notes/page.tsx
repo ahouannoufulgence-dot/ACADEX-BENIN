@@ -19,7 +19,8 @@ import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, orderBy, where, setDoc, doc, serverTimestamp } from "firebase/firestore"
 
-const officialClasses = ["6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"]
+// Nomenclature Unifiée ACADEX
+const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
 const terms = ["1er Trimestre", "2ème Trimestre", "3ème Trimestre"]
 
 export default function GradesPage() {
@@ -71,9 +72,9 @@ export default function GradesPage() {
           updatedAt: serverTimestamp()
         })
       }
-      toast({ title: "Saisie scellée", description: "Les notes ont été enregistrées avec succès." })
+      toast({ title: "Saisie enregistrée avec succès." })
     } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" })
+      toast({ title: "Erreur lors de la sauvegarde.", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -85,19 +86,19 @@ export default function GradesPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des <span className="text-primary italic">Notes</span></h1>
-            <p className="text-muted-foreground font-medium italic">"L'impartialité est la base de l'excellence."</p>
+            <p className="text-muted-foreground font-medium italic">Saisissez les notes de vos classes pour le trimestre en cours.</p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="bg-primary hover:bg-primary/90 shadow-xl h-14 px-10 rounded-2xl font-black">
-            {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} Enregistrer & Sceller
+            {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} Enregistrer les Notes
           </Button>
         </div>
 
         <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Périmètre Classe</label>
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe</label>
               <Select onValueChange={setSelectedClass}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Classe" /></SelectTrigger>
+                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
@@ -137,12 +138,14 @@ export default function GradesPage() {
                 <tbody className="divide-y divide-muted/30">
                   {loadingStudents ? (
                     <tr><td colSpan={7} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
+                  ) : !students || students.length === 0 ? (
+                    <tr><td colSpan={7} className="p-20 text-center font-bold text-muted-foreground">Aucun élève inscrit dans cette classe.</td></tr>
                   ) : (
                     students?.map((student: any) => (
                       <tr key={student.id} className="hover:bg-muted/5 transition-colors group text-center">
                         <td className="px-8 py-5 text-left">
                           <div className="flex flex-col">
-                            <span className="font-black text-foreground group-hover:text-primary transition-colors">{student.fullName || "Élève Nouveau"}</span>
+                            <span className="font-black text-foreground group-hover:text-primary transition-colors">{student.lastName || "Élève"} {student.firstName}</span>
                             <span className="text-[9px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
                           </div>
                         </td>
@@ -170,7 +173,7 @@ export default function GradesPage() {
             <div className="p-10 bg-muted/10 border-t flex justify-between items-center">
                <div className="flex items-center gap-3 text-muted-foreground">
                  <ShieldCheck className="size-6 text-emerald-500" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Calcul automatique et scellage cryptographique Acadex</span>
+                 <span className="text-[10px] font-black uppercase tracking-widest">Calcul automatique par ACADEX</span>
                </div>
                <Button onClick={handleSaveGrades} className="rounded-xl font-black h-12 px-10 bg-foreground">Valider le Registre</Button>
             </div>

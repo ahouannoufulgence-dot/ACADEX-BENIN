@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -24,7 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
-const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME A", "3EME B", "2NDE C", "2NDE D", "1ERE D", "TLE D1"]
+// Nomenclature Unifiée ACADEX
+const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
 
 export default function GenIdentifiersPage() {
   const db = useFirestore()
@@ -55,9 +57,8 @@ export default function GenIdentifiersPage() {
     const batchSize = parseInt(count)
     const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
     
-    // Génération ultra-rapide par Batch
     for (let i = 1; i <= batchSize; i++) {
-      const num = i.toString().padStart(3, '0')
+      const num = Math.floor(1000 + Math.random() * 9000).toString()
       const matricule = `ELV-${classTag}-${num}`
       const newDocRef = doc(collection(db, "registration_ids"))
       
@@ -69,16 +70,14 @@ export default function GenIdentifiersPage() {
       })
     }
     
-    // Validation du lot
     batch.commit()
       .then(() => {
-        toast({ title: "Génération terminée", description: `${batchSize} identifiants créés avec succès.` })
+        toast({ title: "Génération terminée", description: `${batchSize} identifiants créés.` })
       })
-      .catch(async (serverError) => {
+      .catch(async () => {
         const error = new FirestorePermissionError({
           path: 'registration_ids',
           operation: 'write',
-          requestResourceData: { batchSize, selectedClass }
         })
         errorEmitter.emit('permission-error', error)
       })
@@ -87,14 +86,13 @@ export default function GenIdentifiersPage() {
 
   const handleDelete = (id: string) => {
     const idRef = doc(db, "registration_ids", id)
-    deleteDoc(idRef).catch(async (serverError) => {
-      const error = new FirestorePermissionError({
-        path: idRef.path,
-        operation: 'delete'
-      })
-      errorEmitter.emit('permission-error', error)
-    })
+    deleteDoc(idRef)
     toast({ title: "Identifiant supprimé" })
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title: "Copié !", description: text })
   }
 
   const handleExportPDF = () => {
@@ -104,20 +102,15 @@ export default function GenIdentifiersPage() {
     docPdf.rect(0, 0, 210, 30, 'F')
     docPdf.setTextColor(255, 255, 255)
     docPdf.setFontSize(16)
-    docPdf.text(`LISTE DES IDENTIFIANTS D'INSCRIPTION - ${selectedClass || 'TOUTES CLASSES'}`, 105, 20, { align: "center" })
+    docPdf.text(`IDENTIFIANTS D'INSCRIPTION - ${selectedClass || 'TOUTES'}`, 105, 20, { align: "center" })
 
     autoTable(docPdf, {
       startY: 40,
-      head: [['Identifiant', 'Classe', 'Statut']],
+      head: [['Matricule', 'Classe', 'Statut']],
       body: filteredIds.map((id: any) => [id.matricule, id.classId, id.status.toUpperCase()]),
       headStyles: { fillColor: [20, 83, 45] }
     })
-    docPdf.save(`IDENTIFIANTS_ACADEX_${new Date().getTime()}.pdf`)
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({ title: "Copié !", description: text })
+    docPdf.save(`LISTE_CODES_ACADEX.pdf`)
   }
 
   return (
@@ -126,7 +119,7 @@ export default function GenIdentifiersPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Générer Identifiants <span className="text-primary italic">Élèves</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Créez en masse les matricules pour l'auto-inscription.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Les élèves utiliseront ces codes pour s'inscrire eux-mêmes.</p>
           </div>
           <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
             <FileDown className="mr-2 size-5" /> Télécharger PDF
@@ -143,13 +136,13 @@ export default function GenIdentifiersPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Nombre</Label>
+              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Quantité</Label>
               <Input type="number" value={count} onChange={(e) => setCount(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg" />
             </div>
             <div className="md:col-span-2">
               <Button onClick={handleGenerate} disabled={loading || !selectedClass} className="w-full h-14 bg-primary hover:bg-primary/90 shadow-xl rounded-2xl font-black text-lg">
                 {loading ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Zap className="mr-2 size-6 fill-white" />}
-                Générer Express
+                Générer les Codes
               </Button>
             </div>
           </div>
@@ -159,7 +152,7 @@ export default function GenIdentifiersPage() {
           <div className="relative group max-w-md">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
-              placeholder="Rechercher un identifiant..." 
+              placeholder="Chercher un matricule..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl font-medium"
@@ -181,7 +174,7 @@ export default function GenIdentifiersPage() {
                   {loadingIds ? (
                     <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
                   ) : filteredIds.length === 0 ? (
-                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun identifiant généré.</td></tr>
+                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun code généré pour le moment.</td></tr>
                   ) : (
                     filteredIds.map((id: any) => (
                       <tr key={id.id} className="hover:bg-muted/5 transition-colors group">

@@ -41,9 +41,9 @@ export default function DirectorDashboard() {
     
     return [
       { title: "Élèves Inscrits", value: (students?.length || 0).toString(), label: "Profils complets", icon: Users, color: "text-primary" },
-      { title: "Codes à distribuer", value: unusedCount.toString(), label: "Prêts pour inscription", icon: Zap, color: "text-amber-600" },
+      { title: "Codes disponibles", value: unusedCount.toString(), label: "Prêts pour inscription", icon: Zap, color: "text-amber-600" },
       { title: "Équipe Enseignante", value: (teachers?.length || 0).toString(), label: "Professeurs actifs", icon: GraduationCap, color: "text-blue-600" },
-      { title: "Performance Globale", value: "Audit", label: "Données en temps réel", icon: TrendingUp, color: "text-emerald-600" },
+      { title: "Performance", value: "Audit", label: "Données temps réel", icon: TrendingUp, color: "text-emerald-600" },
     ]
   }, [students, teachers, ids, mounted])
 
@@ -55,12 +55,12 @@ export default function DirectorDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Cockpit <span className="text-primary italic">Directeur</span></h1>
-            <p className="text-muted-foreground font-medium">Pilotage centralisé et automatisé d'ACADEX.</p>
+            <p className="text-muted-foreground font-medium">Pilotage centralisé et automatisé de votre établissement.</p>
           </div>
           <div className="flex gap-3">
              <Button asChild variant="outline" className="border-2 rounded-2xl h-14 px-8 font-black bg-white">
                <Link href="/eleves/identifiants">
-                 <Zap className="mr-2 size-5" /> Générer Identifiants
+                 <Zap className="mr-2 size-5" /> Gérer Identifiants
                </Link>
              </Button>
              <Button asChild className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
@@ -97,13 +97,13 @@ export default function DirectorDashboard() {
               <BrainCircuit className="size-14 text-primary" />
             </div>
             <div className="flex-1 space-y-4">
-              <h3 className="text-3xl font-black italic">"Inscriptions Simplifiées."</h3>
+              <h3 className="text-3xl font-black italic">"Inscriptions Automatisées."</h3>
               <p className="text-xl text-white/60 font-medium leading-relaxed max-w-2xl">
-                Vous n'avez plus besoin de saisir les fiches élèves. Générez simplement les identifiants et laissez les élèves s'en charger.
+                Générez des matricules dans le module dédié et laissez les élèves s'inscrire eux-mêmes. Leurs profils apparaîtront ici instantanément.
               </p>
               <div className="pt-4 flex gap-4">
                  <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">
-                   <Link href="/eleves">Voir les Élèves Inscrits</Link>
+                   <Link href="/eleves">Voir les Inscrits</Link>
                  </Button>
               </div>
             </div>
