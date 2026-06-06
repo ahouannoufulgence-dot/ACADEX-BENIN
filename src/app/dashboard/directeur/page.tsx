@@ -97,7 +97,6 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
         
-        {/* 1. EN-TÊTE PROFESSIONNEL */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">
@@ -118,7 +117,6 @@ export default function DirectorDashboard() {
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none hidden md:block" />
         </div>
 
-        {/* 2. CARTES STATISTIQUES PRINCIPALES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group border-b-4 border-b-blue-500">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Élèves</p>
@@ -160,15 +158,12 @@ export default function DirectorDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8">
-          {/* COLONNE GAUCHE: ALERTES & CLASSES */}
           <div className="lg:col-span-8 space-y-8">
-            
-            {/* 3. ALERTES IMPORTANTES */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-red-50/30">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="size-6 text-destructive animate-pulse" />
-                  <CardTitle className="text-2xl font-black tracking-tight">Alertes Critiques</CardTitle>
+                  <AlertTriangle className="size-6 text-destructive" />
+                  <CardTitle className="text-2xl font-black tracking-tight">Alertes Systèmes</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -186,13 +181,16 @@ export default function DirectorDashboard() {
                   )}
                   
                   {stats.totalStudents === 0 && !loadingStudents && (
-                    <div className="p-8 text-center text-muted-foreground italic font-medium flex flex-col items-center gap-3">
-                      <Users className="size-8 opacity-20" />
-                      <p>Aucun élève inscrit. Distribuez les matricules pour lancer l'année.</p>
+                    <div className="p-12 text-center text-muted-foreground font-bold flex flex-col items-center gap-4">
+                      <Users className="size-10 opacity-20" />
+                      <div className="space-y-1">
+                        <p>Aucun élève enregistré.</p>
+                        <p className="text-xs font-medium opacity-60">Distribuez les matricules pour lancer l'année.</p>
+                      </div>
                     </div>
                   )}
 
-                  {stats.unusedIds === 0 && stats.totalStudents > 0 && (
+                  {stats.totalStudents > 0 && stats.unusedIds === 0 && (
                     <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
                        <CheckCircle2 className="size-10 opacity-30" />
                        <p className="text-sm">Système opérationnel. Aucune anomalie détectée.</p>
@@ -202,13 +200,12 @@ export default function DirectorDashboard() {
               </CardContent>
             </Card>
 
-            {/* 4. CLASSES EN DIFFICULTÉ */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-2xl font-black flex items-center gap-3">
                   <TrendingDown className="text-destructive" /> Classes en Difficulté
                 </h3>
-                <Badge variant="outline" className="font-black border-destructive/20 text-destructive bg-destructive/5 uppercase">Alerte Pédagogique</Badge>
+                <Badge variant="outline" className="font-black border-destructive/20 text-destructive bg-destructive/5 uppercase">Focus Pédagogique</Badge>
               </div>
               
               <div className="grid sm:grid-cols-2 gap-4">
@@ -225,21 +222,18 @@ export default function DirectorDashboard() {
                     </div>
                   ))
                 ) : (
-                  <div className="col-span-2 p-12 text-center border-4 border-dashed rounded-[2.5rem] opacity-30">
-                    <p className="font-black text-muted-foreground uppercase tracking-widest">Toutes les classes sont au-dessus de 10/20</p>
+                  <div className="col-span-2 p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
+                    <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Aucune classe en difficulté détectée.</p>
                   </div>
                 )}
               </div>
             </Card>
           </div>
 
-          {/* COLONNE DROITE: ACTIVITÉ & PAIEMENTS */}
           <div className="lg:col-span-4 space-y-8">
-            
-            {/* 5. DERNIÈRES ACTIVITÉS RÉELLES */}
             <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
                <div className="flex items-center justify-between mb-8">
-                 <h4 className="text-xl font-black">Activité Récente</h4>
+                 <h4 className="text-xl font-black">Mouvements</h4>
                  <Activity className="size-5 text-primary opacity-20" />
                </div>
                <div className="space-y-8">
@@ -256,13 +250,12 @@ export default function DirectorDashboard() {
                     </div>
                   ) : (
                     <div className="text-center py-10 opacity-30">
-                       <p className="text-[10px] font-black uppercase tracking-widest">En attente de mouvements...</p>
+                       <p className="text-[10px] font-black uppercase tracking-widest">En attente d'activité...</p>
                     </div>
                   )}
                </div>
             </Card>
 
-            {/* 6 & 7. RÉSUMÉS RAPIDES */}
             <div className="grid gap-6">
               <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl">
                 <div className="flex items-center justify-between mb-6">
@@ -280,7 +273,6 @@ export default function DirectorDashboard() {
                 </div>
               </Card>
 
-              {/* 8. ASSISTANT ACADEX BRAIN */}
               <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
                 <div className="flex items-center gap-3 mb-6">
                   <Sparkles className="size-6 text-primary animate-pulse" />
