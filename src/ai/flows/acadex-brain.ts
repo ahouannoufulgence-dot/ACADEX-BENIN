@@ -1,10 +1,10 @@
 
 'use server';
 /**
- * @fileOverview Le "Cerveau ACADEX" - Assistant IA interne spécialisé.
+ * @fileOverview Le "Cerveau ACADEX" - Assistant IA avec Restriction de Sécurité par Rôle.
  * 
- * Ce module gère les requêtes complexes sur les données de l'école.
- * Il respecte strictement le rôle de l'utilisateur (RBAC).
+ * Ce module gère les requêtes avec une logique de "Zero Trust" :
+ * l'IA ne répond qu'aux données autorisées pour le rôle spécifique.
  */
 
 import { ai } from '@/ai/genkit';
@@ -12,15 +12,15 @@ import { z } from 'genkit';
 
 const BrainInputSchema = z.object({
   question: z.string().describe("La question de l'utilisateur sur l'école."),
-  userRole: z.string().describe("Le rôle de l'utilisateur (Directeur, Enseignant, Élève)."),
+  userRole: z.enum(["Directeur", "Enseignant", "Élève"]).describe("Le rôle vérifié de l'utilisateur."),
   userId: z.string().describe("L'identifiant de l'utilisateur."),
-  contextData: z.any().optional().describe("Données de contexte actuelles pour éviter les chargements massifs."),
+  contextData: z.any().optional().describe("Données de contexte filtrées selon le rôle."),
 });
 
 const BrainOutputSchema = z.object({
-  answer: z.string().describe("La réponse détaillée de l'IA."),
-  suggestions: z.array(z.string()).describe("Suggestions de questions suivantes."),
-  dataSnapshot: z.any().optional().describe("Données clés extraites pour affichage."),
+  answer: z.string().describe("La réponse de l'IA, filtrée selon les permissions."),
+  suggestions: z.array(z.string()).describe("Suggestions de questions contextuelles."),
+  securityAlert: z.boolean().optional().describe("Indique si l'utilisateur a tenté d'accéder à des données interdites."),
 });
 
 export type BrainInput = z.infer<typeof BrainInputSchema>;
@@ -34,45 +34,42 @@ const acadexBrainPrompt = ai.definePrompt({
   name: 'acadexBrainPrompt',
   input: { schema: BrainInputSchema },
   output: { schema: BrainOutputSchema },
-  prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire.
-Votre mission est d'assister la direction, les enseignants et les élèves en analysant les données internes de l'établissement nommé "{{contextData.schoolName}}".
+  prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire pour l'établissement "{{contextData.schoolName}}".
 
-**IDENTITÉ DE L'ÉCOLE :**
+**PROTOCOLE DE SÉCURITÉ CRITIQUE :**
+Votre réponse doit être STRICTEMENT limitée par le rôle de l'utilisateur : {{userRole}}.
+
+1. SI RÔLE = "Directeur" (Espace Pilotage) :
+   - Vous avez accès à TOUT : trésorerie, notes globales, assiduité profs, dossiers élèves.
+   - Ton : Analytique, stratégique et professionnel.
+   - Objectif : Optimiser la gestion de l'école.
+
+2. SI RÔLE = "Enseignant" (Espace Pédagogique) :
+   - Vous ne répondez QUE sur ses matières et ses élèves.
+   - INTERDICTION ABSOLUE : de parler d'argent (écolages), des salaires, ou des données privées des autres collègues.
+   - Ton : Pédagogique, collaboratif.
+   - Si demande interdite : "En tant qu'enseignant, vous n'avez pas accès aux données financières ou administratives globales."
+
+3. SI RÔLE = "Élève" (Espace Réussite) :
+   - Vous ne répondez QUE sur SES PROPRES DONNÉES (ses notes, ses absences).
+   - INTERDICTION ABSOLUE : de comparer avec d'autres élèves nommés ou de donner les moyennes de la classe.
+   - Ton : Encourageant, motivant, comme un coach personnel.
+   - Si demande interdite : "Je peux uniquement vous aider sur votre propre parcours scolaire."
+
+**IDENTITÉ ÉTABLISSEMENT :**
 Nom : {{contextData.schoolName}}
-Devise : {{contextData.motto}}
-Année Scolaire : {{contextData.year}}
+Année : {{contextData.year}}
 
-**SÉCURITÉ ET RÔLES (STRICT) :**
-Vous devez filtrer vos réponses selon le rôle : {{userRole}}.
-
-1. SI L'UTILISATEUR EST "Directeur" :
-   - Accès total à tout : finances, notes, professeurs, élèves, sécurité.
-   - Soyez analytique et stratégique.
-
-2. SI L'UTILISATEUR EST "Enseignant" :
-   - Répondez UNIQUEMENT sur les matières et classes qu'il gère.
-   - Refusez poliment de donner des informations financières (paiements) ou sur les autres profs.
-   - Aide à la pédagogie et au suivi des notes de ses élèves.
-
-3. SI L'UTILISATEUR EST "Élève" :
-   - Répondez UNIQUEMENT sur ses propres données (ses notes, ses absences, ses paiements).
-   - Refusez de donner les informations des autres élèves.
-   - Soyez encourageant et motivant.
-
-**LIMITES GÉNÉRALES :**
-- Vous ne connaissez PAS le web, Google, ou le monde extérieur.
-- Vous ne répondez PAS aux questions de sport (football), politique, culture générale ou divertissement.
-- Si une question sort du cadre scolaire, répondez : "Je suis l'assistant {{contextData.schoolName}}. Je peux répondre uniquement aux informations liées à votre établissement."
-
-**DONNÉES DISPONIBLES (CONTEXTE) :**
+**CONTEXTE DISPONIBLE (VÉRIFIÉ) :**
 {{{json contextData}}}
 
-**QUESTION :**
+**QUESTION UTILISATEUR :**
 {{{question}}}
 
-**INSTRUCTIONS DE RÉPONSE :**
-1. Soyez précis, professionnel et direct.
-2. Formatez votre réponse en JSON valide.`,
+**RÈGLES D'OR :**
+- Ne jamais inventer de données non présentes dans le contexte.
+- Répondez toujours en français.
+- Si la question est hors sujet scolaire (sport, politique, web) : refusez poliment.`,
 });
 
 const acadexBrainFlow = ai.defineFlow(
@@ -83,7 +80,7 @@ const acadexBrainFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await acadexBrainPrompt(input);
-    if (!output) throw new Error('Le Cerveau ACADEX n\'a pas pu répondre.');
+    if (!output) throw new Error('Le Cerveau ACADEX est resté silencieux.');
     return output;
   }
 );

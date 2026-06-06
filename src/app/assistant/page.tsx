@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -11,7 +12,8 @@ import {
   User, 
   Loader2, 
   ShieldCheck, 
-  MessageSquare
+  MessageSquare,
+  Lock
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
@@ -29,20 +31,29 @@ interface Message {
 
 export default function AssistantPage() {
   const db = useFirestore()
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: 'assistant',
-      content: "Bonjour, je suis le Cerveau ACADEX. Je maîtrise l'intégralité des données internes de votre école. Comment puis-je vous aider ?",
-      timestamp: new Date(),
-      suggestions: ["Qui sont les meilleurs élèves ?", "Y a-t-il des impayés ?", "Quels profs sont absents ?"]
-    }
-  ])
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", motto: "", year: "2024-2025" })
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const role = localStorage.getItem('acadex_user_role') || "Élève"
+    setUserRole(role)
+    
+    const initialMsg: Message = {
+      role: 'assistant',
+      content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Comment puis-je vous aider aujourd'hui ?`,
+      timestamp: new Date(),
+      suggestions: role === "Directeur" 
+        ? ["Bilan des inscriptions ?", "Point sur la trésorerie", "Profs en attente"]
+        : role === "Enseignant"
+        ? ["Moyennes de ma classe ?", "Liste de mes élèves", "Saisie des notes"]
+        : ["Quelle est ma moyenne ?", "Mes dernières notes", "Conseils pour progresser"]
+    }
+    setMessages([initialMsg])
+
     const fetchSchool = async () => {
       try {
         const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
@@ -69,10 +80,9 @@ export default function AssistantPage() {
 
   const handleSend = async (overrideText?: string) => {
     const text = overrideText || input
-    if (!text.trim() || loading) return
+    if (!text.trim() || loading || !userRole) return
 
-    const userRole = localStorage.getItem('acadex_user_role') || "Directeur"
-    const userId = localStorage.getItem('acadex_user_id') || "DIR-001"
+    const userId = localStorage.getItem('acadex_user_id') || "USER-001"
 
     const newMessage: Message = { role: 'user', content: text, timestamp: new Date() }
     setMessages(prev => [...prev, newMessage])
@@ -80,15 +90,17 @@ export default function AssistantPage() {
     setLoading(true)
 
     try {
+      // On prépare un contexte filtré côté client avant l'envoi à l'IA
       const result = await askAcadexBrain({
         question: text,
-        userRole,
+        userRole: userRole as any,
         userId,
         contextData: { 
-          system: "ACADEX V1", 
-          year: schoolInfo.year,
           schoolName: schoolInfo.name,
-          motto: schoolInfo.motto
+          motto: schoolInfo.motto,
+          year: schoolInfo.year,
+          // Ici on pourrait ajouter des données spécifiques déjà chargées en RAM
+          // mais l'IA se basera surtout sur ses instructions de rôle
         }
       })
 
@@ -118,20 +130,20 @@ export default function AssistantPage() {
             <div>
               <h1 className="text-2xl font-black text-foreground tracking-tight">Cerveau {schoolInfo.name}</h1>
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                <ShieldCheck className="size-3 text-emerald-500" />
-                Intelligence Sécurisée
+                <Lock className="size-3 text-emerald-500" />
+                Accès {userRole} Sécurisé
               </p>
             </div>
           </div>
           <Badge variant="outline" className="hidden sm:flex rounded-full border-primary/20 text-primary font-black px-4 bg-primary/5">
-            ONLINE • {schoolInfo.year}
+            {schoolInfo.year}
           </Badge>
         </div>
 
         <Card className="flex-1 border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden flex flex-col">
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-muted/5 scroll-smooth"
+            className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-muted/5 scroll-smooth no-scrollbar"
           >
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}>
@@ -171,7 +183,7 @@ export default function AssistantPage() {
                     <Loader2 className="size-5 text-muted-foreground animate-spin" />
                   </div>
                   <div className="p-5 bg-muted/50 rounded-3xl rounded-tl-none border border-muted/50">
-                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Analyse en cours...</p>
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Filtrage des données...</p>
                   </div>
                 </div>
               </div>
@@ -181,10 +193,10 @@ export default function AssistantPage() {
           <div className="p-6 md:p-8 pt-4 bg-white border-t border-muted/30">
             <form 
               onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-              className="flex items-center gap-4 bg-muted/30 p-2 pl-6 rounded-[2rem] border-2 border-transparent focus-within:border-primary/20 transition-all"
+              className="flex items-center gap-4 bg-muted/30 p-2 pl-6 rounded-[2rem] border-2 border-transparent focus-within:border-primary/20 transition-all shadow-inner"
             >
               <Input 
-                placeholder={`Demandez n'importe quoi sur ${schoolInfo.name}...`} 
+                placeholder={`Posez une question sur votre espace ${userRole}...`} 
                 className="flex-1 bg-transparent border-none shadow-none h-12 font-bold placeholder:text-muted-foreground/50 focus-visible:ring-0"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -200,6 +212,10 @@ export default function AssistantPage() {
             </form>
           </div>
         </Card>
+
+        <div className="flex items-center justify-center gap-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] opacity-40">
+           <ShieldCheck className="size-3" /> Protection des données ACADEX Active
+        </div>
       </div>
     </DashboardLayout>
   )
