@@ -56,7 +56,7 @@ export default function DirectorDashboard() {
   const { data: payments } = useCollection(paymentsRef)
   const { data: grades } = useCollection(gradesRef)
 
-  // Statistiques calculées sur données réelles (Strictement 0 par défaut)
+  // Statistiques calculées sur données réelles
   const stats = useMemo(() => {
     const totalStudents = students?.length || 0
     const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
@@ -75,7 +75,7 @@ export default function DirectorDashboard() {
     }
   }, [students, teachers, registrationIds, payments])
 
-  // Intelligence: Classes en difficulté réelle
+  // Intelligence: Classes en difficulté réelle (basé sur gradesFirestore)
   const classesInDifficulty = useMemo(() => {
     if (!grades || grades.length === 0) return []
     const classAverages: Record<string, { sum: number, count: number }> = {}
@@ -121,7 +121,7 @@ export default function DirectorDashboard() {
           </Button>
         </div>
 
-        {/* CARTES STATISTIQUES PRINCIPALES - TOUTES À ZÉRO SI VIDE */}
+        {/* CARTES STATISTIQUES PRINCIPALES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-7 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-lg transition-all group">
             <div className="flex items-center justify-between mb-6">
@@ -176,7 +176,7 @@ export default function DirectorDashboard() {
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-muted/5">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="size-5 text-destructive animate-pulse" />
+                  <AlertTriangle className="size-5 text-destructive" />
                   <CardTitle className="text-xl font-black tracking-tight">Alertes Prioritaires</CardTitle>
                 </div>
               </CardHeader>
