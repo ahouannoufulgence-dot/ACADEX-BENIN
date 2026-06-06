@@ -30,7 +30,7 @@ import { Badge } from "@/components/ui/badge"
 export default function DirectorDashboard() {
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
-  const [schoolInfo, setSchoolInfo] = useState({ name: "Chargement...", year: "2024-2025" })
+  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2024-2025" })
   const [directorFullName, setDirectorFullName] = useState("le Directeur")
 
   useEffect(() => {
@@ -47,13 +47,13 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes Firestore réelles
+  // Requêtes Firestore réelles - Zéro mocks
   const { data: students, loading: loadingStudents } = useCollection(collection(db, "students"))
   const { data: teachers, loading: loadingTeachers } = useCollection(collection(db, "teachers"))
   const { data: registrationIds, loading: loadingIds } = useCollection(collection(db, "registration_ids"))
   const { data: payments, loading: loadingPayments } = useCollection(collection(db, "payments"))
 
-  // Statistiques calculées STRICTEMENT sur les données Firestore (Zéro par défaut)
+  // Statistiques calculées STRICTEMENT sur les données Firestore
   const stats = useMemo(() => {
     const totalStudents = Array.isArray(students) ? students.length : 0
     const activeTeachers = Array.isArray(teachers) ? teachers.filter((t: any) => t.status === "Actif").length : 0
@@ -82,11 +82,11 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
         
-        {/* EN-TÊTE PROFESSIONNEL AVEC FORMULE DE RESPECT */}
+        {/* EN-TÊTE PROFESSIONNEL AVEC FORMULE DE RESPECT DEMANDÉE */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">
-              Bonjour Monsieur le Directeur <span className="text-primary italic">{directorFullName}</span>,
+              Bonjour Monsieur <span className="text-primary italic">{directorFullName}</span>,
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 py-1 text-sm uppercase">
@@ -168,7 +168,7 @@ export default function DirectorDashboard() {
                     </div>
                   )}
                   
-                  {stats.totalStudents === 0 && !loadingStudents && (
+                  {(stats.totalStudents === 0 && !loadingStudents) && (
                     <div className="p-12 text-center text-muted-foreground font-bold flex flex-col items-center gap-4">
                       <Users className="size-10 opacity-20" />
                       <div className="space-y-1">
@@ -178,7 +178,7 @@ export default function DirectorDashboard() {
                     </div>
                   )}
 
-                  {stats.totalStudents > 0 && stats.unusedIds === 0 && stats.pendingPaymentsCount === 0 && (
+                  {(stats.totalStudents > 0 && stats.unusedIds === 0 && stats.pendingPaymentsCount === 0) && (
                     <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
                        <CheckCircle2 className="size-10 opacity-30" />
                        <p className="text-sm">Tout est en ordre. Aucune alerte critique détectée.</p>
@@ -212,12 +212,12 @@ export default function DirectorDashboard() {
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
                       <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl uppercase">
-                        {stats.lastStudent.lastName?.[0] || "?"}
+                        {stats.lastStudent?.lastName?.[0] || "?"}
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-black text-foreground">Nouvelle inscription</p>
-                        <p className="text-xs font-bold text-primary">{stats.lastStudent.firstName} {stats.lastStudent.lastName}</p>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Classe : {stats.lastStudent.classId}</p>
+                        <p className="text-xs font-bold text-primary">{stats.lastStudent?.firstName} {stats.lastStudent?.lastName}</p>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Classe : {stats.lastStudent?.classId}</p>
                       </div>
                     </div>
                   ) : (

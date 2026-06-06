@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -41,8 +40,8 @@ export default function GenIdentifiersPage() {
   const filteredIds = useMemo(() => {
     if (!identifiers) return []
     return identifiers.filter((id: any) => 
-      id.matricule.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      id.classId.toLowerCase().includes(searchTerm.toLowerCase())
+      (id.matricule?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (id.classId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
   }, [identifiers, searchTerm])
 
@@ -52,13 +51,23 @@ export default function GenIdentifiersPage() {
       return
     }
 
+    const batchSize = parseInt(count)
+    if (isNaN(batchSize) || batchSize <= 0) {
+      toast({ title: "Quantité invalide", variant: "destructive" })
+      return
+    }
+
+    if (batchSize > 500) {
+      toast({ title: "Limite dépassée", description: "Maximum 500 identifiants par lot.", variant: "destructive" })
+      return
+    }
+
     setLoading(true)
     const batch = writeBatch(db)
-    const batchSize = parseInt(count)
     const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
     
     for (let i = 1; i <= batchSize; i++) {
-      const num = Math.floor(1000 + Math.random() * 9000).toString()
+      const num = Math.floor(10000 + Math.random() * 90000).toString() // Augmenté pour plus d'unicité
       const matricule = `ELV-${classTag}-${num}`
       const newDocRef = doc(collection(db, "registration_ids"))
       
@@ -72,7 +81,7 @@ export default function GenIdentifiersPage() {
     
     batch.commit()
       .then(() => {
-        toast({ title: "Génération terminée", description: `${batchSize} identifiants créés.` })
+        toast({ title: "Génération terminée", description: `${batchSize} identifiants créés pour la classe ${selectedClass}.` })
       })
       .catch(async () => {
         const error = new FirestorePermissionError({
@@ -119,7 +128,7 @@ export default function GenIdentifiersPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Générer Identifiants <span className="text-primary italic">Élèves</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Les élèves utiliseront ces codes pour s'inscrire eux-mêmes.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Les élèves utiliseront ces codes pour activer leur espace cockpit.</p>
           </div>
           <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
             <FileDown className="mr-2 size-5" /> Télécharger PDF
@@ -129,15 +138,15 @@ export default function GenIdentifiersPage() {
         <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
             <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Classe</Label>
+              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Classe Cible</Label>
               <Select onValueChange={setSelectedClass}>
                 <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Quantité</Label>
-              <Input type="number" value={count} onChange={(e) => setCount(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg" />
+              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Quantité à générer</Label>
+              <Input type="number" min="1" max="500" value={count} onChange={(e) => setCount(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg" />
             </div>
             <div className="md:col-span-2">
               <Button onClick={handleGenerate} disabled={loading || !selectedClass} className="w-full h-14 bg-primary hover:bg-primary/90 shadow-xl rounded-2xl font-black text-lg">
@@ -164,7 +173,7 @@ export default function GenIdentifiersPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-muted/30 text-muted-foreground uppercase text-[10px] font-black tracking-widest border-b">
-                    <th className="px-8 py-5 text-left">Identifiant</th>
+                    <th className="px-8 py-5 text-left">Identifiant unique</th>
                     <th className="px-8 py-5 text-left">Classe</th>
                     <th className="px-8 py-5 text-center">Statut</th>
                     <th className="px-8 py-5 text-right">Actions</th>

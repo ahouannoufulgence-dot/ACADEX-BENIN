@@ -1,42 +1,26 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
-  BarChart3, 
-  TrendingUp, 
   Users, 
   CreditCard, 
-  Calendar, 
   GraduationCap, 
-  CheckCircle2, 
-  AlertCircle,
   FileDown,
-  ChevronRight,
-  UserCheck,
-  UserX,
   PieChart as PieChartIcon,
   Sparkles,
   Activity,
-  Calculator,
-  BookOpen,
-  Clock
+  BookOpen
 } from "lucide-react"
 import { 
-  Bar, 
-  BarChart, 
   ResponsiveContainer, 
-  XAxis, 
-  YAxis, 
   Tooltip,
   Cell,
   Pie,
-  PieChart,
-  CartesianGrid
+  PieChart
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection } from "firebase/firestore"
 import { useMemo, useState } from "react"
@@ -54,7 +38,7 @@ export default function StatisticsPage() {
   const { data: payments, loading: loadingPayments } = useCollection(collection(db, "payments"))
   const { data: grades } = useCollection(collection(db, "grades"))
 
-  // CALCUL DES INDICATEURS GLOBAUX RÉELS (Zéro si vide)
+  // CALCUL DES INDICATEURS GLOBAUX RÉELS (Zéro par défaut)
   const kpis = useMemo(() => {
     const totalStudents = Array.isArray(students) ? students.length : 0
     const totalTeachers = Array.isArray(teachers) ? teachers.length : 0
@@ -71,6 +55,7 @@ export default function StatisticsPage() {
     if (!students || students.length === 0) return []
     const m = students.filter((s: any) => s.gender === 'Masculin').length
     const f = students.filter((s: any) => s.gender === 'Féminin').length
+    if (m === 0 && f === 0) return []
     return [
       { name: 'Garçons', value: m },
       { name: 'Filles', value: f },
@@ -113,7 +98,7 @@ export default function StatisticsPage() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3.5rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
-            <h1 className="text-5xl font-black text-foreground tracking-tight">Intelligence <span className="text-primary italic">Établissement</span></h1>
+            <h1 className="text-5xl font-black text-foreground tracking-tight">Intelligence <span className="text-primary italic">Scolaire</span></h1>
             <p className="text-muted-foreground font-medium">Analyse certifiée basée sur les données vivantes de l'école.</p>
           </div>
           <Button onClick={handleExportPDF} className="bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/30 rounded-2xl h-14 px-10 font-black text-lg relative z-10">
@@ -157,7 +142,7 @@ export default function StatisticsPage() {
               <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-10 min-h-[400px]">
                  <div className="flex flex-col items-center justify-center h-full opacity-30 italic">
                   <Activity className="size-16 mb-4 text-muted-foreground" />
-                  <p className="font-bold text-center">En attente de données pour générer les histogrammes de performance.</p>
+                  <p className="font-bold text-center">Les histogrammes de performance s'activeront dès la saisie des premières notes.</p>
                 </div>
               </Card>
 
@@ -166,7 +151,7 @@ export default function StatisticsPage() {
                   <h3 className="text-xl font-black mb-10 flex items-center gap-3">
                     <PieChartIcon className="text-primary" /> Démographie
                   </h3>
-                  {kpis.totalStudents > 0 ? (
+                  {genderStats.length > 0 ? (
                     <div className="h-[250px] w-full">
                        <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -188,7 +173,7 @@ export default function StatisticsPage() {
                   ) : (
                     <div className="flex flex-col items-center gap-4 opacity-30">
                        <Users className="size-12" />
-                       <p className="text-xs font-black uppercase">Aucun élève inscrit</p>
+                       <p className="text-xs font-black uppercase">En attente d'inscriptions</p>
                     </div>
                   )}
                 </Card>
@@ -201,9 +186,9 @@ export default function StatisticsPage() {
                 <div className="size-24 bg-primary/20 rounded-[2rem] flex items-center justify-center mx-auto mb-10">
                    <Sparkles className="size-12 text-primary animate-pulse" />
                 </div>
-                <h3 className="text-4xl font-black mb-6">Analyse IA</h3>
+                <h3 className="text-4xl font-black mb-6">Analyse Intelligence ACADEX</h3>
                 <p className="text-xl text-white/60 font-medium max-w-2xl mx-auto leading-relaxed italic">
-                  "Le Cerveau ACADEX nécessite au moins un trimestre de données pour projeter des tendances de réussite fiables."
+                  "Le Cerveau ACADEX nécessite au moins un trimestre complet de données vivantes pour projeter des tendances de réussite fiables."
                 </p>
              </Card>
           </TabsContent>
