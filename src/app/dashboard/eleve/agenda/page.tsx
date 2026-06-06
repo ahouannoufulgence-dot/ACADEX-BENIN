@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -19,12 +18,10 @@ export default function StudentAgendaPage() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Récupérer la classe de l'élève stockée lors de l'inscription/connexion
     const fetchStudentData = async () => {
       const matricule = localStorage.getItem('acadex_user_id')
       if (matricule) {
-        // Dans une app réelle, on chercherait le profil complet, ici on simule avec ce qui est en session
-        // Le matricule contient souvent le tag de classe dans notre nomenclature ACADEX
+        // Dans ACADEX, le matricule contient la classe (ex: ELV-3EMEA-001)
         const parts = matricule.split('-')
         if (parts.length >= 2) setStudentClass(parts[1])
       }
@@ -33,7 +30,7 @@ export default function StudentAgendaPage() {
     fetchStudentData()
   }, [])
 
-  // Requête pour récupérer les cours de la classe de l'élève
+  // Requête mémorisée pour éviter les boucles de rendu infinies
   const schedulesQuery = useMemo(() => {
     if (!db || !studentClass) return null
     return query(collection(db, "schedules"), where("classId", "==", studentClass))
@@ -56,7 +53,10 @@ export default function StudentAgendaPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Mon <span className="text-primary italic">Emploi du Temps</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Programme hebdomadaire officiel de la classe <Badge className="bg-primary ml-2">{studentClass}</Badge></p>
+            {/* Correction de l'erreur d'hydratation : Remplacement de <p> par <div> pour contenir le <Badge> */}
+            <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
+              Programme hebdomadaire officiel de la classe <Badge className="bg-primary">{studentClass}</Badge>
+            </div>
           </div>
           <div className="flex gap-2">
              <Badge className="bg-amber-100 text-amber-700 border-none font-bold px-4 py-2">
@@ -101,7 +101,7 @@ export default function StudentAgendaPage() {
                 <div className="h-64 flex flex-col items-center justify-center p-12 text-center border-4 border-dashed rounded-[3rem] bg-muted/20 opacity-40">
                   <BookOpen className="size-16 text-muted-foreground mb-4" />
                   <h3 className="text-xl font-black">Aucun cours programmé</h3>
-                  <p className="font-medium">Profite de ce temps libre pour tes devoirs personnels.</p>
+                  <p className="font-medium text-muted-foreground">Profite de ce temps libre pour tes devoirs personnels.</p>
                 </div>
               ) : (
                 dayCourses.map((course: any, i: number) => (
@@ -123,9 +123,14 @@ export default function StudentAgendaPage() {
                            </div>
                          </div>
                       </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Durée de session</p>
-                        <p className="text-xl font-black text-primary">{course.duration || '2h 00min'}</p>
+                      <div className="flex flex-col items-end gap-3">
+                        <div className="text-right">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Durée de session</p>
+                          <p className="text-xl font-black text-primary">{course.duration || '2h 00min'}</p>
+                        </div>
+                        <Button variant="ghost" className="rounded-xl font-bold group-hover:bg-primary/5 group-hover:text-primary transition-colors">
+                          Détails cours
+                        </Button>
                       </div>
                     </div>
                   </Card>
