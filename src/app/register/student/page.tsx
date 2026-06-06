@@ -32,6 +32,7 @@ export default function RegisterStudentPage() {
 
     setLoading(true);
     try {
+      // Recherche réelle du matricule dans Firestore
       const q = query(
         collection(db, "students"), 
         where("matricule", "==", matricule.toUpperCase().trim())
@@ -52,6 +53,7 @@ export default function RegisterStudentPage() {
       const docData = querySnapshot.docs[0].data();
       const docId = querySnapshot.docs[0].id;
 
+      // Vérifier si le compte est déjà actif
       if (docData.status === "Actif") {
         toast({ title: "Déjà activé", description: "Ce compte est déjà actif. Veuillez vous connecter." });
         router.push("/login");
@@ -77,12 +79,15 @@ export default function RegisterStudentPage() {
     setLoading(true);
     try {
       const ref = doc(db, "students", studentDoc.id);
+      
+      // Mise à jour de la fiche créée par le directeur
       await updateDoc(ref, {
         fullName: fullName.trim(),
         status: "Actif",
         activatedAt: new Date().toISOString()
       });
 
+      // Stockage local pour la session prototype
       localStorage.setItem('acadex_user_id', studentDoc.matricule);
       localStorage.setItem('acadex_user_role', 'Élève');
       localStorage.setItem('acadex_user_name', fullName);
@@ -132,7 +137,7 @@ export default function RegisterStudentPage() {
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-amber-600 transition-colors" />
                       <Input 
                         placeholder="EX: ELV-6èmeA-123" 
-                        className="h-16 pl-12 rounded-2xl text-xl font-black tracking-widest border-2 focus-visible:ring-amber-600" 
+                        className="h-16 pl-12 rounded-2xl text-xl font-black tracking-widest border-2 focus-visible:ring-amber-600 uppercase" 
                         value={matricule} 
                         onChange={e => setMatricule(e.target.value)}
                       />
@@ -142,7 +147,7 @@ export default function RegisterStudentPage() {
                 <div className="flex gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-200">
                   <ShieldAlert className="size-5 text-amber-600 shrink-0" />
                   <p className="text-xs font-bold text-amber-800 leading-relaxed">
-                    Votre matricule est disponible sur le document remis par votre Directeur.
+                    Votre matricule est disponible sur le document remis par votre Directeur lors de l'inscription.
                   </p>
                 </div>
               </CardContent>
@@ -152,7 +157,7 @@ export default function RegisterStudentPage() {
                 </Button>
                 <Button onClick={verifyAccount} disabled={loading} className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black px-10 h-12 shadow-xl shadow-amber-600/20">
                   {loading ? <Loader2 className="size-5 animate-spin mr-2" /> : <CheckCircle2 className="size-4 mr-2" />}
-                  Vérifier
+                  Vérifier le matricule
                 </Button>
               </CardFooter>
             </>
@@ -178,7 +183,7 @@ export default function RegisterStudentPage() {
                       onChange={e => setFullName(e.target.value)}
                       disabled={studentDoc.fullName !== ""}
                     />
-                    {studentDoc.fullName && <p className="text-[10px] font-bold text-muted-foreground italic">Ce nom a été validé par la direction.</p>}
+                    {studentDoc.fullName && <p className="text-[10px] font-bold text-muted-foreground italic">Ce nom a été pré-enregistré par la direction.</p>}
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold">Définir un Mot de Passe</Label>
@@ -217,8 +222,8 @@ export default function RegisterStudentPage() {
                 </p>
               </div>
               <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-emerald-500/20 space-y-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Matricule de Connexion</p>
-                <p className="text-4xl font-black text-foreground tracking-tighter">{matricule}</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Matricule de Connexion Officiel</p>
+                <p className="text-4xl font-black text-foreground tracking-tighter">{matricule.toUpperCase()}</p>
                 <div className="flex items-center justify-center gap-2 text-xs font-black text-emerald-600">
                   <ShieldCheck className="size-3" /> COMPTE VÉRIFIÉ & SÉCURISÉ
                 </div>
