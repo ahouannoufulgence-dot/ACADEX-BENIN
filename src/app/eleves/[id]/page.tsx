@@ -167,7 +167,7 @@ export default function StudentDetailPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-black">Supprimer définitivement ?</AlertDialogTitle>
                         <AlertDialogDescription className="font-medium">
-                          Cette action effacera toutes les données scolaires de l'élève {student.fullName}.
+                          Cette action effacera toutes les données scolaires de l'élève {student.fullName || student.matricule}.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>

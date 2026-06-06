@@ -48,6 +48,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const officialClasses = ["6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"]
 
@@ -60,6 +70,7 @@ export default function StudentsPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isDirector, setIsDirector] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState<any>(null)
   
   const db = useFirestore()
 
@@ -75,10 +86,12 @@ export default function StudentsPage() {
     if (!db || !userRole) return null
     const ref = collection(db, 'students')
     
-    if (userRole !== "Directeur" && userClasses.length > 0) {
+    // Si enseignant, on filtre par ses classes
+    if (userRole === "Professeur" && userClasses.length > 0) {
       return query(ref, where("classId", "in", userClasses), orderBy("matricule", "asc"))
     }
     
+    // Si directeur, on voit tout
     return query(ref, orderBy("matricule", "asc"))
   }, [db, userRole, userClasses])
 
@@ -101,12 +114,12 @@ export default function StudentsPage() {
     setIsGenerating(true)
     const count = parseInt(batchCount)
     const year = "2024-2025"
-    const classKey = selectedClass.replace(/\s/g, '')
+    // Format: ELV-4èmeA-123 (on enlève juste les espaces de la classe)
+    const classTag = selectedClass.replace(/\s/g, '')
 
-    // Création multiple
     const creations = Array.from({ length: count }).map((_, i) => {
-      const randomNum = Math.floor(100 + Math.random() * 899)
-      const matricule = `ELV-${classKey}-${randomNum}${i + 1}`
+      const randomNum = Math.floor(100 + Math.random() * 900)
+      const matricule = `ELV-${classTag}-${randomNum}`
       
       const studentData = {
         fullName: "",
@@ -129,15 +142,26 @@ export default function StudentsPage() {
     })
 
     Promise.all(creations).then(() => {
-      toast({ title: "Génération terminée", description: `${count} identifiants ont été créés pour la ${selectedClass}.` })
+      toast({ title: "Génération terminée", description: `${count} identifiants créés pour la ${selectedClass}.` })
       setIsGenerating(false)
       setIsDialogOpen(false)
     })
   }
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({ title: "Identifiant copié", description: `${text} est prêt à être partagé.` })
+    try {
+      navigator.clipboard.writeText(text)
+      toast({ title: "Copié !", description: `${text} est prêt à être partagé.` })
+    } catch (err) {
+      // Fallback au cas où clipboard API n'est pas dispo
+      const el = document.createElement('textarea');
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      toast({ title: "Copié !", description: `${text} est prêt.` })
+    }
   }
 
   const handleExportPDF = () => {
@@ -155,11 +179,12 @@ export default function StudentsPage() {
       body: filteredStudents.map((s: any) => [s.fullName || "A COMPLÉTER", s.classId, s.matricule, s.validationCode || "---"]),
       headStyles: { fillColor: [20, 83, 45] }
     })
-    docPdf.save(`IDENTIFIANTS_ELV.pdf`)
+    docPdf.save(`IDENTIFIANTS_ELV_${new Date().getTime()}.pdf`)
   }
 
-  const handleDeleteStudent = (studentId: string) => {
-    const studentRef = doc(db, "students", studentId)
+  const confirmDelete = () => {
+    if (!studentToDelete) return
+    const studentRef = doc(db, "students", studentToDelete.id)
     deleteDoc(studentRef).catch(async () => {
       const error = new FirestorePermissionError({
         path: studentRef.path,
@@ -167,7 +192,8 @@ export default function StudentsPage() {
       })
       errorEmitter.emit('permission-error', error)
     })
-    toast({ title: "Élève supprimé" })
+    toast({ title: "Élève supprimé", description: `Le matricule ${studentToDelete.matricule} a été révoqué.` })
+    setStudentToDelete(null)
   }
 
   return (
@@ -176,13 +202,13 @@ export default function StudentsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">
-              {isDirector ? "Gestion des Élèves" : "Mes Classes"}
+              {isDirector ? "Pilotage des Élèves" : "Mes Classes"}
             </h1>
-            <p className="text-muted-foreground mt-2 font-medium italic">"Chaque identifiant est une porte vers la réussite."</p>
+            <p className="text-muted-foreground mt-2 font-medium italic">"Gérez les identifiants et les accès de vos élèves."</p>
           </div>
           {isDirector && (
             <div className="flex items-center gap-3">
-              <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black">
+              <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
                 <FileDown className="mr-2 size-5" /> Exporter PDF
               </Button>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -193,8 +219,8 @@ export default function StudentsPage() {
                 </DialogTrigger>
                 <DialogContent className="rounded-[2.5rem] p-10 max-w-md border-none shadow-2xl">
                   <DialogHeader>
-                    <DialogTitle className="text-2xl font-black text-center">Peupler une Classe</DialogTitle>
-                    <DialogDescription className="font-medium text-center">Générez massivement des matricules au format ELV-Classe-Nombre.</DialogDescription>
+                    <DialogTitle className="text-2xl font-black text-center">Génération de Matricules</DialogTitle>
+                    <DialogDescription className="font-medium text-center">Créez massivement des comptes élèves vides pour une classe.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6 py-6">
                     <div className="space-y-2">
@@ -205,13 +231,13 @@ export default function StudentsPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="font-black text-xs uppercase text-muted-foreground">Quantité d'élèves</Label>
+                      <Label className="font-black text-xs uppercase text-muted-foreground">Nombre d'élèves</Label>
                       <Input type="number" value={batchCount} onChange={(e) => setBatchCount(e.target.value)} className="h-12 rounded-xl font-black text-lg border-2" />
                     </div>
                   </div>
                   <DialogFooter>
                     <Button onClick={handleBatchGenerate} disabled={isGenerating} className="w-full bg-primary h-14 rounded-2xl font-black text-lg shadow-xl">
-                      {isGenerating ? <Loader2 className="mr-2 size-5 animate-spin" /> : <CheckCircle2 className="mr-2 size-5" />} Lancer la création
+                      {isGenerating ? <Loader2 className="mr-2 size-5 animate-spin" /> : <CheckCircle2 className="mr-2 size-5" />} Lancer la génération
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -277,18 +303,13 @@ export default function StudentsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl border-2 w-48 p-2">
                             <DropdownMenuItem asChild>
-                              <Link href={`/eleves/${student.id}`} className="flex items-center gap-2 font-bold cursor-pointer">
-                                <Edit2 className="size-4" /> Modifier le profil
+                              <Link href={`/eleves/${student.id}`} className="flex items-center gap-2 font-bold cursor-pointer w-full">
+                                <Edit2 className="size-4" /> Gérer le profil
                               </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm("Supprimer définitivement cet élève et son identifiant ?")) {
-                                  handleDeleteStudent(student.id)
-                                }
-                              }}
+                              onSelect={() => setStudentToDelete(student)}
                             >
                               <Trash2 className="size-4" /> Supprimer
                             </DropdownMenuItem>
@@ -303,6 +324,24 @@ export default function StudentsPage() {
           )}
         </div>
       </div>
+
+      <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
+        <AlertDialogContent className="rounded-[2.5rem]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black">Supprimer cet identifiant ?</AlertDialogTitle>
+            <AlertDialogDescription className="font-medium">
+              Voulez-vous vraiment supprimer le matricule <span className="font-black text-foreground">{studentToDelete?.matricule}</span> ?
+              Cette action est irréversible et l'élève ne pourra plus se connecter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl font-bold">Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black px-6">
+              Supprimer définitivement
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DashboardLayout>
   )
 }
