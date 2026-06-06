@@ -3,22 +3,52 @@
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card } from "@/components/ui/card"
-import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Zap } from "lucide-react"
-import { useState } from "react"
+import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Zap, Loader2, BookOpen } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { useFirestore, useCollection } from "@/firebase"
+import { collection, query, where, orderBy } from "firebase/firestore"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
-const schedule = [
-  { day: "Lundi", courses: [{ h: "08h-10h", s: "Mathématiques", r: "Salle 12", t: "M. Dossou" }, { h: "10h-12h", s: "Français", r: "Salle 05", t: "Mme Amoussou" }] },
-  { day: "Mardi", courses: [{ h: "08h-10h", s: "Anglais", r: "Labo Langues", t: "M. Smith" }, { h: "10h-12h", s: "PCT", r: "Salle 12", t: "M. Koffi" }] },
-  { day: "Mercredi", courses: [{ h: "08h-12h", s: "Éducation Physique", r: "Terrain", t: "M. Bio" }] },
-  { day: "Jeudi", courses: [{ h: "08h-10h", s: "SVT", r: "Salle 08", t: "Dr. Mensah" }, { h: "14h-16h", s: "Histoire-Géo", r: "Salle 12", t: "Mme Houede" }] },
-  { day: "Vendredi", courses: [{ h: "10h-12h", s: "Philosophie", r: "Salle A", t: "M. Kodjo" }] },
-]
 
 export default function StudentAgendaPage() {
+  const db = useFirestore()
   const [selectedDay, setSelectedDay] = useState("Lundi")
+  const [studentClass, setStudentClass] = useState("")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    // Récupérer la classe de l'élève stockée lors de l'inscription/connexion
+    const fetchStudentData = async () => {
+      const matricule = localStorage.getItem('acadex_user_id')
+      if (matricule) {
+        // Dans une app réelle, on chercherait le profil complet, ici on simule avec ce qui est en session
+        // Le matricule contient souvent le tag de classe dans notre nomenclature ACADEX
+        const parts = matricule.split('-')
+        if (parts.length >= 2) setStudentClass(parts[1])
+      }
+      setMounted(true)
+    }
+    fetchStudentData()
+  }, [])
+
+  // Requête pour récupérer les cours de la classe de l'élève
+  const schedulesQuery = useMemo(() => {
+    if (!db || !studentClass) return null
+    return query(collection(db, "schedules"), where("classId", "==", studentClass))
+  }, [db, studentClass])
+
+  const { data: allSchedules, loading } = useCollection(schedulesQuery)
+
+  const dayCourses = useMemo(() => {
+    if (!allSchedules) return []
+    return allSchedules
+      .filter((s: any) => s.day === selectedDay)
+      .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime))
+  }, [allSchedules, selectedDay])
+
+  if (!mounted) return null
 
   return (
     <DashboardLayout>
@@ -26,11 +56,11 @@ export default function StudentAgendaPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Mon <span className="text-primary italic">Emploi du Temps</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Organisation hebdomadaire de tes cours.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Programme hebdomadaire officiel de la classe <Badge className="bg-primary ml-2">{studentClass}</Badge></p>
           </div>
           <div className="flex gap-2">
              <Badge className="bg-amber-100 text-amber-700 border-none font-bold px-4 py-2">
-               <Zap className="size-3 mr-2 fill-amber-700" /> 2 Évaluations prévues cette semaine
+               <Zap className="size-3 mr-2 fill-amber-700" /> {allSchedules?.length || 0} Sessions programmées
              </Badge>
           </div>
         </div>
@@ -38,7 +68,7 @@ export default function StudentAgendaPage() {
         <div className="grid gap-8 lg:grid-cols-12">
           {/* Menu des jours */}
           <Card className="lg:col-span-3 border-none shadow-sm bg-white rounded-[2.5rem] p-6 h-fit">
-            <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-6 px-4">Jours de la semaine</h3>
+            <h3 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-6 px-4">Navigation Semaine</h3>
             <div className="space-y-2">
               {days.map((day) => (
                 <button
@@ -57,36 +87,49 @@ export default function StudentAgendaPage() {
             <div className="flex items-center justify-between px-2">
               <h2 className="text-2xl font-black text-foreground">Programme du {selectedDay}</h2>
               <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-black uppercase tracking-widest px-4">
-                Session {schedule.find(s => s.day === selectedDay)?.courses.length || 0}
+                {dayCourses.length} COURS
               </Badge>
             </div>
 
             <div className="grid gap-6">
-              {schedule.find(s => s.day === selectedDay)?.courses.map((course, i) => (
-                <Card key={i} className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden group hover:shadow-xl transition-all duration-300">
-                  <div className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-8">
-                       <div className="size-20 bg-muted rounded-[2rem] flex flex-col items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                          <Clock className="size-6 mb-1" />
-                          <span className="text-[10px] font-black uppercase">{course.h}</span>
-                       </div>
-                       <div className="space-y-2">
-                         <h3 className="text-2xl font-black text-foreground">{course.s}</h3>
-                         <div className="flex flex-wrap gap-6 text-xs font-bold text-muted-foreground">
-                            <span className="flex items-center gap-2"><MapPin className="size-4 text-primary" /> {course.r}</span>
-                            <span className="flex items-center gap-2"><User className="size-4 text-primary" /> {course.t}</span>
-                         </div>
-                       </div>
-                    </div>
-                    <Button variant="ghost" className="rounded-xl font-bold group-hover:bg-primary/5 group-hover:text-primary">Détails cours</Button>
-                  </div>
-                </Card>
-              )) || (
-                <div className="h-64 flex flex-col items-center justify-center p-12 text-center border-4 border-dashed rounded-[3rem] bg-muted/20 opacity-40">
-                  <Calendar className="size-16 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-black">Aucun cours</h3>
-                  <p className="font-medium">Profite de ce temps libre pour tes devoirs.</p>
+              {loading ? (
+                <div className="h-64 flex flex-col items-center justify-center p-12 text-center bg-white rounded-[2.5rem] animate-pulse">
+                  <Loader2 className="size-12 text-primary animate-spin mb-4" />
+                  <p className="font-black text-muted-foreground uppercase tracking-widest">Récupération du programme...</p>
                 </div>
+              ) : dayCourses.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center p-12 text-center border-4 border-dashed rounded-[3rem] bg-muted/20 opacity-40">
+                  <BookOpen className="size-16 text-muted-foreground mb-4" />
+                  <h3 className="text-xl font-black">Aucun cours programmé</h3>
+                  <p className="font-medium">Profite de ce temps libre pour tes devoirs personnels.</p>
+                </div>
+              ) : (
+                dayCourses.map((course: any, i: number) => (
+                  <Card key={i} className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden group hover:shadow-xl transition-all duration-300">
+                    <div className="p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex items-center gap-8">
+                         <div className="size-24 bg-muted rounded-[2rem] flex flex-col items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+                            <Clock className="size-7 mb-1" />
+                            <span className="text-[10px] font-black uppercase">{course.startTime}</span>
+                         </div>
+                         <div className="space-y-2">
+                           <div className="flex items-center gap-3">
+                             <h3 className="text-3xl font-black text-foreground">{course.subject}</h3>
+                             <Badge variant="outline" className="text-[10px] font-black uppercase border-primary/20 text-primary">EN DIRECT</Badge>
+                           </div>
+                           <div className="flex flex-wrap gap-6 text-sm font-bold text-muted-foreground">
+                              <span className="flex items-center gap-2 bg-muted/50 px-3 py-1 rounded-full"><MapPin className="size-4 text-primary" /> {course.room}</span>
+                              <span className="flex items-center gap-2 bg-muted/50 px-3 py-1 rounded-full"><User className="size-4 text-primary" /> {course.teacherName}</span>
+                           </div>
+                         </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Durée de session</p>
+                        <p className="text-xl font-black text-primary">{course.duration || '2h 00min'}</p>
+                      </div>
+                    </div>
+                  </Card>
+                ))
               )}
             </div>
           </div>

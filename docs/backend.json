@@ -58,6 +58,21 @@
         "coefficient": { "type": "number" }
       }
     },
+    "Schedule": {
+      "title": "Emploi du Temps",
+      "description": "Session de cours programmée par un enseignant",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "teacherId": { "type": "string" },
+        "teacherName": { "type": "string" },
+        "subject": { "type": "string" },
+        "day": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" },
+        "room": { "type": "string" }
+      }
+    },
     "Payment": {
       "title": "Paiement",
       "description": "Suivi des tranches de scolarité",
@@ -102,6 +117,7 @@
     "/students/{studentId}": { "schema": "Student", "description": "Profils élèves inscrits" },
     "/teachers/{teacherId}": { "schema": "Teacher", "description": "Base enseignants" },
     "/grades/{gradeId}": { "schema": "Grade", "description": "Notes centralisées" },
+    "/schedules/{scheduleId}": { "schema": "Schedule", "description": "Programmes des cours" },
     "/payments/{paymentId}": { "schema": "Payment", "description": "Trésorerie" },
     "/absences/{absenceId}": { "schema": "Absence", "description": "Registre des absences" }
   }
