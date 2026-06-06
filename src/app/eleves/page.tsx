@@ -86,12 +86,10 @@ export default function StudentsPage() {
     if (!db || !userRole) return null
     const ref = collection(db, 'students')
     
-    // Si enseignant, on filtre par ses classes
     if (userRole === "Professeur" && userClasses.length > 0) {
       return query(ref, where("classId", "in", userClasses), orderBy("matricule", "asc"))
     }
     
-    // Si directeur, on voit tout
     return query(ref, orderBy("matricule", "asc"))
   }, [db, userRole, userClasses])
 
@@ -114,7 +112,6 @@ export default function StudentsPage() {
     setIsGenerating(true)
     const count = parseInt(batchCount)
     const year = "2024-2025"
-    // Format: ELV-4èmeA-123 (on enlève juste les espaces de la classe)
     const classTag = selectedClass.replace(/\s/g, '')
 
     const creations = Array.from({ length: count }).map((_, i) => {
@@ -127,8 +124,7 @@ export default function StudentsPage() {
         classId: selectedClass,
         status: "En attente d'activation",
         academicYear: year,
-        createdAt: serverTimestamp(),
-        validationCode: Math.random().toString(36).substring(2, 8).toUpperCase()
+        createdAt: serverTimestamp()
       }
 
       return addDoc(collection(db, "students"), studentData).catch(async () => {
@@ -142,7 +138,7 @@ export default function StudentsPage() {
     })
 
     Promise.all(creations).then(() => {
-      toast({ title: "Génération terminée", description: `${count} identifiants créés pour la ${selectedClass}.` })
+      toast({ title: "Génération terminée", description: `${count} matricules créés pour la ${selectedClass}.` })
       setIsGenerating(false)
       setIsDialogOpen(false)
     })
@@ -153,7 +149,6 @@ export default function StudentsPage() {
       navigator.clipboard.writeText(text)
       toast({ title: "Copié !", description: `${text} est prêt à être partagé.` })
     } catch (err) {
-      // Fallback au cas où clipboard API n'est pas dispo
       const el = document.createElement('textarea');
       el.value = text;
       document.body.appendChild(el);
@@ -171,15 +166,15 @@ export default function StudentsPage() {
     docPdf.rect(0, 0, 210, 30, 'F')
     docPdf.setTextColor(255, 255, 255)
     docPdf.setFontSize(16)
-    docPdf.text(`ACADEX - LISTE DES IDENTIFIANTS OFFICIELS`, 105, 20, { align: "center" })
+    docPdf.text(`ACADEX - LISTE DES MATRICULES OFFICIELS`, 105, 20, { align: "center" })
 
     autoTable(docPdf, {
       startY: 40,
-      head: [['Élève', 'Classe', 'Matricule', 'Code Activation']],
-      body: filteredStudents.map((s: any) => [s.fullName || "A COMPLÉTER", s.classId, s.matricule, s.validationCode || "---"]),
+      head: [['Élève', 'Classe', 'Matricule', 'Statut']],
+      body: filteredStudents.map((s: any) => [s.fullName || "A COMPLÉTER", s.classId, s.matricule, s.status]),
       headStyles: { fillColor: [20, 83, 45] }
     })
-    docPdf.save(`IDENTIFIANTS_ELV_${new Date().getTime()}.pdf`)
+    docPdf.save(`MATRICULES_ELV_${new Date().getTime()}.pdf`)
   }
 
   const confirmDelete = () => {
@@ -220,7 +215,7 @@ export default function StudentsPage() {
                 <DialogContent className="rounded-[2.5rem] p-10 max-w-md border-none shadow-2xl">
                   <DialogHeader>
                     <DialogTitle className="text-2xl font-black text-center">Génération de Matricules</DialogTitle>
-                    <DialogDescription className="font-medium text-center">Créez massivement des comptes élèves vides pour une classe.</DialogDescription>
+                    <DialogDescription className="font-medium text-center">Créez massivement des comptes élèves pour une classe.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6 py-6">
                     <div className="space-y-2">
@@ -263,7 +258,7 @@ export default function StudentsPage() {
             <Card className="p-16 text-center bg-white rounded-[3.5rem] border-none shadow-sm">
               <Users className="size-16 text-muted-foreground mx-auto mb-6 opacity-20" />
               <h3 className="text-xl font-black">Aucun élève trouvé</h3>
-              <p className="text-muted-foreground font-medium">Commencez par utiliser la Génération Express pour cette classe.</p>
+              <p className="text-muted-foreground font-medium">Utilisez la Génération Express pour cette classe.</p>
             </Card>
           ) : (
             <div className="grid gap-4">
@@ -331,7 +326,7 @@ export default function StudentsPage() {
             <AlertDialogTitle className="text-2xl font-black">Supprimer cet identifiant ?</AlertDialogTitle>
             <AlertDialogDescription className="font-medium">
               Voulez-vous vraiment supprimer le matricule <span className="font-black text-foreground">{studentToDelete?.matricule}</span> ?
-              Cette action est irréversible et l'élève ne pourra plus se connecter.
+              Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

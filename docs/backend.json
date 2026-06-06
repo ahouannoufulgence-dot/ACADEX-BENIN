@@ -11,7 +11,6 @@
         "classId": { "type": "string" },
         "status": { "type": "string", "enum": ["Actif", "En attente d'activation", "Transféré", "Exclu"] },
         "academicYear": { "type": "string" },
-        "validationCode": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["matricule", "classId", "academicYear"]
@@ -65,6 +64,16 @@
         "logoUrl": { "type": "string" },
         "primaryColor": { "type": "string" },
         "academicYear": { "type": "string" }
+      }
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "Structure d'une discussion",
+      "type": "object",
+      "properties": {
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "lastMessageTime": { "type": "string", "format": "date-time" }
       }
     }
   },

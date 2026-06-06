@@ -277,7 +277,6 @@ export default function StudentDetailPage() {
                   <h3 className="text-xl font-black flex items-center gap-3"><Info className="text-primary" /> Détails Officiels</h3>
                   <div className="grid grid-cols-2 gap-y-6">
                     <div><p className="text-[10px] font-black text-muted-foreground uppercase">Statut Compte</p><Badge variant="outline" className="font-bold border-primary/20 text-primary">{student.status}</Badge></div>
-                    <div><p className="text-[10px] font-black text-muted-foreground uppercase">Code Activation</p><p className="font-mono font-black text-lg">{student.validationCode || "---"}</p></div>
                     <div><p className="text-[10px] font-black text-muted-foreground uppercase">Nationalité</p><p className="font-bold">Béninoise</p></div>
                     <div><p className="text-[10px] font-black text-muted-foreground uppercase">Genre</p><p className="font-bold">---</p></div>
                   </div>
@@ -286,7 +285,7 @@ export default function StudentDetailPage() {
                   <h3 className="text-xl font-black flex items-center gap-3"><ShieldCheck className="text-primary" /> Sécurité des Données</h3>
                   <div className="space-y-4">
                     <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-                      L'identifiant matricule et le code d'activation permettent à l'élève de configurer son espace personnel sécurisé.
+                      L'identifiant matricule permet à l'élève d'activer son espace personnel sécurisé.
                     </p>
                     <div className="p-6 bg-muted/30 rounded-3xl border-2 border-dashed border-muted-foreground/10 text-center">
                        <p className="text-[10px] font-black uppercase text-muted-foreground mb-2">QR Code de profil</p>

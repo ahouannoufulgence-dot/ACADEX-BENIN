@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, GraduationCap, Lock, CheckCircle2, Search, ArrowLeft, ArrowRight, Loader2, UserCircle2, ShieldAlert, KeyRound } from "lucide-react";
+import { ShieldCheck, GraduationCap, Lock, CheckCircle2, Search, ArrowLeft, ArrowRight, Loader2, UserCircle2, ShieldAlert } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -20,14 +20,13 @@ export default function RegisterStudentPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [matricule, setMatricule] = useState("");
-  const [validationCode, setValidationCode] = useState("");
   const [studentDoc, setStudentDoc] = useState<any>(null);
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
 
   const verifyAccount = async () => {
-    if (!matricule.trim() || !validationCode.trim()) {
-      toast({ title: "Champs requis", description: "Veuillez saisir votre matricule et votre code secret.", variant: "destructive" });
+    if (!matricule.trim()) {
+      toast({ title: "Matricule requis", description: "Veuillez saisir votre matricule officiel.", variant: "destructive" });
       return;
     }
 
@@ -35,8 +34,7 @@ export default function RegisterStudentPage() {
     try {
       const q = query(
         collection(db, "students"), 
-        where("matricule", "==", matricule.toUpperCase().trim()),
-        where("validationCode", "==", validationCode.toUpperCase().trim())
+        where("matricule", "==", matricule.toUpperCase().trim())
       );
       
       const querySnapshot = await getDocs(q);
@@ -44,7 +42,7 @@ export default function RegisterStudentPage() {
       if (querySnapshot.empty) {
         toast({ 
           title: "Introuvable", 
-          description: "Le matricule ou le code de validation est incorrect. Vérifiez vos documents officiels.", 
+          description: "Le matricule saisi n'existe pas dans la base de données. Contactez la direction.", 
           variant: "destructive" 
         });
         setLoading(false);
@@ -82,11 +80,9 @@ export default function RegisterStudentPage() {
       await updateDoc(ref, {
         fullName: fullName.trim(),
         status: "Actif",
-        activatedAt: new Date().toISOString(),
-        // Dans un vrai système, on utiliserait Firebase Auth, ici on simule la mise à jour du profil
+        activatedAt: new Date().toISOString()
       });
 
-      // Sauvegarde locale pour la session
       localStorage.setItem('acadex_user_id', studentDoc.matricule);
       localStorage.setItem('acadex_user_role', 'Élève');
       localStorage.setItem('acadex_user_name', fullName);
@@ -126,7 +122,7 @@ export default function RegisterStudentPage() {
                   <GraduationCap className="size-8" />
                 </div>
                 <CardTitle className="text-3xl font-black">Activation de Compte</CardTitle>
-                <CardDescription className="text-lg font-medium">Saisissez les codes remis par l'administration.</CardDescription>
+                <CardDescription className="text-lg font-medium">Saisissez votre matricule officiel.</CardDescription>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="space-y-4">
@@ -142,23 +138,11 @@ export default function RegisterStudentPage() {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold uppercase text-[10px] text-muted-foreground tracking-widest px-2">Code Secret d'Activation</Label>
-                    <div className="relative group">
-                      <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-amber-600 transition-colors" />
-                      <Input 
-                        placeholder="CODE SECRET" 
-                        className="h-16 pl-12 rounded-2xl text-xl font-black tracking-[0.5em] border-2 focus-visible:ring-amber-600 text-center" 
-                        value={validationCode} 
-                        onChange={e => setValidationCode(e.target.value)}
-                      />
-                    </div>
-                  </div>
                 </div>
                 <div className="flex gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-200">
                   <ShieldAlert className="size-5 text-amber-600 shrink-0" />
                   <p className="text-xs font-bold text-amber-800 leading-relaxed">
-                    Votre identifiant et votre code secret sont disponibles sur le document PDF généré par votre Directeur.
+                    Votre matricule est disponible sur le document remis par votre Directeur.
                   </p>
                 </div>
               </CardContent>
@@ -233,7 +217,7 @@ export default function RegisterStudentPage() {
                 </p>
               </div>
               <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-emerald-500/20 space-y-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Identifiant de Connexion</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Matricule de Connexion</p>
                 <p className="text-4xl font-black text-foreground tracking-tighter">{matricule}</p>
                 <div className="flex items-center justify-center gap-2 text-xs font-black text-emerald-600">
                   <ShieldCheck className="size-3" /> COMPTE VÉRIFIÉ & SÉCURISÉ
