@@ -1,8 +1,7 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -11,20 +10,19 @@ import {
   Trash2, 
   FileDown, 
   Loader2, 
-  CheckCircle2, 
-  Search,
-  Printer,
-  Edit2
+  Search
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, orderBy, addDoc, serverTimestamp, deleteDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
+import { collection, query, orderBy, serverTimestamp, deleteDoc, doc, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME A", "3EME B", "2NDE C", "2NDE D", "1ERE D", "TLE D1"]
 
@@ -46,40 +44,56 @@ export default function GenIdentifiersPage() {
     )
   }, [identifiers, searchTerm])
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!selectedClass || !count) {
       toast({ title: "Champs requis", variant: "destructive" })
       return
     }
 
     setLoading(true)
-    try {
-      const batchSize = parseInt(count)
-      const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
+    const batch = writeBatch(db)
+    const batchSize = parseInt(count)
+    const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
+    
+    // Génération ultra-rapide par Batch
+    for (let i = 1; i <= batchSize; i++) {
+      const num = i.toString().padStart(3, '0')
+      const matricule = `ELV-${classTag}-${num}`
+      const newDocRef = doc(collection(db, "registration_ids"))
       
-      // Utilisation d'un batch pour la performance
-      for (let i = 1; i <= batchSize; i++) {
-        const num = i.toString().padStart(3, '0')
-        const matricule = `ELV-${classTag}-${num}`
-        
-        await addDoc(collection(db, "registration_ids"), {
-          matricule,
-          classId: selectedClass,
-          status: "non utilisé",
-          createdAt: serverTimestamp()
-        })
-      }
-      
-      toast({ title: "Génération réussie", description: `${batchSize} identifiants créés pour la ${selectedClass}.` })
-    } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" })
-    } finally {
-      setLoading(false)
+      batch.set(newDocRef, {
+        matricule,
+        classId: selectedClass,
+        status: "non utilisé",
+        createdAt: serverTimestamp()
+      })
     }
+    
+    // Validation du lot
+    batch.commit()
+      .then(() => {
+        toast({ title: "Génération terminée", description: `${batchSize} identifiants créés avec succès.` })
+      })
+      .catch(async (serverError) => {
+        const error = new FirestorePermissionError({
+          path: 'registration_ids',
+          operation: 'write',
+          requestResourceData: { batchSize, selectedClass }
+        })
+        errorEmitter.emit('permission-error', error)
+      })
+      .finally(() => setLoading(false))
   }
 
   const handleDelete = (id: string) => {
-    deleteDoc(doc(db, "registration_ids", id))
+    const idRef = doc(db, "registration_ids", id)
+    deleteDoc(idRef).catch(async (serverError) => {
+      const error = new FirestorePermissionError({
+        path: idRef.path,
+        operation: 'delete'
+      })
+      errorEmitter.emit('permission-error', error)
+    })
     toast({ title: "Identifiant supprimé" })
   }
 
@@ -112,7 +126,7 @@ export default function GenIdentifiersPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Générer Identifiants <span className="text-primary italic">Élèves</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Créez les clés d'accès que les élèves utiliseront pour s'inscrire eux-mêmes.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Créez en masse les matricules pour l'auto-inscription.</p>
           </div>
           <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
             <FileDown className="mr-2 size-5" /> Télécharger PDF
@@ -129,13 +143,13 @@ export default function GenIdentifiersPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Nombre d'identifiants</Label>
+              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Nombre</Label>
               <Input type="number" value={count} onChange={(e) => setCount(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg" />
             </div>
             <div className="md:col-span-2">
               <Button onClick={handleGenerate} disabled={loading || !selectedClass} className="w-full h-14 bg-primary hover:bg-primary/90 shadow-xl rounded-2xl font-black text-lg">
                 {loading ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Zap className="mr-2 size-6 fill-white" />}
-                Générer les Identifiants
+                Générer Express
               </Button>
             </div>
           </div>
@@ -167,7 +181,7 @@ export default function GenIdentifiersPage() {
                   {loadingIds ? (
                     <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
                   ) : filteredIds.length === 0 ? (
-                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun identifiant trouvé.</td></tr>
+                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun identifiant généré.</td></tr>
                   ) : (
                     filteredIds.map((id: any) => (
                       <tr key={id.id} className="hover:bg-muted/5 transition-colors group">

@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, GraduationCap, Lock, CheckCircle2, Search, ArrowRight, Loader2, UserCircle2, Phone, MapPin, Calendar, Heart } from "lucide-react";
+import { GraduationCap, CheckCircle2, Search, ArrowRight, Loader2, Heart } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, addDoc } from "firebase/firestore";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function RegisterStudentPage() {
   const router = useRouter();
@@ -44,7 +46,6 @@ export default function RegisterStudentPage() {
 
     setLoading(true);
     try {
-      // Vérifier si l'identifiant existe dans la collection de la direction
       const q = query(collection(db, "registration_ids"), where("matricule", "==", formatted));
       const snap = await getDocs(q);
 
@@ -55,14 +56,13 @@ export default function RegisterStudentPage() {
 
       const data = snap.docs[0].data();
       if (data.status === "utilisé") {
-        toast({ title: "Identifiant déjà utilisé", description: "Ce compte a déjà été activé par un élève.", variant: "destructive" });
+        toast({ title: "Identifiant déjà utilisé", description: "Ce compte a déjà été activé.", variant: "destructive" });
         return;
       }
 
-      // Stocker les infos de l'identifiant (notamment la classe)
       setRegDoc({ ...data, id: snap.docs[0].id });
       setStep(2);
-      toast({ title: "Identifiant validé", description: `Bienvenue ! Vous allez être inscrit en ${data.classId}.` });
+      toast({ title: "Identifiant validé", description: `Bienvenue en ${data.classId} !` });
     } catch (e) {
       toast({ title: "Erreur de connexion", description: "Impossible de vérifier l'identifiant.", variant: "destructive" });
     } finally {
@@ -70,40 +70,53 @@ export default function RegisterStudentPage() {
     }
   };
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     if (!form.lastName || !form.firstName || !form.password) {
       toast({ title: "Champs obligatoires", description: "Nom, Prénom et Mot de passe sont requis.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
-    try {
-      // 1. Créer le profil élève complet
-      await addDoc(collection(db, "students"), {
-        ...form,
-        matricule: regDoc.matricule,
-        classId: regDoc.classId,
-        status: "Actif",
-        academicYear: "2024-2025",
-        registeredAt: new Date().toISOString()
+    
+    const studentData = {
+      ...form,
+      matricule: regDoc.matricule,
+      classId: regDoc.classId,
+      status: "Actif",
+      academicYear: "2024-2025",
+      registeredAt: new Date().toISOString()
+    };
+
+    const studentRef = collection(db, "students");
+    const regIdRef = doc(db, "registration_ids", regDoc.id);
+
+    // 1. Créer le profil élève (Optimiste : pas d'await)
+    addDoc(studentRef, studentData).catch(async (serverError) => {
+      const error = new FirestorePermissionError({
+        path: 'students',
+        operation: 'create',
+        requestResourceData: studentData,
       });
+      errorEmitter.emit('permission-error', error);
+    });
 
-      // 2. Marquer l'identifiant comme utilisé dans la base de la direction
-      await updateDoc(doc(db, "registration_ids", regDoc.id), {
-        status: "utilisé"
+    // 2. Marquer l'identifiant comme utilisé (Optimiste : pas d'await)
+    updateDoc(regIdRef, { status: "utilisé" }).catch(async (serverError) => {
+      const error = new FirestorePermissionError({
+        path: regIdRef.path,
+        operation: 'update',
+        requestResourceData: { status: "utilisé" },
       });
+      errorEmitter.emit('permission-error', error);
+    });
 
-      // Stockage session
-      localStorage.setItem('acadex_user_id', regDoc.matricule);
-      localStorage.setItem('acadex_user_role', 'Élève');
-      localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
+    // Stockage session et transition immédiate
+    localStorage.setItem('acadex_user_id', regDoc.matricule);
+    localStorage.setItem('acadex_user_role', 'Élève');
+    localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
 
-      setStep(3);
-    } catch (e) {
-      toast({ title: "Échec de l'inscription", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+    setStep(3);
+    setLoading(false);
   };
 
   return (
@@ -210,7 +223,7 @@ export default function RegisterStudentPage() {
               <CardFooter className="p-12 bg-muted/30 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(1)} className="font-bold rounded-xl h-14 px-8">Retour</Button>
                 <Button onClick={handleRegister} disabled={loading} className="bg-primary rounded-2xl font-black px-12 h-14 shadow-xl shadow-primary/20 text-lg">
-                  {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : "Valider mon inscription"}
+                  {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : "Terminer mon inscription"}
                 </Button>
               </CardFooter>
             </>
