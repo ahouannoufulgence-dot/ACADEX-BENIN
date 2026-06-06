@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from "react";
@@ -10,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ShieldCheck, GraduationCap, Lock, CheckCircle2, Search, ArrowRight, Loader2, UserCircle2, Phone, MapPin, Calendar, Heart } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFirestore } from "@/firebase";
 import { collection, query, where, getDocs, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
@@ -37,28 +37,34 @@ export default function RegisterStudentPage() {
 
   const verifyIdentifier = async () => {
     const formatted = matricule.trim().toUpperCase();
-    if (!formatted) return;
+    if (!formatted) {
+      toast({ title: "Champ requis", description: "Veuillez saisir votre matricule.", variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
     try {
+      // Vérifier si l'identifiant existe dans la collection de la direction
       const q = query(collection(db, "registration_ids"), where("matricule", "==", formatted));
       const snap = await getDocs(q);
 
       if (snap.empty) {
-        toast({ title: "Identifiant invalide", description: "Ce matricule n'existe pas.", variant: "destructive" });
+        toast({ title: "Identifiant invalide", description: "Ce matricule n'a pas été généré par l'établissement.", variant: "destructive" });
         return;
       }
 
       const data = snap.docs[0].data();
       if (data.status === "utilisé") {
-        toast({ title: "Identifiant déjà utilisé", description: "Cet élève est déjà inscrit.", variant: "destructive" });
+        toast({ title: "Identifiant déjà utilisé", description: "Ce compte a déjà été activé par un élève.", variant: "destructive" });
         return;
       }
 
+      // Stocker les infos de l'identifiant (notamment la classe)
       setRegDoc({ ...data, id: snap.docs[0].id });
       setStep(2);
+      toast({ title: "Identifiant validé", description: `Bienvenue ! Vous allez être inscrit en ${data.classId}.` });
     } catch (e) {
-      toast({ title: "Erreur de connexion", variant: "destructive" });
+      toast({ title: "Erreur de connexion", description: "Impossible de vérifier l'identifiant.", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -66,13 +72,13 @@ export default function RegisterStudentPage() {
 
   const handleRegister = async () => {
     if (!form.lastName || !form.firstName || !form.password) {
-      toast({ title: "Veuillez remplir les champs obligatoires.", variant: "destructive" });
+      toast({ title: "Champs obligatoires", description: "Nom, Prénom et Mot de passe sont requis.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      // 1. Créer le profil élève
+      // 1. Créer le profil élève complet
       await addDoc(collection(db, "students"), {
         ...form,
         matricule: regDoc.matricule,
@@ -82,11 +88,12 @@ export default function RegisterStudentPage() {
         registeredAt: new Date().toISOString()
       });
 
-      // 2. Marquer l'identifiant comme utilisé
+      // 2. Marquer l'identifiant comme utilisé dans la base de la direction
       await updateDoc(doc(db, "registration_ids", regDoc.id), {
         status: "utilisé"
       });
 
+      // Stockage session
       localStorage.setItem('acadex_user_id', regDoc.matricule);
       localStorage.setItem('acadex_user_role', 'Élève');
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
@@ -112,8 +119,8 @@ export default function RegisterStudentPage() {
                 <div className="size-20 bg-primary/10 text-primary rounded-[2rem] flex items-center justify-center mx-auto mb-6">
                   <GraduationCap className="size-10" />
                 </div>
-                <CardTitle className="text-4xl font-black">Créer mon espace élève</CardTitle>
-                <CardDescription className="text-lg font-medium mt-2">Entrez l'identifiant remis par votre établissement.</CardDescription>
+                <CardTitle className="text-4xl font-black text-foreground">Activer mon espace</CardTitle>
+                <CardDescription className="text-lg font-medium mt-2">Saisissez l'identifiant reçu lors de votre inscription.</CardDescription>
               </CardHeader>
               <CardContent className="p-12 pt-0 space-y-8">
                 <div className="space-y-4">
@@ -132,7 +139,7 @@ export default function RegisterStudentPage() {
               <CardFooter className="p-12 bg-muted/30 flex justify-between">
                 <Button variant="ghost" asChild className="font-bold rounded-xl h-14 px-8"><Link href="/">Retour</Link></Button>
                 <Button onClick={verifyIdentifier} disabled={loading} className="bg-primary rounded-2xl font-black px-12 h-14 shadow-xl shadow-primary/20 text-lg">
-                  {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : "Vérifier l'identifiant"}
+                  {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : "Vérifier mon matricule"}
                 </Button>
               </CardFooter>
             </>
@@ -142,17 +149,17 @@ export default function RegisterStudentPage() {
             <>
               <CardHeader className="p-12 text-center">
                 <Badge className="bg-primary text-white mx-auto mb-4 px-6 py-2 rounded-full font-black">CLASSE : {regDoc.classId}</Badge>
-                <CardTitle className="text-3xl font-black">Informations Personnelles</CardTitle>
-                <CardDescription className="font-medium italic">"Toutes les données sont synchronisées avec la direction."</CardDescription>
+                <CardTitle className="text-3xl font-black">Finaliser mon inscription</CardTitle>
+                <CardDescription className="font-medium italic">"Toutes vos données seront transmises à la direction."</CardDescription>
               </CardHeader>
               <CardContent className="p-12 pt-0 space-y-8">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="font-bold">Nom</Label>
-                    <Input placeholder="Koffi" className="h-12 rounded-xl font-bold" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
+                    <Label className="font-bold">Nom de famille</Label>
+                    <Input placeholder="KOFFI" className="h-12 rounded-xl font-bold uppercase" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value.toUpperCase()})} />
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold">Prénom</Label>
+                    <Label className="font-bold">Prénom(s)</Label>
                     <Input placeholder="Djimon" className="h-12 rounded-xl font-bold" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
                   </div>
                   <div className="space-y-2">
@@ -166,7 +173,7 @@ export default function RegisterStudentPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="font-bold">Téléphone</Label>
+                    <Label className="font-bold">Numéro de téléphone</Label>
                     <Input placeholder="+229 ..." className="h-12 rounded-xl font-bold" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                   </div>
                   <div className="space-y-2">
@@ -195,7 +202,7 @@ export default function RegisterStudentPage() {
 
                 <div className="pt-6 border-t border-dashed">
                   <div className="space-y-2">
-                    <Label className="font-bold">Définir un Mot de Passe</Label>
+                    <Label className="font-bold">Définir un Mot de Passe sécurisé</Label>
                     <Input type="password" placeholder="••••••••" className="h-12 rounded-xl font-bold" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
                   </div>
                 </div>
@@ -203,7 +210,7 @@ export default function RegisterStudentPage() {
               <CardFooter className="p-12 bg-muted/30 flex justify-between">
                 <Button variant="ghost" onClick={() => setStep(1)} className="font-bold rounded-xl h-14 px-8">Retour</Button>
                 <Button onClick={handleRegister} disabled={loading} className="bg-primary rounded-2xl font-black px-12 h-14 shadow-xl shadow-primary/20 text-lg">
-                  {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : "Terminer mon inscription"}
+                  {loading ? <Loader2 className="mr-2 size-5 animate-spin" /> : "Valider mon inscription"}
                 </Button>
               </CardFooter>
             </>
@@ -215,13 +222,13 @@ export default function RegisterStudentPage() {
                 <CheckCircle2 className="size-20" />
               </div>
               <div className="space-y-4">
-                <h2 className="text-4xl font-black">Bienvenue chez ACADEX !</h2>
+                <h2 className="text-4xl font-black">Inscription Réussie !</h2>
                 <p className="text-muted-foreground font-medium text-xl leading-relaxed">
-                  Félicitations {form.firstName}, votre profil a été créé avec succès dans la classe de <span className="text-primary font-black">{regDoc.classId}</span>.
+                  Félicitations {form.firstName}, votre profil est maintenant actif en classe de <span className="text-primary font-black">{regDoc.classId}</span>.
                 </p>
               </div>
               <Button asChild className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xl shadow-xl shadow-primary/20">
-                <Link href="/dashboard">Accéder à mon cockpit <ArrowRight className="ml-2 size-6" /></Link>
+                <Link href="/dashboard">Entrer dans mon Cockpit <ArrowRight className="ml-2 size-6" /></Link>
               </Button>
             </div>
           )}
