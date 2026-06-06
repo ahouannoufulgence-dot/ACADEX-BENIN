@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Zap } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 const schedule = [
