@@ -8,17 +8,15 @@ import {
   GraduationCap, 
   CreditCard, 
   AlertTriangle, 
-  TrendingDown, 
   Clock, 
-  CheckCircle2, 
-  ArrowRight,
+  Calendar, 
+  Wallet, 
+  UserCheck, 
+  Loader2, 
+  Zap,
   Sparkles,
-  Activity,
-  Calendar,
-  Wallet,
-  UserCheck,
-  Loader2,
-  Zap
+  ArrowRight,
+  Activity
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -43,20 +41,18 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes Firestore réelles (Sans données simulées)
+  // Requêtes Firestore réelles
   const studentsRef = useMemo(() => collection(db, "students"), [db])
   const teachersRef = useMemo(() => collection(db, "teachers"), [db])
   const idsRef = useMemo(() => collection(db, "registration_ids"), [db])
   const paymentsRef = useMemo(() => collection(db, "payments"), [db])
-  const gradesRef = useMemo(() => collection(db, "grades"), [db])
   
   const { data: students, loading: loadingStudents } = useCollection(studentsRef)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersRef)
   const { data: registrationIds, loading: loadingIds } = useCollection(idsRef)
   const { data: payments, loading: loadingPayments } = useCollection(paymentsRef)
-  const { data: grades } = useCollection(gradesRef)
 
-  // Statistiques calculées uniquement sur les données présentes dans Firestore
+  // Statistiques calculées
   const stats = useMemo(() => {
     const totalStudents = students?.length || 0
     const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
@@ -162,7 +158,7 @@ export default function DirectorDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8">
-          {/* COLONNE GAUCHE: ALERTES & ANALYSE */}
+          {/* COLONNE GAUCHE: ALERTES */}
           <div className="lg:col-span-7 space-y-8">
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-muted/5">
@@ -186,7 +182,7 @@ export default function DirectorDashboard() {
                     </div>
                   )}
                   
-                  {stats.totalStudents === 0 && (
+                  {stats.totalStudents === 0 && !loadingStudents && (
                     <div className="p-12 text-center text-muted-foreground italic font-medium">
                       Aucun élève n'est encore inscrit dans la base de données.
                     </div>
@@ -204,6 +200,13 @@ export default function DirectorDashboard() {
                       <Button asChild variant="ghost" size="icon" className="rounded-xl"><Link href="/eleves/identifiants"><ArrowRight className="size-4" /></Link></Button>
                     </div>
                   )}
+
+                  {stats.totalStudents > 0 && stats.unusedIds === 0 && stats.pendingTeachers === 0 && (
+                    <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
+                       <UserCheck className="size-8 opacity-20" />
+                       <p className="text-sm">Tout est sous contrôle. Aucune alerte critique.</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -212,12 +215,12 @@ export default function DirectorDashboard() {
           {/* COLONNE DROITE: ACTIVITÉ RÉCENTE */}
           <div className="lg:col-span-5 space-y-8">
             <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm">
-               <h4 className="text-lg font-black mb-6">Dernière Inscription Firestore</h4>
+               <h4 className="text-lg font-black mb-6">Dernière Inscription Réelle</h4>
                <div className="space-y-6">
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
                       <div className="size-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black shrink-0">
-                        {stats.lastStudent.lastName[0]}
+                        {(stats.lastStudent.lastName || "?")[0]}
                       </div>
                       <div>
                         <p className="text-sm font-bold text-foreground">{stats.lastStudent.firstName} {stats.lastStudent.lastName}</p>
@@ -237,7 +240,7 @@ export default function DirectorDashboard() {
               <div className="relative z-10">
                 <h4 className="text-lg font-black mb-4">Note de l'Éditeur</h4>
                 <p className="text-xs text-white/60 leading-relaxed italic">
-                  "Si le nombre d'élèves affiche 7 alors que vous n'en voyez aucun, veuillez vérifier les filtres de la collection 'students' dans votre console Firebase ou supprimer les anciens profils dans le module de gestion."
+                  "Si les compteurs affichent des valeurs alors que vous souhaitez repartir à zéro, veuillez supprimer les anciens profils dans le module 'Gestion des Élèves'."
                 </p>
               </div>
               <Activity className="absolute -bottom-10 -right-10 size-32 text-white/5" />
