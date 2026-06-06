@@ -17,7 +17,8 @@ import {
   FileDown,
   Trash2,
   MoreVertical,
-  Edit2
+  Edit2,
+  Copy
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -111,11 +112,15 @@ export default function StudentsPage() {
     const year = "2024-2025"
 
     try {
-      const timestamp = new Date().getTime().toString().slice(-4)
+      const classKey = selectedClass.replace(/\s/g, '')
       for (let i = 1; i <= count; i++) {
+        // Format: ELV-4èmeA-147
+        const randomNum = Math.floor(100 + Math.random() * 899)
+        const matricule = `ELV-${classKey}-${randomNum}${i}`
+        
         const studentData = {
           fullName: "",
-          matricule: `ELV-${selectedClass.replace(' ', '')}-${timestamp}-${i.toString().padStart(3, '0')}`,
+          matricule,
           classId: selectedClass,
           status: "En attente d'activation",
           academicYear: year,
@@ -124,13 +129,18 @@ export default function StudentsPage() {
         }
         await addDoc(collection(db, "students"), studentData)
       }
-      toast({ title: "Succès", description: `${count} identifiants générés.` })
+      toast({ title: "Succès", description: `${count} identifiants générés au format ELV-${classKey}-XXX.` })
       setIsDialogOpen(false)
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     } finally {
       setIsGenerating(false)
     }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    toast({ title: "Identifiant copié", description: `${text} est prêt à être partagé.` })
   }
 
   const handleExportPDF = () => {
@@ -149,6 +159,15 @@ export default function StudentsPage() {
       headStyles: { fillColor: [20, 83, 45] }
     })
     docPdf.save(`IDENTIFIANTS_ELV.pdf`)
+  }
+
+  const handleDeleteStudent = async (studentId: string) => {
+    try {
+      await deleteDoc(doc(db, "students", studentId))
+      toast({ title: "Élève supprimé" })
+    } catch (e) {
+      toast({ title: "Erreur lors de la suppression", variant: "destructive" })
+    }
   }
 
   return (
@@ -175,7 +194,7 @@ export default function StudentsPage() {
                 <DialogContent className="rounded-[2.5rem] p-10 max-w-md border-none shadow-2xl">
                   <DialogHeader>
                     <DialogTitle className="text-2xl font-black text-center">Peupler une Classe</DialogTitle>
-                    <DialogDescription className="font-medium text-center">Générez massivement des matricules vierges.</DialogDescription>
+                    <DialogDescription className="font-medium text-center">Générez massivement des matricules au format ELV-Classe-Nombre.</DialogDescription>
                   </DialogHeader>
                   <div className="space-y-6 py-6">
                     <div className="space-y-2">
@@ -234,7 +253,17 @@ export default function StudentsPage() {
                           <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors">{student.fullName || "Compte à activer"}</h3>
                           <div className="flex items-center gap-3">
                             <Badge className="bg-primary/10 text-primary border-none font-black text-[10px]">{student.classId}</Badge>
-                            <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">{student.matricule}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-muted-foreground tracking-widest uppercase">{student.matricule}</span>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="size-6 rounded-md hover:bg-primary/10 hover:text-primary"
+                                onClick={() => copyToClipboard(student.matricule)}
+                              >
+                                <Copy className="size-3" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -242,7 +271,28 @@ export default function StudentsPage() {
                         <Badge variant="outline" className={`font-black rounded-full px-4 border-2 ${student.status === "Actif" ? "border-emerald-100 text-emerald-600 bg-emerald-50" : "border-amber-100 text-amber-600 bg-amber-50"}`}>
                           {student.status.toUpperCase()}
                         </Badge>
-                        <Button variant="ghost" size="icon" className="size-10 rounded-xl"><MoreVertical className="size-5" /></Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="size-10 rounded-xl"><MoreVertical className="size-5" /></Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl border-2 w-48 p-2">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/eleves/${student.id}`} className="flex items-center gap-2 font-bold cursor-pointer">
+                                <Edit2 className="size-4" /> Modifier le profil
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer"
+                              onClick={() => {
+                                if (confirm("Supprimer définitivement cet élève ?")) {
+                                  handleDeleteStudent(student.id)
+                                }
+                              }}
+                            >
+                              <Trash2 className="size-4" /> Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </CardContent>
                   </Card>
