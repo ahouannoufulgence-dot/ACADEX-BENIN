@@ -82,6 +82,7 @@ export default function StudentsPage() {
     setUserClasses(classes)
   }, [])
 
+  // Stabilisation de la requête pour éviter les boucles de rendu
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const ref = collection(db, 'students')
@@ -112,7 +113,7 @@ export default function StudentsPage() {
     setIsGenerating(true)
     const count = parseInt(batchCount)
     const year = "2024-2025"
-    const classTag = selectedClass.replace(/\s/g, '')
+    const classTag = selectedClass.replace(/\s/g, '').toUpperCase() // Force uppercase for consistency
 
     const creations = Array.from({ length: count }).map((_, i) => {
       const randomNum = Math.floor(100 + Math.random() * 900)
@@ -120,7 +121,7 @@ export default function StudentsPage() {
       
       const studentData = {
         fullName: "",
-        matricule,
+        matricule: matricule.toUpperCase(), // Toujours stocker en majuscules
         classId: selectedClass,
         status: "En attente d'activation",
         academicYear: year,

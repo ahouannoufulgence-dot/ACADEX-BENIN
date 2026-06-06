@@ -25,17 +25,19 @@ export default function RegisterStudentPage() {
   const [password, setPassword] = useState("");
 
   const verifyAccount = async () => {
-    if (!matricule.trim()) {
+    const formattedMatricule = matricule.trim().toUpperCase();
+    
+    if (!formattedMatricule) {
       toast({ title: "Matricule requis", description: "Veuillez saisir votre matricule officiel.", variant: "destructive" });
       return;
     }
 
     setLoading(true);
     try {
-      // Recherche réelle du matricule dans Firestore
+      // Recherche réelle du matricule dans Firestore avec la bonne casse
       const q = query(
         collection(db, "students"), 
-        where("matricule", "==", matricule.toUpperCase().trim())
+        where("matricule", "==", formattedMatricule)
       );
       
       const querySnapshot = await getDocs(q);
@@ -43,7 +45,7 @@ export default function RegisterStudentPage() {
       if (querySnapshot.empty) {
         toast({ 
           title: "Introuvable", 
-          description: "Le matricule saisi n'existe pas dans la base de données. Contactez la direction.", 
+          description: "Le matricule saisi n'existe pas dans la base de données. Vérifiez l'orthographe (ex: ELV-6ÈMEA-123).", 
           variant: "destructive" 
         });
         setLoading(false);
@@ -64,6 +66,7 @@ export default function RegisterStudentPage() {
       setFullName(docData.fullName || "");
       setStep(2);
     } catch (error) {
+      console.error("Erreur vérification matricule:", error);
       toast({ title: "Erreur de connexion", description: "Impossible de vérifier vos identifiants.", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -136,10 +139,11 @@ export default function RegisterStudentPage() {
                     <div className="relative group">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-amber-600 transition-colors" />
                       <Input 
-                        placeholder="EX: ELV-6èmeA-123" 
+                        placeholder="EX: ELV-6ÈMEA-123" 
                         className="h-16 pl-12 rounded-2xl text-xl font-black tracking-widest border-2 focus-visible:ring-amber-600 uppercase" 
                         value={matricule} 
                         onChange={e => setMatricule(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && verifyAccount()}
                       />
                     </div>
                   </div>
@@ -147,7 +151,7 @@ export default function RegisterStudentPage() {
                 <div className="flex gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-200">
                   <ShieldAlert className="size-5 text-amber-600 shrink-0" />
                   <p className="text-xs font-bold text-amber-800 leading-relaxed">
-                    Votre matricule est disponible sur le document remis par votre Directeur lors de l'inscription.
+                    Votre matricule est disponible sur le document remis par votre Directeur lors de l'inscription. Attention aux accents (ex: È, À).
                   </p>
                 </div>
               </CardContent>
