@@ -70,9 +70,12 @@ const navigationConfig = {
   ],
   Élève: [
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
-    { name: "Ma Progression", href: "/statistiques", icon: TrendingUp },
-    { name: "Agenda Scolaire", href: "/agenda", icon: Calendar },
-    { name: "Messages", href: "/messagerie", icon: MessageSquare },
+    { name: "Mes Notes", href: "/dashboard/eleve/notes", icon: PenTool },
+    { name: "Ma Progression", href: "/dashboard/eleve/progression", icon: TrendingUp },
+    { name: "Mes Absences", href: "/dashboard/eleve/absences", icon: Clock },
+    { name: "Mon Emploi du Temps", href: "/dashboard/eleve/agenda", icon: Calendar },
+    { name: "Mes Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
+    { name: "Assistant ACADEX", href: "/assistant", icon: Sparkles, isIA: true },
   ]
 }
 
