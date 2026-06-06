@@ -59,6 +59,7 @@ const navigationConfig = {
     { name: "Matières & Coefs", href: "/matieres", icon: Calculator },
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
+    { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant Brain", href: "/assistant", icon: Sparkles, isIA: true },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
@@ -66,7 +67,9 @@ const navigationConfig = {
     { name: "Tableau de Bord", href: "/dashboard/enseignant", icon: LayoutDashboard },
     { name: "Mes Classes", href: "/eleves", icon: Users },
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
+    { name: "Mon Programme", href: "/disponibilites", icon: Calendar },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
+    { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
   ],
   Élève: [
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
@@ -75,6 +78,7 @@ const navigationConfig = {
     { name: "Mes Absences", href: "/dashboard/eleve/absences", icon: Clock },
     { name: "Mon Emploi du Temps", href: "/dashboard/eleve/agenda", icon: Calendar },
     { name: "Mes Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
+    { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant ACADEX", href: "/assistant", icon: Sparkles, isIA: true },
   ]
 }
