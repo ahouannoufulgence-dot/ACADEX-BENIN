@@ -34,6 +34,7 @@ export default function GenIdentifiersPage() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
+  // Mémorisation de la requête pour éviter les rechargements infinis
   const idsQuery = useMemo(() => query(collection(db, "registration_ids"), orderBy("matricule", "asc")), [db])
   const { data: identifiers, loading: loadingIds } = useCollection(idsQuery)
 
@@ -45,7 +46,7 @@ export default function GenIdentifiersPage() {
     )
   }, [identifiers, searchTerm])
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedClass || !count) {
       toast({ title: "Champs requis", variant: "destructive" })
       return
@@ -63,34 +64,37 @@ export default function GenIdentifiersPage() {
     }
 
     setLoading(true)
-    const batch = writeBatch(db)
-    const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
-    
-    for (let i = 1; i <= batchSize; i++) {
-      const num = Math.floor(10000 + Math.random() * 90000).toString() // Augmenté pour plus d'unicité
-      const matricule = `ELV-${classTag}-${num}`
-      const newDocRef = doc(collection(db, "registration_ids"))
+    try {
+      const batch = writeBatch(db)
+      const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
       
-      batch.set(newDocRef, {
-        matricule,
-        classId: selectedClass,
-        status: "non utilisé",
-        createdAt: serverTimestamp()
-      })
-    }
-    
-    batch.commit()
-      .then(() => {
-        toast({ title: "Génération terminée", description: `${batchSize} identifiants créés pour la classe ${selectedClass}.` })
-      })
-      .catch(async () => {
-        const error = new FirestorePermissionError({
-          path: 'registration_ids',
-          operation: 'write',
+      for (let i = 1; i <= batchSize; i++) {
+        // Unicité renforcée par timestamp + random
+        const num = Math.floor(10000 + Math.random() * 90000).toString()
+        const matricule = `ELV-${classTag}-${num}`
+        const newDocRef = doc(collection(db, "registration_ids"))
+        
+        batch.set(newDocRef, {
+          matricule,
+          classId: selectedClass,
+          status: "non utilisé",
+          createdAt: serverTimestamp()
         })
-        errorEmitter.emit('permission-error', error)
+      }
+      
+      await batch.commit()
+      toast({ title: "Génération terminée", description: `${batchSize} identifiants créés pour la classe ${selectedClass}.` })
+    } catch (err) {
+      console.error(err)
+      const error = new FirestorePermissionError({
+        path: 'registration_ids',
+        operation: 'write',
       })
-      .finally(() => setLoading(false))
+      errorEmitter.emit('permission-error', error)
+      toast({ title: "Erreur de génération", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleDelete = (id: string) => {

@@ -32,13 +32,18 @@ export default function StatisticsPage() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("generale")
 
-  // Données réelles Firestore - Garanti sans chiffres fictifs
-  const { data: students, loading: loadingStudents } = useCollection(collection(db, "students"))
-  const { data: teachers, loading: loadingTeachers } = useCollection(collection(db, "teachers"))
-  const { data: payments, loading: loadingPayments } = useCollection(collection(db, "payments"))
-  const { data: grades } = useCollection(collection(db, "grades"))
+  // Mémorisation des collections pour éviter les boucles infinies de useCollection
+  const studentsCol = useMemo(() => collection(db, "students"), [db])
+  const teachersCol = useMemo(() => collection(db, "teachers"), [db])
+  const paymentsCol = useMemo(() => collection(db, "payments"), [db])
+  const gradesCol = useMemo(() => collection(db, "grades"), [db])
 
-  // CALCUL DES INDICATEURS GLOBAUX RÉELS (Zéro par défaut)
+  const { data: students, loading: loadingStudents } = useCollection(studentsCol)
+  const { data: teachers, loading: loadingTeachers } = useCollection(teachersCol)
+  const { data: payments, loading: loadingPayments } = useCollection(paymentsCol)
+  const { data: grades } = useCollection(gradesCol)
+
+  // CALCUL DES INDICATEURS GLOBAUX RÉELS
   const kpis = useMemo(() => {
     const totalStudents = Array.isArray(students) ? students.length : 0
     const totalTeachers = Array.isArray(teachers) ? teachers.length : 0
@@ -96,7 +101,7 @@ export default function StatisticsPage() {
     <DashboardLayout>
       <div className="space-y-10 animate-in fade-in duration-700">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3.5rem] shadow-sm border border-muted/20 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-5xl font-black text-foreground tracking-tight">Intelligence <span className="text-primary italic">Scolaire</span></h1>
             <p className="text-muted-foreground font-medium">Analyse certifiée basée sur les données vivantes de l'école.</p>
@@ -107,7 +112,7 @@ export default function StatisticsPage() {
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
         </div>
 
-        {/* INDICATEURS RÉELS - GARANTI ZÉRO SI VIDE */}
+        {/* INDICATEURS RÉELS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Effectif Global", value: kpis.totalStudents, icon: Users, color: "text-blue-600" },

@@ -47,11 +47,16 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes Firestore réelles - Zéro mocks
-  const { data: students, loading: loadingStudents } = useCollection(collection(db, "students"))
-  const { data: teachers, loading: loadingTeachers } = useCollection(collection(db, "teachers"))
-  const { data: registrationIds, loading: loadingIds } = useCollection(collection(db, "registration_ids"))
-  const { data: payments, loading: loadingPayments } = useCollection(collection(db, "payments"))
+  // Requêtes Firestore mémorisées pour éviter les boucles de chargement
+  const studentsQuery = useMemo(() => collection(db, "students"), [db])
+  const teachersQuery = useMemo(() => collection(db, "teachers"), [db])
+  const regIdsQuery = useMemo(() => collection(db, "registration_ids"), [db])
+  const paymentsQuery = useMemo(() => collection(db, "payments"), [db])
+
+  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
+  const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
+  const { data: registrationIds, loading: loadingIds } = useCollection(regIdsQuery)
+  const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
 
   // Statistiques calculées STRICTEMENT sur les données Firestore
   const stats = useMemo(() => {
@@ -61,7 +66,7 @@ export default function DirectorDashboard() {
     const totalRevenue = Array.isArray(payments) ? payments.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) : 0
     const pendingPaymentsCount = Array.isArray(payments) ? payments.filter((p: any) => p.status === 'En attente').length : 0
     
-    // Dernier élève inscrit (activité réelle)
+    // Dernier élève inscrit
     const lastStudent = Array.isArray(students) && students.length > 0 ? students[0] : null
 
     return {
@@ -82,7 +87,7 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
         
-        {/* EN-TÊTE PROFESSIONNEL AVEC FORMULE DE RESPECT DEMANDÉE */}
+        {/* EN-TÊTE PROFESSIONNEL AVEC FORMULE DE RESPECT */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">
