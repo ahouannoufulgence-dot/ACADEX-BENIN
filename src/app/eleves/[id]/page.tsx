@@ -28,6 +28,8 @@ import { toast } from "@/hooks/use-toast"
 import { generateAcademicFeedback, type GenerateAcademicFeedbackOutput } from "@/ai/flows/generate-academic-feedback"
 import { useFirestore, useDoc } from "@/firebase"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
@@ -73,24 +75,29 @@ export default function StudentDetailPage() {
     }
   }, [student])
 
-  const handleUpdate = async () => {
-    try {
-      await updateDoc(studentRef, editForm)
-      setIsEditing(false)
-      toast({ title: "Profil mis à jour", description: "Les modifications ont été enregistrées." })
-    } catch (e) {
-      toast({ title: "Erreur", description: "Impossible de mettre à jour le profil.", variant: "destructive" })
-    }
+  const handleUpdate = () => {
+    updateDoc(studentRef, editForm).catch(async () => {
+      const error = new FirestorePermissionError({
+        path: studentRef.path,
+        operation: 'update',
+        requestResourceData: editForm
+      })
+      errorEmitter.emit('permission-error', error)
+    })
+    setIsEditing(false)
+    toast({ title: "Profil mis à jour", description: "Les modifications ont été enregistrées." })
   }
 
-  const handleDelete = async () => {
-    try {
-      await deleteDoc(studentRef)
-      toast({ title: "Élève supprimé" })
-      router.push("/eleves")
-    } catch (e) {
-      toast({ title: "Erreur", description: "Suppression impossible.", variant: "destructive" })
-    }
+  const handleDelete = () => {
+    deleteDoc(studentRef).catch(async () => {
+      const error = new FirestorePermissionError({
+        path: studentRef.path,
+        operation: 'delete'
+      })
+      errorEmitter.emit('permission-error', error)
+    })
+    toast({ title: "Élève supprimé" })
+    router.push("/eleves")
   }
 
   const handleAnalyzeResults = async () => {

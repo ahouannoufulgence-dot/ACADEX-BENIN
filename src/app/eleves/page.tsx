@@ -26,6 +26,8 @@ import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, orderBy, where, addDoc, serverTimestamp, deleteDoc, doc } from "firebase/firestore"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 import { 
   Dialog, 
   DialogContent, 
@@ -46,17 +48,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 const officialClasses = ["6ème A", "6ème B", "5ème A", "5ème B", "4ème A", "4ème B", "4ème C", "3D1", "3D2", "2nde C", "2nde D", "1ère D", "Terminale D1", "Terminale D2"]
 
@@ -101,7 +92,7 @@ export default function StudentsPage() {
     )
   }, [students, searchTerm])
 
-  const handleBatchGenerate = async () => {
+  const handleBatchGenerate = () => {
     if (!selectedClass || !batchCount) {
       toast({ title: "Champs manquants", description: "Veuillez choisir une classe et un nombre.", variant: "destructive" })
       return
@@ -110,32 +101,38 @@ export default function StudentsPage() {
     setIsGenerating(true)
     const count = parseInt(batchCount)
     const year = "2024-2025"
+    const classKey = selectedClass.replace(/\s/g, '')
 
-    try {
-      const classKey = selectedClass.replace(/\s/g, '')
-      for (let i = 1; i <= count; i++) {
-        // Format: ELV-4èmeA-147
-        const randomNum = Math.floor(100 + Math.random() * 899)
-        const matricule = `ELV-${classKey}-${randomNum}${i}`
-        
-        const studentData = {
-          fullName: "",
-          matricule,
-          classId: selectedClass,
-          status: "En attente d'activation",
-          academicYear: year,
-          createdAt: serverTimestamp(),
-          validationCode: Math.random().toString(36).substring(2, 8).toUpperCase()
-        }
-        await addDoc(collection(db, "students"), studentData)
+    // Création multiple
+    const creations = Array.from({ length: count }).map((_, i) => {
+      const randomNum = Math.floor(100 + Math.random() * 899)
+      const matricule = `ELV-${classKey}-${randomNum}${i + 1}`
+      
+      const studentData = {
+        fullName: "",
+        matricule,
+        classId: selectedClass,
+        status: "En attente d'activation",
+        academicYear: year,
+        createdAt: serverTimestamp(),
+        validationCode: Math.random().toString(36).substring(2, 8).toUpperCase()
       }
-      toast({ title: "Succès", description: `${count} identifiants générés au format ELV-${classKey}-XXX.` })
-      setIsDialogOpen(false)
-    } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" })
-    } finally {
+
+      return addDoc(collection(db, "students"), studentData).catch(async () => {
+        const error = new FirestorePermissionError({
+          path: 'students',
+          operation: 'create',
+          requestResourceData: studentData
+        })
+        errorEmitter.emit('permission-error', error)
+      })
+    })
+
+    Promise.all(creations).then(() => {
+      toast({ title: "Génération terminée", description: `${count} identifiants ont été créés pour la ${selectedClass}.` })
       setIsGenerating(false)
-    }
+      setIsDialogOpen(false)
+    })
   }
 
   const copyToClipboard = (text: string) => {
@@ -161,13 +158,16 @@ export default function StudentsPage() {
     docPdf.save(`IDENTIFIANTS_ELV.pdf`)
   }
 
-  const handleDeleteStudent = async (studentId: string) => {
-    try {
-      await deleteDoc(doc(db, "students", studentId))
-      toast({ title: "Élève supprimé" })
-    } catch (e) {
-      toast({ title: "Erreur lors de la suppression", variant: "destructive" })
-    }
+  const handleDeleteStudent = (studentId: string) => {
+    const studentRef = doc(db, "students", studentId)
+    deleteDoc(studentRef).catch(async () => {
+      const error = new FirestorePermissionError({
+        path: studentRef.path,
+        operation: 'delete'
+      })
+      errorEmitter.emit('permission-error', error)
+    })
+    toast({ title: "Élève supprimé" })
   }
 
   return (
@@ -283,8 +283,9 @@ export default function StudentsPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer"
-                              onClick={() => {
-                                if (confirm("Supprimer définitivement cet élève ?")) {
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Supprimer définitivement cet élève et son identifiant ?")) {
                                   handleDeleteStudent(student.id)
                                 }
                               }}
