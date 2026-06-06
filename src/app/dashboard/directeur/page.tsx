@@ -43,7 +43,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Data Fetching Réel
+  // Requêtes Firestore réelles (Sans données simulées)
   const studentsRef = useMemo(() => collection(db, "students"), [db])
   const teachersRef = useMemo(() => collection(db, "teachers"), [db])
   const idsRef = useMemo(() => collection(db, "registration_ids"), [db])
@@ -51,12 +51,12 @@ export default function DirectorDashboard() {
   const gradesRef = useMemo(() => collection(db, "grades"), [db])
   
   const { data: students, loading: loadingStudents } = useCollection(studentsRef)
-  const { data: teachers } = useCollection(teachersRef)
-  const { data: registrationIds } = useCollection(idsRef)
-  const { data: payments } = useCollection(paymentsRef)
+  const { data: teachers, loading: loadingTeachers } = useCollection(teachersRef)
+  const { data: registrationIds, loading: loadingIds } = useCollection(idsRef)
+  const { data: payments, loading: loadingPayments } = useCollection(paymentsRef)
   const { data: grades } = useCollection(gradesRef)
 
-  // Statistiques calculées sur données réelles
+  // Statistiques calculées uniquement sur les données présentes dans Firestore
   const stats = useMemo(() => {
     const totalStudents = students?.length || 0
     const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
@@ -75,21 +75,6 @@ export default function DirectorDashboard() {
     }
   }, [students, teachers, registrationIds, payments])
 
-  // Intelligence: Classes en difficulté réelle (basé sur gradesFirestore)
-  const classesInDifficulty = useMemo(() => {
-    if (!grades || grades.length === 0) return []
-    const classAverages: Record<string, { sum: number, count: number }> = {}
-    grades.forEach((g: any) => {
-      if (!classAverages[g.classId]) classAverages[g.classId] = { sum: 0, count: 0 }
-      classAverages[g.classId].sum += g.average || 0
-      classAverages[g.classId].count += 1
-    })
-    return Object.entries(classAverages)
-      .map(([id, data]) => ({ id, avg: data.sum / data.count }))
-      .filter(c => c.avg < 10)
-      .slice(0, 3)
-  }, [grades])
-
   if (!mounted) return null
 
   const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -102,10 +87,10 @@ export default function DirectorDashboard() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-muted/20">
           <div className="space-y-1">
             <h1 className="text-3xl font-black text-foreground tracking-tight">
-              Bonjour Monsieur le Directeur
+              Tableau de Bord de Pilotage
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-medium">
-              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-3">
+              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-3 uppercase">
                 {schoolInfo.name}
               </Badge>
               <span className="text-xs uppercase tracking-widest font-bold opacity-60">•</span>
@@ -121,14 +106,14 @@ export default function DirectorDashboard() {
           </Button>
         </div>
 
-        {/* CARTES STATISTIQUES PRINCIPALES */}
+        {/* CARTES STATISTIQUES RÉELLES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-7 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-lg transition-all group">
             <div className="flex items-center justify-between mb-6">
               <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">
                 <Users className="size-7" />
               </div>
-              <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px]">TOTAL</Badge>
+              <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px]">RÉEL</Badge>
             </div>
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Élèves Inscrits</p>
             <p className="text-4xl font-black text-foreground mt-1">
@@ -144,7 +129,9 @@ export default function DirectorDashboard() {
               <UserCheck className="size-5 text-emerald-500 opacity-40" />
             </div>
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Enseignants Actifs</p>
-            <p className="text-4xl font-black text-foreground mt-1">{stats.activeTeachers}</p>
+            <p className="text-4xl font-black text-foreground mt-1">
+              {loadingTeachers ? <Loader2 className="animate-spin size-6" /> : stats.activeTeachers}
+            </p>
           </Card>
 
           <Card className="p-7 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-lg transition-all group">
@@ -155,7 +142,9 @@ export default function DirectorDashboard() {
               <Badge variant="outline" className="border-amber-200 text-amber-700 font-black">STOCK</Badge>
             </div>
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Identifiants Libres</p>
-            <p className="text-4xl font-black text-foreground mt-1">{stats.unusedIds}</p>
+            <p className="text-4xl font-black text-foreground mt-1">
+              {loadingIds ? <Loader2 className="animate-spin size-6" /> : stats.unusedIds}
+            </p>
           </Card>
 
           <Card className="p-7 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-lg transition-all group">
@@ -166,7 +155,9 @@ export default function DirectorDashboard() {
               <Wallet className="size-5 text-purple-500 opacity-40" />
             </div>
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Recettes (FCFA)</p>
-            <p className="text-2xl font-black text-foreground mt-1">{stats.totalRevenue.toLocaleString()}</p>
+            <p className="text-2xl font-black text-foreground mt-1">
+              {loadingPayments ? <Loader2 className="animate-spin size-6" /> : stats.totalRevenue.toLocaleString()}
+            </p>
           </Card>
         </div>
 
@@ -177,132 +168,79 @@ export default function DirectorDashboard() {
               <CardHeader className="p-8 border-b bg-muted/5">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="size-5 text-destructive" />
-                  <CardTitle className="text-xl font-black tracking-tight">Alertes Prioritaires</CardTitle>
+                  <CardTitle className="text-xl font-black tracking-tight">Alertes Systèmes</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-muted/30">
                   {stats.pendingTeachers > 0 && (
-                    <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
+                    <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="size-10 bg-destructive/10 text-destructive rounded-xl flex items-center justify-center font-black">{stats.pendingTeachers}</div>
                         <div>
                           <p className="font-bold text-sm">Enseignants en attente de validation</p>
-                          <p className="text-[10px] uppercase font-black text-muted-foreground">Action requise</p>
+                          <p className="text-[10px] uppercase font-black text-muted-foreground">Action Requise</p>
                         </div>
                       </div>
                       <Button asChild variant="ghost" size="icon" className="rounded-xl"><Link href="/enseignants"><ArrowRight className="size-4" /></Link></Button>
                     </div>
                   )}
+                  
+                  {stats.totalStudents === 0 && (
+                    <div className="p-12 text-center text-muted-foreground italic font-medium">
+                      Aucun élève n'est encore inscrit dans la base de données.
+                    </div>
+                  )}
+                  
                   {stats.unusedIds > 0 && (
-                    <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
+                    <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="size-10 bg-amber-500/10 text-amber-600 rounded-xl flex items-center justify-center font-black">{stats.unusedIds}</div>
                         <div>
-                          <p className="font-bold text-sm">Identifiants élèves disponibles</p>
-                          <p className="text-[10px] uppercase font-black text-muted-foreground">Prêts pour distribution</p>
+                          <p className="font-bold text-sm">Identifiants élèves prêts à la distribution</p>
+                          <p className="text-[10px] uppercase font-black text-muted-foreground">Stock Actuel</p>
                         </div>
                       </div>
                       <Button asChild variant="ghost" size="icon" className="rounded-xl"><Link href="/eleves/identifiants"><ArrowRight className="size-4" /></Link></Button>
                     </div>
                   )}
-                  {stats.totalStudents === 0 && stats.pendingTeachers === 0 && stats.unusedIds === 0 && (
-                    <div className="p-12 text-center text-muted-foreground italic font-medium">
-                      Aucune alerte pour le moment.
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="border-none shadow-sm bg-white rounded-[3rem] p-10">
-              <div className="flex items-center justify-between mb-10">
-                <div className="space-y-1">
-                  <h3 className="text-2xl font-black tracking-tight">Classes en Difficulté</h3>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Moyennes inférieures à 10/20</p>
-                </div>
-                <TrendingDown className="size-8 text-destructive opacity-20" />
-              </div>
-              
-              {classesInDifficulty.length === 0 ? (
-                <div className="p-12 text-center bg-muted/10 rounded-3xl space-y-3">
-                   <CheckCircle2 className="size-10 text-emerald-500 mx-auto" />
-                   <p className="font-bold text-muted-foreground">Toutes les classes maintiennent un bon niveau.</p>
-                </div>
-              ) : (
-                <div className="grid gap-6">
-                  {classesInDifficulty.map((cls) => (
-                    <div key={cls.id} className="flex items-center justify-between p-6 bg-red-50/50 border border-red-100 rounded-[2rem] group hover:bg-red-50 transition-all">
-                      <div className="flex items-center gap-6">
-                        <div className="size-14 bg-white rounded-2xl flex items-center justify-center font-black text-destructive shadow-sm">
-                          {cls.id[0]}
-                        </div>
-                        <div>
-                          <p className="font-black text-lg">{cls.id}</p>
-                          <p className="text-xs font-bold text-red-600 uppercase">Moyenne : {cls.avg.toFixed(2)}</p>
-                        </div>
-                      </div>
-                      <Button asChild className="rounded-xl bg-white text-destructive border border-red-200 hover:bg-red-600 hover:text-white font-black h-11 px-6 shadow-sm">
-                        <Link href="/statistiques">Détails</Link>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
           </div>
 
-          {/* COLONNE DROITE: ACTIVITÉ & FINANCES */}
+          {/* COLONNE DROITE: ACTIVITÉ RÉCENTE */}
           <div className="lg:col-span-5 space-y-8">
-            <Card className="premium-card p-8 bg-foreground text-white overflow-hidden relative group">
-              <div className="relative z-10 space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="size-12 bg-primary rounded-xl flex items-center justify-center">
-                    <Sparkles className="size-6 text-white" />
-                  </div>
-                  <h4 className="text-xl font-black italic">Audit Intelligence IA</h4>
-                </div>
-                <div className="grid grid-cols-1 gap-2 pt-2">
-                  <p className="text-[11px] font-bold text-white/60 uppercase tracking-widest">Questions suggérées :</p>
-                  {["Qui n'a pas payé ?", "Moyenne de l'école ?", "Profs absents ?"].map((q, i) => (
-                    <button key={i} className="text-left p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold uppercase flex justify-between items-center group/btn">
-                      {q}
-                      <ArrowRight className="size-3" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <Activity className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none" />
-            </Card>
-
             <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h4 className="text-lg font-black tracking-tight">Trésorerie Réelle</h4>
-                <Button asChild variant="ghost" className="text-primary font-black text-xs rounded-xl">
-                   <Link href="/paiements">Détails</Link>
-                </Button>
-              </div>
-              <div className="p-6 bg-muted/20 rounded-3xl">
-                <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Encaissements Totaux</p>
-                <p className="text-2xl font-black text-foreground">{stats.totalRevenue.toLocaleString()} <span className="text-xs">FCFA</span></p>
-              </div>
-            </Card>
-
-            <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm">
-               <h4 className="text-lg font-black mb-6">Dernière Inscription</h4>
+               <h4 className="text-lg font-black mb-6">Dernière Inscription Firestore</h4>
                <div className="space-y-6">
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
-                      <div className="size-2 bg-primary rounded-full mt-2 shrink-0" />
+                      <div className="size-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black shrink-0">
+                        {stats.lastStudent.lastName[0]}
+                      </div>
                       <div>
                         <p className="text-sm font-bold text-foreground">{stats.lastStudent.firstName} {stats.lastStudent.lastName}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{stats.lastStudent.classId}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{stats.lastStudent.classId} • {stats.lastStudent.matricule}</p>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-muted-foreground italic">Aucun élève inscrit dans la base.</p>
+                    <div className="text-center py-10 opacity-30">
+                       <Users className="size-10 mx-auto mb-2" />
+                       <p className="text-xs font-black uppercase">Base de données vide</p>
+                    </div>
                   )}
                </div>
+            </Card>
+
+            <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-sm relative overflow-hidden">
+              <div className="relative z-10">
+                <h4 className="text-lg font-black mb-4">Note de l'Éditeur</h4>
+                <p className="text-xs text-white/60 leading-relaxed italic">
+                  "Si le nombre d'élèves affiche 7 alors que vous n'en voyez aucun, veuillez vérifier les filtres de la collection 'students' dans votre console Firebase ou supprimer les anciens profils dans le module de gestion."
+                </p>
+              </div>
+              <Activity className="absolute -bottom-10 -right-10 size-32 text-white/5" />
             </Card>
           </div>
         </div>
