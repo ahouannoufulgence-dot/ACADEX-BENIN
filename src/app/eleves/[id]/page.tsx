@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
 import { generateAcademicFeedback, type GenerateAcademicFeedbackOutput } from "@/ai/flows/generate-academic-feedback"
 import { useFirestore, useDoc } from "@/firebase"
@@ -48,7 +48,9 @@ export default function StudentDetailPage() {
   const { id } = useParams()
   const router = useRouter()
   const db = useFirestore()
-  const studentRef = doc(db, "students", id as string)
+  
+  // Mémorisation de la référence doc pour éviter les boucles de rendu
+  const studentRef = useMemo(() => doc(db, "students", id as string), [db, id])
   const { data: student, loading: loadingStudent } = useDoc(studentRef)
   
   const [isEditing, setIsEditing] = useState(false)
@@ -133,7 +135,11 @@ export default function StudentDetailPage() {
 
   if (!student) return (
     <DashboardLayout>
-      <div className="p-20 text-center">Élève non trouvé.</div>
+      <div className="p-20 text-center space-y-4">
+        <h3 className="text-2xl font-black">Élève non trouvé</h3>
+        <p className="text-muted-foreground">Ce profil a été supprimé ou n'existe pas.</p>
+        <Button asChild variant="outline" className="rounded-xl"><Link href="/eleves">Retour à la liste</Link></Button>
+      </div>
     </DashboardLayout>
   )
 

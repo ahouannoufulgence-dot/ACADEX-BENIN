@@ -31,14 +31,18 @@ export default function StudentDashboard() {
     setMounted(true)
   }, [])
 
-  const { data: student } = useDoc(studentId ? doc(db, "students", studentId) : null)
-  const { data: grades } = useCollection(studentId ? collection(db, "students", studentId, "grades") : null)
-  const { data: payments } = useCollection(studentId ? query(collection(db, "payments"), where("studentId", "==", studentId)) : null)
+  // Mémorisation pour éviter les boucles de rendu
+  const studentRef = useMemo(() => studentId ? doc(db, "students", studentId) : null, [db, studentId])
+  const gradesRef = useMemo(() => studentId ? collection(db, "students", studentId, "grades") : null, [db, studentId])
+  const paymentsQuery = useMemo(() => studentId ? query(collection(db, "payments"), where("studentId", "==", studentId)) : null, [db, studentId])
+
+  const { data: student } = useDoc(studentRef)
+  const { data: grades } = useCollection(gradesRef)
+  const { data: payments } = useCollection(paymentsQuery)
 
   const stats = useMemo(() => {
     if (!mounted) return []
     
-    // Calcul de la moyenne réelle
     const avg = grades?.length 
       ? (grades.reduce((acc, g: any) => acc + (g.average || 0), 0) / grades.length).toFixed(2)
       : "0.00"
@@ -55,6 +59,18 @@ export default function StudentDashboard() {
   }, [grades, payments, mounted])
 
   if (!mounted) return null
+
+  if (mounted && !student && studentId) {
+     return (
+       <DashboardLayout>
+         <div className="p-20 text-center space-y-4">
+           <h3 className="text-2xl font-black">Accès Restreint</h3>
+           <p className="text-muted-foreground">Votre matricule semble avoir été révoqué par la direction.</p>
+           <Button asChild variant="outline"><Link href="/login">Retour à la connexion</Link></Button>
+         </div>
+       </DashboardLayout>
+     )
+  }
 
   return (
     <DashboardLayout>

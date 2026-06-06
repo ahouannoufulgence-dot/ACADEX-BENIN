@@ -27,9 +27,14 @@ export default function DirectorDashboard() {
 
   useEffect(() => setMounted(true), [])
   
-  const { data: students } = useCollection(collection(db, "students"))
-  const { data: teachers } = useCollection(collection(db, "teachers"))
-  const { data: payments } = useCollection(collection(db, "payments"))
+  // Mémorisation des références pour éviter les boucles infinies
+  const studentsRef = useMemo(() => collection(db, "students"), [db])
+  const teachersRef = useMemo(() => collection(db, "teachers"), [db])
+  const paymentsRef = useMemo(() => collection(db, "payments"), [db])
+
+  const { data: students } = useCollection(studentsRef)
+  const { data: teachers } = useCollection(teachersRef)
+  const { data: payments } = useCollection(paymentsRef)
 
   const stats = useMemo(() => {
     if (!mounted) return []
@@ -87,9 +92,9 @@ export default function DirectorDashboard() {
               <BrainCircuit className="size-14 text-primary" />
             </div>
             <div className="flex-1 space-y-4">
-              <h3 className="text-3xl font-black italic">"Zéro donnée fictive."</h3>
+              <h3 className="text-3xl font-black italic">"Données réelles."</h3>
               <p className="text-xl text-white/60 font-medium leading-relaxed max-w-2xl">
-                Toutes les statistiques affichées proviennent de vos saisies réelles. Le système attend vos premières notes pour calculer les tendances.
+                Toutes les statistiques affichées proviennent de vos saisies réelles. Gérez vos élèves et vos professeurs pour alimenter le dashboard.
               </p>
               <div className="pt-4 flex gap-4">
                  <Button asChild variant="secondary" className="rounded-2xl h-14 px-10 font-black text-lg">

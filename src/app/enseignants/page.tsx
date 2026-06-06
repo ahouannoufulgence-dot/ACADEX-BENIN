@@ -28,7 +28,10 @@ import Link from "next/link"
 export default function TeachersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const db = useFirestore()
-  const { data: teachers, loading } = useCollection(query(collection(db, "teachers"), orderBy("fullName", "asc")))
+  
+  // Stabilisation de la requête
+  const teachersQuery = useMemo(() => query(collection(db, "teachers"), orderBy("fullName", "asc")), [db])
+  const { data: teachers, loading } = useCollection(teachersQuery)
 
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
@@ -59,7 +62,7 @@ export default function TeachersPage() {
         <div className="grid gap-6 md:grid-cols-4">
           {[
             { label: "Total Professeurs", value: teachers?.length || 0, icon: UserSquare2 },
-            { label: "Matières Actives", value: new Set(teachers?.map((t: any) => t.subject)).size, icon: BookOpen },
+            { label: "Matières Actives", value: teachers ? new Set(teachers.map((t: any) => t.subject)).size : 0, icon: BookOpen },
             { label: "Statut", value: "Audit OK", icon: ShieldCheck },
             { label: "Pointage", value: "Actif", icon: Zap },
           ].map((stat, i) => (

@@ -31,14 +31,18 @@ export default function TeacherDashboard() {
     setMounted(true)
   }, [])
 
-  // Récupération réelle des élèves du professeur
   const studentsQuery = useMemo(() => {
     if (!db || teacherClasses.length === 0) return null
     return query(collection(db, "students"), where("classId", "in", teacherClasses))
   }, [db, teacherClasses])
 
+  const presencesQuery = useMemo(() => {
+    if (!db || !teacherId) return null
+    return query(collection(db, "teacher_presence"), where("teacherId", "==", teacherId))
+  }, [db, teacherId])
+
   const { data: students } = useCollection(studentsQuery)
-  const { data: presences } = useCollection(teacherId ? query(collection(db, "teacher_presence"), where("teacherId", "==", teacherId)) : null)
+  const { data: presences } = useCollection(presencesQuery)
 
   const stats = useMemo(() => {
     if (!mounted) return []
