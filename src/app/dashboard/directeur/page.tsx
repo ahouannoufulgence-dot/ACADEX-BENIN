@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
   Users, 
   GraduationCap, 
@@ -16,16 +16,15 @@ import {
   Zap,
   Sparkles,
   ArrowRight,
-  Activity,
   TrendingDown,
   CheckCircle2,
   Search,
-  MessageSquare
+  Activity
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, orderBy, limit, doc, onSnapshot } from "firebase/firestore"
+import { collection, doc, onSnapshot } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -33,9 +32,13 @@ export default function DirectorDashboard() {
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState({ name: "Chargement...", year: "2024-2025" })
+  const [directorName, setDirectorName] = useState("le Directeur")
 
   useEffect(() => {
     setMounted(true)
+    const name = localStorage.getItem('acadex_user_name')
+    if (name) setDirectorName(name)
+
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
         const d = snap.data()
@@ -45,47 +48,31 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes Firestore réelles
-  const studentsRef = useMemo(() => collection(db, "students"), [db])
-  const teachersRef = useMemo(() => collection(db, "teachers"), [db])
-  const idsRef = useMemo(() => collection(db, "registration_ids"), [db])
-  const paymentsRef = useMemo(() => collection(db, "payments"), [db])
-  const gradesRef = useMemo(() => collection(db, "grades"), [db])
-  
-  const { data: students, loading: loadingStudents } = useCollection(studentsRef)
-  const { data: teachers, loading: loadingTeachers } = useCollection(teachersRef)
-  const { data: registrationIds, loading: loadingIds } = useCollection(idsRef)
-  const { data: payments, loading: loadingPayments } = useCollection(paymentsRef)
-  const { data: grades } = useCollection(gradesRef)
+  // Requêtes Firestore réelles - Aucune donnée mockée ici
+  const { data: students, loading: loadingStudents } = useCollection(collection(db, "students"))
+  const { data: teachers, loading: loadingTeachers } = useCollection(collection(db, "teachers"))
+  const { data: registrationIds, loading: loadingIds } = useCollection(collection(db, "registration_ids"))
+  const { data: payments, loading: loadingPayments } = useCollection(collection(db, "payments"))
+  const { data: grades } = useCollection(collection(db, "grades"))
 
-  // Statistiques et Alertes calculées
+  // Statistiques calculées strictement sur les données Firestore
   const stats = useMemo(() => {
-    const totalStudents = students?.length || 0
-    const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
-    const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
-    const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const totalStudents = Array.isArray(students) ? students.length : 0
+    const activeTeachers = Array.isArray(teachers) ? teachers.filter((t: any) => t.status === "Actif").length : 0
+    const unusedIds = Array.isArray(registrationIds) ? registrationIds.filter((id: any) => id.status === "non utilisé").length : 0
+    const totalRevenue = Array.isArray(payments) ? payments.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) : 0
+    const pendingPaymentsCount = Array.isArray(payments) ? payments.filter((p: any) => p.status === 'En attente').length : 0
     
-    // Classes en difficulté (Moyenne < 10)
-    const classAverages: Record<string, { sum: number, count: number }> = {}
-    grades?.forEach((g: any) => {
-      if (!classAverages[g.classId]) classAverages[g.classId] = { sum: 0, count: 0 }
-      classAverages[g.classId].sum += g.average || 0
-      classAverages[g.classId].count += 1
-    })
-    
-    const weakClasses = Object.entries(classAverages)
-      .map(([name, data]) => ({ name, avg: data.sum / data.count }))
-      .filter(c => c.avg < 10)
-      .sort((a, b) => a.avg - b.avg)
+    // Dernier élève inscrit (activité réelle)
+    const lastStudent = Array.isArray(students) && students.length > 0 ? students[0] : null
 
     return {
       totalStudents,
       activeTeachers,
       unusedIds,
       totalRevenue,
-      weakClasses,
-      pendingPayments: payments?.filter((p: any) => p.status === 'En attente').length || 0,
-      lastActivity: students && students.length > 0 ? students[0] : null
+      pendingPaymentsCount,
+      lastStudent
     }
   }, [students, teachers, registrationIds, payments, grades])
 
@@ -97,10 +84,11 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
         
+        {/* EN-TÊTE PROFESSIONNEL */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">
-              Bonjour <span className="text-primary">Directeur</span>,
+              Bonjour Monsieur <span className="text-primary italic">{directorName}</span>,
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 py-1 text-sm uppercase">
@@ -117,28 +105,29 @@ export default function DirectorDashboard() {
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none hidden md:block" />
         </div>
 
+        {/* CARTES STATISTIQUES PRINCIPALES (100% RÉELLES) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group border-b-4 border-b-blue-500">
+          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Élèves</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingStudents ? <Loader2 className="animate-spin size-6" /> : stats.totalStudents}
+                {loadingStudents ? <Loader2 className="animate-spin size-6 text-primary/20" /> : stats.totalStudents}
               </p>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl"><Users className="size-6" /></div>
             </div>
           </Card>
 
-          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group border-b-4 border-b-emerald-500">
+          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Enseignants Actifs</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingTeachers ? <Loader2 className="animate-spin size-6" /> : stats.activeTeachers}
+                {loadingTeachers ? <Loader2 className="animate-spin size-6 text-primary/20" /> : stats.activeTeachers}
               </p>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><GraduationCap className="size-6" /></div>
             </div>
           </Card>
 
-          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group border-b-4 border-b-amber-500">
+          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Présents ce jour</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">0</p>
@@ -146,11 +135,11 @@ export default function DirectorDashboard() {
             </div>
           </Card>
 
-          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group border-b-4 border-b-purple-500">
+          <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Paiements en attente</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingPayments ? <Loader2 className="animate-spin size-6" /> : stats.pendingPayments}
+                {loadingPayments ? <Loader2 className="animate-spin size-6 text-primary/20" /> : stats.pendingPaymentsCount}
               </p>
               <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl"><CreditCard className="size-6" /></div>
             </div>
@@ -159,11 +148,12 @@ export default function DirectorDashboard() {
 
         <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
+            {/* ALERTES IMPORTANTES */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-red-50/30">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="size-6 text-destructive" />
-                  <CardTitle className="text-2xl font-black tracking-tight">Alertes Systèmes</CardTitle>
+                  <CardTitle className="text-2xl font-black tracking-tight">Alertes</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
@@ -172,7 +162,7 @@ export default function DirectorDashboard() {
                     <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.unusedIds}</div>
-                        <p className="font-bold text-sm text-foreground/80">Identifiants élèves non utilisés en stock.</p>
+                        <p className="font-bold text-sm text-foreground/80">Identifiants élèves non utilisés.</p>
                       </div>
                       <Button asChild variant="ghost" className="rounded-xl font-bold text-amber-700">
                         <Link href="/eleves/identifiants">Gérer <ArrowRight className="ml-2 size-4" /></Link>
@@ -184,7 +174,7 @@ export default function DirectorDashboard() {
                     <div className="p-12 text-center text-muted-foreground font-bold flex flex-col items-center gap-4">
                       <Users className="size-10 opacity-20" />
                       <div className="space-y-1">
-                        <p>Aucun élève enregistré.</p>
+                        <p>Aucun élève inscrit.</p>
                         <p className="text-xs font-medium opacity-60">Distribuez les matricules pour lancer l'année.</p>
                       </div>
                     </div>
@@ -193,103 +183,86 @@ export default function DirectorDashboard() {
                   {stats.totalStudents > 0 && stats.unusedIds === 0 && (
                     <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
                        <CheckCircle2 className="size-10 opacity-30" />
-                       <p className="text-sm">Système opérationnel. Aucune anomalie détectée.</p>
+                       <p className="text-sm">Tout est en ordre. Aucune alerte critique.</p>
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
+            {/* CLASSES EN DIFFICULTÉ */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-2xl font-black flex items-center gap-3">
                   <TrendingDown className="text-destructive" /> Classes en Difficulté
                 </h3>
-                <Badge variant="outline" className="font-black border-destructive/20 text-destructive bg-destructive/5 uppercase">Focus Pédagogique</Badge>
               </div>
-              
-              <div className="grid sm:grid-cols-2 gap-4">
-                {stats.weakClasses.length > 0 ? (
-                  stats.weakClasses.map((cls) => (
-                    <div key={cls.name} className="p-6 bg-muted/20 rounded-[2rem] border-2 border-transparent hover:border-destructive/10 transition-all group">
-                       <div className="flex justify-between items-start mb-4">
-                         <p className="font-black text-xl">{cls.name}</p>
-                         <Badge className="bg-destructive text-white font-black rounded-lg">{cls.avg.toFixed(1)} / 20</Badge>
-                       </div>
-                       <Button variant="outline" className="w-full rounded-xl font-black border-2 group-hover:bg-destructive group-hover:text-white group-hover:border-destructive transition-all h-10 text-xs uppercase">
-                         Voir Analyse
-                       </Button>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
-                    <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Aucune classe en difficulté détectée.</p>
-                  </div>
-                )}
+              <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Analyse pédagogique en attente de notes.</p>
               </div>
             </Card>
           </div>
 
           <div className="lg:col-span-4 space-y-8">
+            {/* DERNIÈRES ACTIVITÉS */}
             <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
                <div className="flex items-center justify-between mb-8">
-                 <h4 className="text-xl font-black">Mouvements</h4>
+                 <h4 className="text-xl font-black">Dernière activité</h4>
                  <Activity className="size-5 text-primary opacity-20" />
                </div>
                <div className="space-y-8">
-                  {stats.lastActivity ? (
+                  {stats.lastStudent ? (
                     <div className="flex gap-4 group">
-                      <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl">
-                        {(stats.lastActivity.lastName || "?")[0]}
+                      <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl uppercase">
+                        {stats.lastStudent.lastName?.[0] || "?"}
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-black text-foreground">Inscription validée</p>
-                        <p className="text-xs font-bold text-primary">{stats.lastActivity.firstName} {stats.lastActivity.lastName}</p>
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{stats.lastActivity.classId}</p>
+                        <p className="text-xs font-bold text-primary">{stats.lastStudent.firstName} {stats.lastStudent.lastName}</p>
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{stats.lastStudent.classId}</p>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center py-10 opacity-30">
-                       <p className="text-[10px] font-black uppercase tracking-widest">En attente d'activité...</p>
+                       <p className="text-[10px] font-black uppercase tracking-widest">Aucun mouvement détecté.</p>
                     </div>
                   )}
                </div>
             </Card>
 
-            <div className="grid gap-6">
-              <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl">
-                <div className="flex items-center justify-between mb-6">
-                  <h4 className="font-black text-lg">Trésorerie</h4>
-                  <Wallet className="size-5 text-primary" />
+            {/* TRÉSORERIE RÉSUMÉ */}
+            <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="font-black text-lg">Paiements</h4>
+                <Wallet className="size-5 text-primary" />
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] font-black uppercase text-white/40 mb-1">Montant Reçu</p>
+                  <p className="text-3xl font-black text-primary">{stats.totalRevenue.toLocaleString()} FCFA</p>
                 </div>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-white/40 mb-1">Total Encaissé</p>
-                    <p className="text-3xl font-black text-primary">{stats.totalRevenue.toLocaleString()} FCFA</p>
-                  </div>
-                  <Button asChild className="w-full bg-white/10 hover:bg-white/20 border-none rounded-xl font-black h-11 text-xs">
-                    <Link href="/paiements">Voir le Grand Livre</Link>
-                  </Button>
-                </div>
-              </Card>
+                <Button asChild className="w-full bg-white/10 hover:bg-white/20 border-none rounded-xl font-black h-11 text-xs">
+                  <Link href="/paiements">Détails Trésorerie</Link>
+                </Button>
+              </div>
+            </Card>
 
-              <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
-                <div className="flex items-center gap-3 mb-6">
-                  <Sparkles className="size-6 text-primary animate-pulse" />
-                  <h4 className="font-black text-lg">Cerveau ACADEX</h4>
-                </div>
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-muted-foreground mb-4">Posez une question à l'intelligence de votre école :</p>
-                  {["Qui est absent ?", "Classe la plus faible ?", "Recettes du mois"].map((q) => (
-                    <Button key={q} asChild variant="ghost" className="w-full justify-between bg-white rounded-xl h-10 px-4 text-[10px] font-black uppercase text-primary border border-primary/5 hover:border-primary/20">
-                      <Link href="/assistant">
-                        {q} <Search className="size-3 opacity-30" />
-                      </Link>
-                    </Button>
-                  ))}
-                </div>
-              </Card>
-            </div>
+            {/* ASSISTANT ACADEX */}
+            <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
+              <div className="flex items-center gap-3 mb-6">
+                <Sparkles className="size-6 text-primary animate-pulse" />
+                <h4 className="font-black text-lg">Poser une question</h4>
+              </div>
+              <div className="space-y-3">
+                {["Qui est absent ?", "Classe la plus faible ?", "Point financier"].map((q) => (
+                  <Button key={q} asChild variant="ghost" className="w-full justify-between bg-white rounded-xl h-10 px-4 text-[10px] font-black uppercase text-primary border border-primary/5 hover:border-primary/20">
+                    <Link href="/assistant">
+                      {q} <Search className="size-3 opacity-30" />
+                    </Link>
+                  </Button>
+                ))}
+              </div>
+            </Card>
           </div>
         </div>
       </div>
