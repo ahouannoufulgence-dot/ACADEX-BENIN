@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -49,13 +48,13 @@ export default function StatisticsPage() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("generale")
 
-  // Données réelles Firestore - Strictement réactives
+  // Données réelles Firestore - Garanti sans chiffres fictifs
   const { data: students, loading: loadingStudents } = useCollection(collection(db, "students"))
   const { data: teachers, loading: loadingTeachers } = useCollection(collection(db, "teachers"))
   const { data: payments, loading: loadingPayments } = useCollection(collection(db, "payments"))
   const { data: grades } = useCollection(collection(db, "grades"))
 
-  // CALCUL DES INDICATEURS GLOBAUX RÉELS
+  // CALCUL DES INDICATEURS GLOBAUX RÉELS (Zéro si vide)
   const kpis = useMemo(() => {
     const totalStudents = Array.isArray(students) ? students.length : 0
     const totalTeachers = Array.isArray(teachers) ? teachers.length : 0
@@ -67,9 +66,9 @@ export default function StatisticsPage() {
     return { totalStudents, totalTeachers, totalRevenue, avgSchool }
   }, [students, teachers, payments, grades])
 
-  // RÉPARTITION PAR GENRE
+  // RÉPARTITION PAR GENRE RÉELLE
   const genderStats = useMemo(() => {
-    if (!students || students.length === 0) return [{ name: 'Garçons', value: 0 }, { name: 'Filles', value: 0 }]
+    if (!students || students.length === 0) return []
     const m = students.filter((s: any) => s.gender === 'Masculin').length
     const f = students.filter((s: any) => s.gender === 'Féminin').length
     return [
@@ -102,7 +101,7 @@ export default function StatisticsPage() {
       })
 
       doc.save(`ACADEX_STATISTIQUES_${new Date().toLocaleDateString()}.pdf`)
-      toast({ title: "Rapport exporté" })
+      toast({ title: "Rapport exporté avec succès" })
     } catch (e) {
       toast({ title: "Erreur Export", variant: "destructive" })
     }
@@ -115,20 +114,20 @@ export default function StatisticsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3.5rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-5xl font-black text-foreground tracking-tight">Intelligence <span className="text-primary italic">Établissement</span></h1>
-            <p className="text-muted-foreground font-medium">Analyse multidimensionnelle en temps réel basée sur vos données réelles.</p>
+            <p className="text-muted-foreground font-medium">Analyse certifiée basée sur les données vivantes de l'école.</p>
           </div>
           <Button onClick={handleExportPDF} className="bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/30 rounded-2xl h-14 px-10 font-black text-lg relative z-10">
-            <FileDown className="mr-2 size-6" /> Export PDF
+            <FileDown className="mr-2 size-6" /> Rapport PDF
           </Button>
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
         </div>
 
-        {/* INDICATEURS RÉELS */}
+        {/* INDICATEURS RÉELS - GARANTI ZÉRO SI VIDE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Effectif Global", value: kpis.totalStudents, icon: Users, color: "text-blue-600" },
             { label: "Moyenne École", value: kpis.avgSchool, icon: GraduationCap, color: "text-primary" },
-            { label: "Présence moyenne", value: "0%", icon: UserCheck, color: "text-emerald-600" },
+            { label: "Corps Enseignant", value: kpis.totalTeachers, icon: BookOpen, color: "text-emerald-600" },
             { label: "Trésorerie", value: kpis.totalRevenue.toLocaleString() + " FCFA", icon: CreditCard, color: "text-amber-600" },
           ].map((kpi, i) => (
             <Card key={i} className="border-none shadow-sm rounded-[2.5rem] bg-white group hover:shadow-xl transition-all duration-300">
@@ -148,29 +147,27 @@ export default function StatisticsPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-white border-2 rounded-[2.5rem] h-20 p-2 flex w-fit shadow-sm overflow-x-auto no-scrollbar">
             <TabsTrigger value="generale" className="rounded-2xl font-black px-10 text-xs uppercase tracking-widest">Vue Générale</TabsTrigger>
-            <TabsTrigger value="pedagogie" className="rounded-2xl font-black px-10 text-xs uppercase tracking-widest">Pédagogie</TabsTrigger>
-            <TabsTrigger value="finance" className="rounded-2xl font-black px-10 text-xs uppercase tracking-widest">Finances</TabsTrigger>
             <TabsTrigger value="ia" className="rounded-2xl font-black px-10 text-xs uppercase tracking-widest flex gap-2">
-              <Sparkles className="size-4" /> Prédictions
+              <Sparkles className="size-4" /> Prédictions IA
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="generale" className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
             <div className="grid lg:grid-cols-12 gap-8">
               <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-10 min-h-[400px]">
-                <div className="flex flex-col items-center justify-center h-full opacity-30 italic">
+                 <div className="flex flex-col items-center justify-center h-full opacity-30 italic">
                   <Activity className="size-16 mb-4 text-muted-foreground" />
-                  <p className="font-bold text-center">Aucune donnée disponible pour générer les graphiques d'activité.</p>
+                  <p className="font-bold text-center">En attente de données pour générer les histogrammes de performance.</p>
                 </div>
               </Card>
 
               <div className="lg:col-span-4 space-y-8">
-                <Card className="border-none shadow-sm bg-white rounded-[3rem] p-10 flex flex-col items-center justify-center text-center">
+                <Card className="border-none shadow-sm bg-white rounded-[3rem] p-10 flex flex-col items-center justify-center text-center min-h-[400px]">
                   <h3 className="text-xl font-black mb-10 flex items-center gap-3">
-                    <PieChartIcon className="text-primary" /> Mixité & Genre
+                    <PieChartIcon className="text-primary" /> Démographie
                   </h3>
-                  <div className="h-[250px] w-full flex items-center justify-center">
-                    {kpis.totalStudents > 0 ? (
+                  {kpis.totalStudents > 0 ? (
+                    <div className="h-[250px] w-full">
                        <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
@@ -187,13 +184,13 @@ export default function StatisticsPage() {
                           <Tooltip />
                         </PieChart>
                       </ResponsiveContainer>
-                    ) : (
-                      <p className="text-xs font-black text-muted-foreground uppercase opacity-40">Attente de profils...</p>
-                    )}
-                  </div>
-                  <div className="pt-6 border-t w-full space-y-2">
-                    <p className="text-lg font-black text-primary">{kpis.totalStudents} inscrits réels</p>
-                  </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-4 opacity-30">
+                       <Users className="size-12" />
+                       <p className="text-xs font-black uppercase">Aucun élève inscrit</p>
+                    </div>
+                  )}
                 </Card>
               </div>
             </div>
@@ -204,9 +201,9 @@ export default function StatisticsPage() {
                 <div className="size-24 bg-primary/20 rounded-[2rem] flex items-center justify-center mx-auto mb-10">
                    <Sparkles className="size-12 text-primary animate-pulse" />
                 </div>
-                <h3 className="text-4xl font-black mb-6">Analyse IA en attente</h3>
+                <h3 className="text-4xl font-black mb-6">Analyse IA</h3>
                 <p className="text-xl text-white/60 font-medium max-w-2xl mx-auto leading-relaxed italic">
-                  "Le Cerveau ACADEX a besoin de données vivantes pour projeter des tendances fiables."
+                  "Le Cerveau ACADEX nécessite au moins un trimestre de données pour projeter des tendances de réussite fiables."
                 </p>
              </Card>
           </TabsContent>
