@@ -129,6 +129,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!mounted || !userRole) return null
 
+  // Déterminer la civilité (Monsieur par défaut pour le respect comme demandé)
+  const respectPrefix = "Monsieur";
+
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
@@ -191,7 +194,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="sticky top-0 z-30 flex h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-6 border-b border-border/40">
             <div className="flex flex-col">
               <h2 className="text-lg font-black text-foreground">
-                Bonjour <span className="text-primary italic">{userName.split(' ')[0]}</span>
+                Bonjour {respectPrefix} <span className="text-primary italic">{userName}</span>
               </h2>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary uppercase">{userId}</Badge>
