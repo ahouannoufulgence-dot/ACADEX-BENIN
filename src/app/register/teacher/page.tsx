@@ -7,15 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, BookOpen, GraduationCap } from "lucide-react";
+import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, BookOpen } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
+import { useFirestore } from "@/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function RegisterTeacherPage() {
   const router = useRouter();
+  const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [generatedId, setGeneratedId] = useState("");
@@ -49,25 +53,54 @@ export default function RegisterTeacherPage() {
   };
 
   const handleRegister = async () => {
+    if (!form.password || form.password !== form.confirmPassword) {
+      toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      const subjectPrefix = form.subject.substring(0, 3).toUpperCase() || "ENS";
-      const randomId = Math.floor(100 + Math.random() * 900);
-      const newId = `ENS-${subjectPrefix}-${randomId}`;
-      setGeneratedId(newId);
-      
-      localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
-      localStorage.setItem('acadex_user_role', `Professeur`);
-      localStorage.setItem('acadex_user_subject', form.subject);
-      localStorage.setItem('acadex_user_classes', JSON.stringify(form.classes));
-      
-      nextStep();
-      toast({
-        title: "Compte Enseignant créé",
-        description: `Bienvenue dans l'équipe pédagogique ACADEX.`
+
+    const subjectPrefix = form.subject.substring(0, 3).toUpperCase() || "ENS";
+    const randomId = Math.floor(100 + Math.random() * 900);
+    const newId = `ENS-${subjectPrefix}-${randomId}`;
+    setGeneratedId(newId);
+
+    const teacherData = {
+      officialId: newId,
+      fullName: `${form.firstName} ${form.lastName}`,
+      phone: form.phone,
+      subject: form.subject,
+      classes: form.classes,
+      isFormTeacher: form.isFormTeacher,
+      formClass: form.formClass,
+      status: "En attente",
+      registeredAt: new Date().toISOString()
+    };
+
+    // Sauvegarde automatique dans Firestore
+    addDoc(collection(db, "teachers"), teacherData)
+      .catch(async (serverError) => {
+        const error = new FirestorePermissionError({
+          path: 'teachers',
+          operation: 'create',
+          requestResourceData: teacherData,
+        });
+        errorEmitter.emit('permission-error', error);
       });
-    }, 2000);
+
+    // Sauvegarde en session locale pour le login immédiat
+    localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
+    localStorage.setItem('acadex_user_role', `Enseignant`);
+    localStorage.setItem('acadex_user_id', newId);
+    localStorage.setItem('acadex_user_subject', form.subject);
+    localStorage.setItem('acadex_user_classes', JSON.stringify(form.classes));
+
+    setLoading(false);
+    nextStep();
+    toast({
+      title: "Compte Enseignant créé",
+      description: `Bienvenue dans l'équipe pédagogique ACADEX.`
+    });
   };
 
   const copyId = () => {
@@ -121,7 +154,7 @@ export default function RegisterTeacherPage() {
                 </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/30 flex justify-between">
-                <Button variant="ghost" onClick={() => router.push("/register")} className="font-bold rounded-xl h-12">Annuler</Button>
+                <Button variant="ghost" asChild className="font-bold rounded-xl h-12"><Link href="/">Annuler</Link></Button>
                 <Button onClick={nextStep} className="bg-foreground text-white rounded-xl font-black px-10 h-12">Continuer <ArrowRight className="ml-2 size-4" /></Button>
               </CardFooter>
             </>
@@ -202,11 +235,11 @@ export default function RegisterTeacherPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="font-bold">Mot de passe</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" />
+                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold">Confirmer</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" />
+                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.confirmPassword} onChange={e => setForm({...form, confirmPassword: e.target.value})} />
                   </div>
                 </div>
                 <div className="space-y-4 pt-4 border-t border-dashed">
@@ -225,7 +258,7 @@ export default function RegisterTeacherPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold">Réponse Secrète</Label>
-                    <Input placeholder="Votre réponse" className="h-12 rounded-xl" />
+                    <Input placeholder="Votre réponse" className="h-12 rounded-xl" value={form.secretAnswer} onChange={e => setForm({...form, secretAnswer: e.target.value})} />
                   </div>
                 </div>
               </CardContent>

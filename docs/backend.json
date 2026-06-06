@@ -39,9 +39,11 @@
       "type": "object",
       "properties": {
         "fullName": { "type": "string" },
+        "phone": { "type": "string" },
         "subject": { "type": "string" },
         "classes": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string", "enum": ["Actif", "Suspendu"] }
+        "status": { "type": "string", "enum": ["En attente", "Actif", "Suspendu"] },
+        "registeredAt": { "type": "string", "format": "date-time" }
       }
     },
     "Grade": {
