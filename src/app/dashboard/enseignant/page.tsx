@@ -9,8 +9,7 @@ import {
   UserCheck, 
   Sparkles,
   BookOpen,
-  CheckCircle2,
-  Clock
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -36,27 +35,19 @@ export default function TeacherDashboard() {
     return query(collection(db, "students"), where("classId", "in", teacherClasses))
   }, [db, teacherClasses])
 
-  const presencesQuery = useMemo(() => {
-    if (!db || !teacherId) return null
-    return query(collection(db, "teacher_presence"), where("teacherId", "==", teacherId))
-  }, [db, teacherId])
-
-  const { data: students } = useCollection(studentsQuery)
-  const { data: presences } = useCollection(presencesQuery)
+  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
   const stats = useMemo(() => {
     if (!mounted) return []
-    
     const today = new Date().toISOString().split('T')[0]
-    const checkIn = presences?.find((p: any) => p.date === today)
 
     return [
       { title: "Mes Classes", value: teacherClasses.length.toString(), label: "Attribuées", icon: Users, color: "text-blue-600" },
-      { title: "Mes Élèves", value: (students?.length || 0).toString(), label: "Effectif total réel", icon: BookOpen, color: "text-primary" },
-      { title: "Notes à Saisir", value: "---", label: "Contrôle en attente", icon: PenTool, color: "text-amber-500" },
-      { title: "Mon Pointage", value: checkIn?.status || "Non fait", label: today, icon: UserCheck, color: "text-emerald-600" },
+      { title: "Mes Élèves", value: (students?.length || 0).toString(), label: "Effectif réel", icon: BookOpen, color: "text-primary" },
+      { title: "Notes Saisies", value: "0", label: "Ce trimestre", icon: PenTool, color: "text-amber-500" },
+      { title: "Pointage", value: "---", label: today, icon: UserCheck, color: "text-emerald-600" },
     ]
-  }, [students, presences, teacherClasses, mounted])
+  }, [students, teacherClasses, mounted])
 
   if (!mounted) return null
 
@@ -65,7 +56,7 @@ export default function TeacherDashboard() {
       <div className="space-y-10 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-foreground">Espace <span className="text-primary italic">Enseignant</span></h1>
+            <h1 className="text-4xl font-black text-foreground">Espace Enseignant</h1>
             <p className="text-muted-foreground font-medium">Gestion de vos {teacherClasses.length} classes officielles.</p>
           </div>
           <Button asChild className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
@@ -77,9 +68,9 @@ export default function TeacherDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat) => (
-            <Card key={stat.title} className="p-7 rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all bg-white">
+            <Card key={stat.title} className="p-7 rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between bg-white">
               <div className="flex items-center justify-between mb-6">
-                <div className={`p-4 bg-muted rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
+                <div className={`p-4 bg-muted rounded-2xl ${stat.color}`}>
                   <stat.icon className="size-7" />
                 </div>
                 <Badge variant="outline" className="border-none text-[8px] font-black uppercase bg-muted/50">{stat.label}</Badge>
@@ -87,7 +78,9 @@ export default function TeacherDashboard() {
               <div>
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.title}</p>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-black text-foreground">{stat.value}</span>
+                  <span className="text-3xl font-black text-foreground">
+                    {loadingStudents && stat.title === "Mes Élèves" ? <Loader2 className="animate-spin size-5" /> : stat.value}
+                  </span>
                 </div>
               </div>
             </Card>
@@ -96,14 +89,14 @@ export default function TeacherDashboard() {
 
         <div className="grid md:grid-cols-2 gap-8">
            <Link href="/eleves" className="p-10 bg-white rounded-[3rem] shadow-sm hover:shadow-xl transition-all flex flex-col gap-4 group">
-              <div className="size-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><Users className="size-8" /></div>
-              <h3 className="text-2xl font-black">Mes élèves ({students?.length || 0})</h3>
-              <p className="text-muted-foreground font-medium">Liste réelle de vos classes synchronisée par la direction.</p>
+              <div className="size-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform"><Users className="size-8" /></div>
+              <h3 className="text-2xl font-black">Liste de mes élèves ({students?.length || 0})</h3>
+              <p className="text-muted-foreground font-medium">Accès direct aux profils de vos classes.</p>
            </Link>
            <Link href="/assistant" className="p-10 bg-white rounded-[3rem] shadow-sm hover:shadow-xl transition-all flex flex-col gap-4 group border-2 border-dashed border-primary/20">
-              <div className="size-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><Sparkles className="size-8" /></div>
-              <h3 className="text-2xl font-black text-primary">Assistant ACADEX</h3>
-              <p className="text-muted-foreground font-medium">Analyse pédagogique basée sur vos {students?.length || 0} élèves.</p>
+              <div className="size-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform"><Sparkles className="size-8" /></div>
+              <h3 className="text-2xl font-black text-primary">Assistant IA Enseignant</h3>
+              <p className="text-muted-foreground font-medium">Analyse pédagogique de vos classes.</p>
            </Link>
         </div>
       </div>

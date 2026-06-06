@@ -13,17 +13,17 @@ import {
   CheckCircle2, 
   ArrowRight,
   Sparkles,
-  Zap,
   Activity,
   Calendar,
   Wallet,
   UserCheck,
-  Loader2
+  Loader2,
+  Zap
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, orderBy, limit, doc, onSnapshot } from "firebase/firestore"
+import { collection, doc, onSnapshot } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -56,20 +56,22 @@ export default function DirectorDashboard() {
   const { data: payments } = useCollection(paymentsRef)
   const { data: grades } = useCollection(gradesRef)
 
-  // Statistiques calculées sur données réelles
+  // Statistiques calculées sur données réelles (Strictement 0 par défaut)
   const stats = useMemo(() => {
+    const totalStudents = students?.length || 0
     const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
+    const pendingTeachers = teachers?.filter((t: any) => t.status === "En attente").length || 0
     const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
     const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     const lastStudent = students && students.length > 0 ? students[0] : null
 
     return {
-      totalStudents: students?.length || 0,
+      totalStudents,
       activeTeachers,
+      pendingTeachers,
       unusedIds,
       totalRevenue,
-      lastStudent,
-      pendingTeachers: teachers?.filter((t: any) => t.status === "En attente").length || 0
+      lastStudent
     }
   }, [students, teachers, registrationIds, payments])
 
@@ -112,29 +114,23 @@ export default function DirectorDashboard() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Année Scolaire</p>
-              <p className="text-lg font-black text-primary">{schoolInfo.year}</p>
-            </div>
-            <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
-              <Link href="/assistant">
-                <Sparkles className="mr-2 size-5 fill-white" /> Cerveau ACADEX
-              </Link>
-            </Button>
-          </div>
+          <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black">
+            <Link href="/assistant">
+              <Sparkles className="mr-2 size-5 fill-white" /> Cerveau ACADEX
+            </Link>
+          </Button>
         </div>
 
-        {/* CARTES STATISTIQUES PRINCIPALES */}
+        {/* CARTES STATISTIQUES PRINCIPALES - TOUTES À ZÉRO SI VIDE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-7 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-lg transition-all group">
             <div className="flex items-center justify-between mb-6">
               <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">
                 <Users className="size-7" />
               </div>
-              <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px]">RÉEL</Badge>
+              <Badge className="bg-blue-50 text-blue-600 border-none font-black text-[10px]">TOTAL</Badge>
             </div>
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Élèves</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Élèves Inscrits</p>
             <p className="text-4xl font-black text-foreground mt-1">
               {loadingStudents ? <Loader2 className="animate-spin size-6" /> : stats.totalStudents}
             </p>
@@ -175,11 +171,8 @@ export default function DirectorDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8">
-          
           {/* COLONNE GAUCHE: ALERTES & ANALYSE */}
           <div className="lg:col-span-7 space-y-8">
-            
-            {/* ALERTES IMPORTANTES SANS DONNÉES FICTIVES */}
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-muted/5">
                 <div className="flex items-center gap-3">
@@ -195,39 +188,38 @@ export default function DirectorDashboard() {
                         <div className="size-10 bg-destructive/10 text-destructive rounded-xl flex items-center justify-center font-black">{stats.pendingTeachers}</div>
                         <div>
                           <p className="font-bold text-sm">Enseignants en attente de validation</p>
-                          <p className="text-[10px] uppercase font-black text-muted-foreground">Action requise pour accès cockpit</p>
+                          <p className="text-[10px] uppercase font-black text-muted-foreground">Action requise</p>
                         </div>
                       </div>
                       <Button asChild variant="ghost" size="icon" className="rounded-xl"><Link href="/enseignants"><ArrowRight className="size-4" /></Link></Button>
                     </div>
                   )}
-                  <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className="size-10 bg-amber-500/10 text-amber-600 rounded-xl flex items-center justify-center font-black">{stats.unusedIds}</div>
-                      <div>
-                        <p className="font-bold text-sm">Identifiants élèves disponibles</p>
-                        <p className="text-[10px] uppercase font-black text-muted-foreground">Prêts pour distribution / inscription</p>
+                  {stats.unusedIds > 0 && (
+                    <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 bg-amber-500/10 text-amber-600 rounded-xl flex items-center justify-center font-black">{stats.unusedIds}</div>
+                        <div>
+                          <p className="font-bold text-sm">Identifiants élèves disponibles</p>
+                          <p className="text-[10px] uppercase font-black text-muted-foreground">Prêts pour distribution</p>
+                        </div>
                       </div>
+                      <Button asChild variant="ghost" size="icon" className="rounded-xl"><Link href="/eleves/identifiants"><ArrowRight className="size-4" /></Link></Button>
                     </div>
-                    <Button asChild variant="ghost" size="icon" className="rounded-xl"><Link href="/eleves/identifiants"><ArrowRight className="size-4" /></Link></Button>
-                  </div>
-                  {stats.totalStudents === 0 && (
-                    <div className="p-6 flex items-center justify-between bg-red-50/30">
-                       <p className="text-xs font-bold text-destructive flex items-center gap-2">
-                         <AlertTriangle className="size-4" /> Aucun élève inscrit dans l'établissement.
-                       </p>
+                  )}
+                  {stats.totalStudents === 0 && stats.pendingTeachers === 0 && stats.unusedIds === 0 && (
+                    <div className="p-12 text-center text-muted-foreground italic font-medium">
+                      Aucune alerte pour le moment.
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* CLASSES EN DIFFICULTÉ */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-10">
               <div className="flex items-center justify-between mb-10">
                 <div className="space-y-1">
-                  <h3 className="text-2xl font-black tracking-tight">Analyse des Performances</h3>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Radar de réussite académique</p>
+                  <h3 className="text-2xl font-black tracking-tight">Classes en Difficulté</h3>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Moyennes inférieures à 10/20</p>
                 </div>
                 <TrendingDown className="size-8 text-destructive opacity-20" />
               </div>
@@ -235,19 +227,19 @@ export default function DirectorDashboard() {
               {classesInDifficulty.length === 0 ? (
                 <div className="p-12 text-center bg-muted/10 rounded-3xl space-y-3">
                    <CheckCircle2 className="size-10 text-emerald-500 mx-auto" />
-                   <p className="font-bold text-muted-foreground">Toutes vos classes actives maintiennent un bon niveau.</p>
+                   <p className="font-bold text-muted-foreground">Toutes les classes maintiennent un bon niveau.</p>
                 </div>
               ) : (
                 <div className="grid gap-6">
                   {classesInDifficulty.map((cls) => (
                     <div key={cls.id} className="flex items-center justify-between p-6 bg-red-50/50 border border-red-100 rounded-[2rem] group hover:bg-red-50 transition-all">
                       <div className="flex items-center gap-6">
-                        <div className="size-14 bg-white rounded-2xl flex items-center justify-center font-black text-destructive shadow-sm border border-red-100">
+                        <div className="size-14 bg-white rounded-2xl flex items-center justify-center font-black text-destructive shadow-sm">
                           {cls.id[0]}
                         </div>
                         <div>
                           <p className="font-black text-lg">{cls.id}</p>
-                          <p className="text-xs font-bold text-red-600 uppercase tracking-widest">Moyenne Classe : {cls.avg.toFixed(2)}/20</p>
+                          <p className="text-xs font-bold text-red-600 uppercase">Moyenne : {cls.avg.toFixed(2)}</p>
                         </div>
                       </div>
                       <Button asChild className="rounded-xl bg-white text-destructive border border-red-200 hover:bg-red-600 hover:text-white font-black h-11 px-6 shadow-sm">
@@ -262,77 +254,58 @@ export default function DirectorDashboard() {
 
           {/* COLONNE DROITE: ACTIVITÉ & FINANCES */}
           <div className="lg:col-span-5 space-y-8">
-            
-            {/* ASSISTANT ACADEX - ZONE RAPIDE */}
             <Card className="premium-card p-8 bg-foreground text-white overflow-hidden relative group">
               <div className="relative z-10 space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="size-12 bg-primary rounded-xl flex items-center justify-center">
                     <Sparkles className="size-6 text-white" />
                   </div>
-                  <h4 className="text-xl font-black italic">Besoin d'un audit ?</h4>
+                  <h4 className="text-xl font-black italic">Audit Intelligence IA</h4>
                 </div>
                 <div className="grid grid-cols-1 gap-2 pt-2">
+                  <p className="text-[11px] font-bold text-white/60 uppercase tracking-widest">Questions suggérées :</p>
                   {["Qui n'a pas payé ?", "Moyenne de l'école ?", "Profs absents ?"].map((q, i) => (
-                    <button key={i} className="text-left p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[11px] font-bold uppercase tracking-wider flex justify-between items-center group/btn">
+                    <button key={i} className="text-left p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-[10px] font-bold uppercase flex justify-between items-center group/btn">
                       {q}
-                      <ArrowRight className="size-3 opacity-0 group-hover/btn:opacity-100 -translate-x-2 group-hover/btn:translate-x-0 transition-all" />
+                      <ArrowRight className="size-3" />
                     </button>
                   ))}
                 </div>
               </div>
-              <Activity className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-700" />
+              <Activity className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none" />
             </Card>
 
-            {/* PAIEMENTS - RÉSUMÉ */}
             <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                <h4 className="text-lg font-black tracking-tight">Trésorerie</h4>
-                <Button asChild variant="ghost" className="text-primary font-black text-xs hover:bg-primary/5 rounded-xl">
+                <h4 className="text-lg font-black tracking-tight">Trésorerie Réelle</h4>
+                <Button asChild variant="ghost" className="text-primary font-black text-xs rounded-xl">
                    <Link href="/paiements">Détails</Link>
                 </Button>
               </div>
-              <div className="space-y-6">
-                <div className="flex items-end justify-between p-6 bg-muted/20 rounded-3xl border-2 border-transparent hover:border-primary/10 transition-all">
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Encaissements</p>
-                    <p className="text-2xl font-black text-foreground">{stats.totalRevenue.toLocaleString()} <span className="text-xs">FCFA</span></p>
-                  </div>
-                  <Badge className="bg-emerald-500 text-white font-black rounded-full h-6">OK</Badge>
-                </div>
+              <div className="p-6 bg-muted/20 rounded-3xl">
+                <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Encaissements Totaux</p>
+                <p className="text-2xl font-black text-foreground">{stats.totalRevenue.toLocaleString()} <span className="text-xs">FCFA</span></p>
               </div>
             </Card>
 
-            {/* ACTIVITÉS RÉELLES */}
             <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm">
-               <h4 className="text-lg font-black mb-6">Activités Récentes</h4>
+               <h4 className="text-lg font-black mb-6">Dernière Inscription</h4>
                <div className="space-y-6">
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
                       <div className="size-2 bg-primary rounded-full mt-2 shrink-0" />
                       <div>
-                        <p className="text-sm font-bold text-foreground">Nouvel élève : {stats.lastStudent.firstName} {stats.lastStudent.lastName}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">Classe : {stats.lastStudent.classId}</p>
+                        <p className="text-sm font-bold text-foreground">{stats.lastStudent.firstName} {stats.lastStudent.lastName}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{stats.lastStudent.classId}</p>
                       </div>
                     </div>
                   ) : (
-                    <p className="text-xs font-medium text-muted-foreground italic">Aucune inscription récente.</p>
-                  )}
-                  {stats.activeTeachers > 0 && (
-                    <div className="flex gap-4 group">
-                      <div className="size-2 bg-blue-500 rounded-full mt-2 shrink-0" />
-                      <div>
-                        <p className="text-sm font-bold text-foreground">Équipe pédagogique opérationnelle</p>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{stats.activeTeachers} professeurs validés</p>
-                      </div>
-                    </div>
+                    <p className="text-xs font-medium text-muted-foreground italic">Aucun élève inscrit dans la base.</p>
                   )}
                </div>
             </Card>
-
           </div>
         </div>
-
       </div>
     </DashboardLayout>
   )
