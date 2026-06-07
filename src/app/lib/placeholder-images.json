@@ -1,3 +1,4 @@
+
 {
   "placeholderImages": [
     {
@@ -11,6 +12,12 @@
       "description": "Vibrant green educational background with abstract patterns",
       "imageUrl": "https://picsum.photos/seed/acadex-green-reg/1920/1080",
       "imageHint": "green nature"
+    },
+    {
+      "id": "login-education",
+      "description": "Professional and clean school library background",
+      "imageUrl": "https://picsum.photos/seed/acadex-login-bg/1920/1080",
+      "imageHint": "school library"
     },
     {
       "id": "user-avatar",
