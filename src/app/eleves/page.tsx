@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -23,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, deleteDoc, doc, where } from "firebase/firestore"
+import { collection, query, deleteDoc, doc, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -57,13 +58,18 @@ export default function StudentsPage() {
     setUserRole(localStorage.getItem('acadex_user_role'))
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     
-    const updateYear = () => {
-      const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+    const updateYear = (e?: any) => {
+      const year = e?.detail || localStorage.getItem('acadex_active_year') || "2026-2027"
       setActiveYear(year)
     }
+    
     updateYear()
+    window.addEventListener('acadex_year_changed', updateYear as any)
     window.addEventListener('storage', updateYear)
-    return () => window.removeEventListener('storage', updateYear)
+    return () => {
+      window.removeEventListener('acadex_year_changed', updateYear as any)
+      window.removeEventListener('storage', updateYear)
+    }
   }, [])
 
   // REQUÊTE SÉCURISÉE : Filtrée par ANNÉE SCOLAIRE ACTIVE

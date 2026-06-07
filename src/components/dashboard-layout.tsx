@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -50,7 +51,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { doc, onSnapshot, collection, getDocs } from "firebase/firestore"
+import { doc, onSnapshot } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import placeholderData from "@/app/lib/placeholder-images.json"
 import {
@@ -124,7 +125,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserRole(role)
     setUserId(id || "INV-000")
     
-    // Année par défaut : 2026-2027 si rien n'est sauvé
     if (savedYear) {
       setActiveYear(savedYear)
     } else {
@@ -139,10 +139,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         const data = snap.data()
         setSchoolInfo({ name: data.schoolName || "ACADEX", logo: data.logoUrl || "" })
         if (data.availableYears) setAvailableYears(data.availableYears)
-        if (data.academicYear && !savedYear) {
-          setActiveYear(data.academicYear)
-          localStorage.setItem('acadex_active_year', data.academicYear)
-        }
       }
     })
     return () => unsub()
@@ -151,7 +147,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const handleYearChange = (year: string) => {
     setActiveYear(year)
     localStorage.setItem('acadex_active_year', year)
-    window.dispatchEvent(new Event('storage')) 
+    // Dispatch d'un événement personnalisé pour notifier toutes les pages
+    window.dispatchEvent(new CustomEvent('acadex_year_changed', { detail: year }))
     router.refresh()
   }
 

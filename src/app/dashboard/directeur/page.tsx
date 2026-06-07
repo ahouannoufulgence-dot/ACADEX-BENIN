@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -41,11 +42,13 @@ export default function DirectorDashboard() {
     const name = localStorage.getItem('acadex_user_name')
     if (name) setDirectorFullName(name)
 
-    const updateYear = () => {
-      const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+    const updateYear = (e?: any) => {
+      const year = e?.detail || localStorage.getItem('acadex_active_year') || "2026-2027"
       setActiveYear(year)
     }
+    
     updateYear()
+    window.addEventListener('acadex_year_changed', updateYear as any)
     window.addEventListener('storage', updateYear)
 
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
@@ -56,6 +59,7 @@ export default function DirectorDashboard() {
     })
     return () => {
       unsub()
+      window.removeEventListener('acadex_year_changed', updateYear as any)
       window.removeEventListener('storage', updateYear)
     }
   }, [db])
