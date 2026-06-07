@@ -18,7 +18,8 @@ import {
   TrendingUp,
   CheckCircle2,
   Activity,
-  UserCheck
+  UserCheck,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -47,7 +48,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // REQUÊTES STRICTES POUR COMPTEURS RÉELS (Sincérité Totale)
+  // REQUÊTES FILTRÉES : SINCÉRITÉ TOTALE
   const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
@@ -64,12 +65,12 @@ export default function DirectorDashboard() {
     const totalStudents = students?.length || 0
     const totalTeachers = teachers?.length || 0
     const idsCount = unusedIds?.length || 0
-    const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const revenue = (payments || []).reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0)
     
     // Calcul de la moyenne de l'école (Sécurisé)
-    const validGrades = grades?.filter((g: any) => g.value !== undefined && !isNaN(Number(g.value))) || []
-    const avg = validGrades.length 
-      ? (validGrades.reduce((acc, g: any) => acc + (Number(g.value) || 0), 0) / validGrades.length).toFixed(2)
+    const validGrades = (grades || []).map((g: any) => Number(g.value)).filter(v => !isNaN(v) && v >= 0)
+    const avg = validGrades.length > 0 
+      ? (validGrades.reduce((acc, v) => acc + v, 0) / validGrades.length).toFixed(2)
       : "0.00"
 
     const lastStudent = students?.length ? students[0] : null
@@ -85,6 +86,7 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
         
+        {/* Accueil Prestidigieux */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
@@ -133,8 +135,8 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Recouvrement</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl font-black text-foreground">{stats.revenue.toLocaleString()} <span className="text-xs">FCFA</span></p>
-              <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><CreditCard className="size-6" /></div>
+              <p className="text-2xl font-black text-foreground">{stats.revenue.toLocaleString()} <span className="text-xs font-bold opacity-50">F</span></p>
+              <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Wallet className="size-6" /></div>
             </div>
           </Card>
         </div>
@@ -147,7 +149,7 @@ export default function DirectorDashboard() {
                   <AlertTriangle className="size-6 text-destructive" />
                   <CardTitle className="text-2xl font-black tracking-tight">Alertes Systèmes</CardTitle>
                 </div>
-                {stats.idsCount > 0 && <Badge className="bg-destructive text-white font-black">{stats.idsCount} EN ATTENTE</Badge>}
+                {stats.idsCount > 0 && <Badge className="bg-destructive text-white font-black">{stats.idsCount} À ACTIVER</Badge>}
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-muted/30">
@@ -155,7 +157,7 @@ export default function DirectorDashboard() {
                     <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.idsCount}</div>
-                        <p className="font-bold text-sm text-foreground/80">Identifiants élèves non encore activés.</p>
+                        <p className="font-bold text-sm text-foreground/80">Matricules en attente d'activation par les élèves.</p>
                       </div>
                       <Button asChild variant="ghost" className="rounded-xl font-bold text-primary">
                         <Link href="/eleves/identifiants">Gérer <ArrowRight className="ml-2 size-4" /></Link>
@@ -186,7 +188,7 @@ export default function DirectorDashboard() {
 
           <div className="lg:col-span-4 space-y-8">
             <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
-               <h4 className="text-xl font-black mb-8">Dernière activité</h4>
+               <h4 className="text-xl font-black mb-8 flex items-center gap-2"><Activity className="size-5 text-primary" /> Dernière activité</h4>
                <div className="space-y-8">
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
@@ -211,7 +213,7 @@ export default function DirectorDashboard() {
                 <h4 className="font-black text-lg">Cerveau ACADEX</h4>
               </div>
               <div className="space-y-3">
-                {["Points sur les notes", "Bilan financier", "Classes à suivre"].map((q) => (
+                {["Bilan des notes", "Bilan financier", "Classes à suivre"].map((q) => (
                   <Button key={q} asChild variant="ghost" className="w-full justify-between bg-white rounded-xl h-10 px-4 text-[10px] font-black uppercase text-primary border border-primary/5 hover:border-primary/20">
                     <Link href="/assistant">{q} <ArrowRight className="size-3 opacity-30" /></Link>
                   </Button>
