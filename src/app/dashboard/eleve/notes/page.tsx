@@ -14,7 +14,9 @@ import {
   Target,
   Info,
   CheckCircle2,
-  TrendingDown
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -33,32 +35,75 @@ export default function StudentGradesPage() {
     const matricule = localStorage.getItem('acadex_user_id') || ""
     setStudentId(matricule)
     const parts = matricule.split('-')
-    if (parts.length >= 2) setStudentClass(parts[1])
+    if (parts.length >= 2) setStudentClass(parts[1].replace(/([0-9]+[A-Z]+).*/, '$1')) // Extraction du niveau/promotion (ex: 3EME)
   }, [])
 
-  // RÉCEPTION DES NOTES LIÉES PAR MATRICULE (Synchronisation Spontanée)
+  // 1. MES NOTES RÉELLES
   const myGradesQuery = useMemo(() => {
     if (!db || !studentId) return null
     return query(collection(db, "grades"), where("studentId", "==", studentId))
   }, [db, studentId])
 
-  // RÉCEPTION DES STATS DE CLASSE (Confidentialité respectée : seulement les valeurs)
-  const classGradesQuery = useMemo(() => {
-    if (!db || !studentClass) return null
-    return query(collection(db, "grades"), where("classId", "==", studentClass))
-  }, [db, studentClass])
+  // 2. NOTES DE TOUTE LA PROMOTION (Pour calcul moyenne promotion)
+  // On considère que la promotion est extraite de la classe (ex: "3EME" pour "3EME A")
+  const promotionPrefix = useMemo(() => {
+    if (!studentClass) return ""
+    return studentClass.match(/^[0-9]+[A-Z]+/)?.[0] || studentClass
+  }, [studentClass])
+
+  const allGradesQuery = useMemo(() => {
+    if (!db) return null
+    return query(collection(db, "grades"))
+  }, [db])
 
   const { data: myGrades, loading: loadingMyGrades } = useCollection(myGradesQuery)
-  const { data: classGrades } = useCollection(classGradesQuery)
+  const { data: allGrades } = useCollection(allGradesQuery)
 
-  // LOGIQUE DE CALCUL "3 INTERROS + 2 DEVOIRS" ET POSITIONNEMENT
-  const subjectAnalyses = useMemo(() => {
-    if (!myGrades) return []
+  // LOGIQUE DE CALCUL MULTI-NIVEAUX
+  const analysis = useMemo(() => {
+    if (!myGrades || !allGrades) return null
     
-    const subjects: Record<string, any> = {}
-    const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
+    // Filtrage par trimestre
+    const myTermGrades = myGrades.filter((g: any) => g.term === activeTerm)
+    const allTermGrades = allGrades.filter((g: any) => g.term === activeTerm)
 
-    termGrades.forEach((g: any) => {
+    // Helper pour calculer une moyenne pondérée ACADEX
+    const calcAvg = (gradeList: any[]) => {
+      const subs: Record<string, any> = {}
+      gradeList.forEach((g: any) => {
+        const sub = g.subject
+        if (!subs[sub]) subs[sub] = { i1:0, i2:0, i3:0, d1:0, d2:0, c: Number(g.coefficient) || 1, countI:0, countD:0 }
+        if (g.type === "int1") { subs[sub].i1 = Number(g.value); subs[sub].countI++ }
+        if (g.type === "int2") { subs[sub].i2 = Number(g.value); subs[sub].countI++ }
+        if (g.type === "int3") { subs[sub].i3 = Number(g.value); subs[sub].countI++ }
+        if (g.type === "dev1") { subs[sub].d1 = Number(g.value); subs[sub].countD++ }
+        if (g.type === "dev2") { subs[sub].d2 = Number(g.value); subs[sub].countD++ }
+      })
+      
+      let totalW = 0, totalC = 0
+      Object.values(subs).forEach((s: any) => {
+        const avgInt = (s.i1 + s.i2 + s.i3) / 3
+        const avgSub = (avgInt + s.d1 + s.d2) / 3
+        totalW += avgSub * s.c
+        totalC += s.c
+      })
+      return totalC > 0 ? (totalW / totalC) : 0
+    }
+
+    // Moyenne Perso
+    const myAvg = calcAvg(myTermGrades)
+
+    // Moyenne Classe (On filtre les notes de la classe de l'élève)
+    const classGrades = allTermGrades.filter((g: any) => g.classId === localStorage.getItem('acadex_user_id')?.split('-')[1])
+    const classAvg = calcAvg(classGrades)
+
+    // Moyenne Promotion (On filtre les notes par préfixe de niveau)
+    const promoGrades = allTermGrades.filter((g: any) => g.classId?.startsWith(promotionPrefix))
+    const promoAvg = calcAvg(promoGrades)
+
+    // Analyse par matière pour les cartes
+    const subjects: Record<string, any> = {}
+    myTermGrades.forEach((g: any) => {
       const sub = g.subject
       if (!subjects[sub]) {
         subjects[sub] = {
@@ -76,31 +121,14 @@ export default function StudentGradesPage() {
       if (g.type === "dev2") s.d2 = Number(g.value)
     })
 
-    return Object.values(subjects).map((s: any) => {
-      // Formule Acadex : ((I1+I2+I3)/3 + D1 + D2) / 3
+    const subjectList = Object.values(subjects).map((s: any) => {
       const avgInt = ((s.i1 || 0) + (s.i2 || 0) + (s.i3 || 0)) / 3
       s.myAverage = (avgInt + (s.d1 || 0) + (s.d2 || 0)) / 3
-      s.weighted = s.myAverage * s.coef
-
-      // Calcul des extrêmes de la classe pour cette matière (Confidentialité Totale)
-      if (classGrades) {
-        const otherGrades = classGrades.filter((g: any) => g.subject === s.name && g.term === activeTerm)
-        // Note: On ne regarde pas les moyennes finales des autres mais les meilleures notes d'évaluations individuelles pour situer
-        const values = otherGrades.map((g: any) => Number(g.value)).filter(v => !isNaN(v))
-        s.classHigh = values.length > 0 ? Math.max(...values) : 0
-        s.classLow = values.length > 0 ? Math.min(...values) : 0
-      }
-
       return s
     })
-  }, [myGrades, classGrades, activeTerm])
 
-  const generalAverage = useMemo(() => {
-    if (subjectAnalyses.length === 0) return "0.00"
-    const totalWeighted = subjectAnalyses.reduce((acc, s: any) => acc + s.weighted, 0)
-    const totalCoef = subjectAnalyses.reduce((acc, s: any) => acc + s.coef, 0)
-    return totalCoef > 0 ? (totalWeighted / totalCoef).toFixed(2) : "0.00"
-  }, [subjectAnalyses])
+    return { myAvg, classAvg, promoAvg, subjects: subjectList }
+  }, [myGrades, allGrades, activeTerm, promotionPrefix])
 
   return (
     <DashboardLayout>
@@ -109,12 +137,44 @@ export default function StudentGradesPage() {
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Mon Carnet <span className="text-primary italic">Acadex</span></h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-primary" /> Synchronisation spontanée avec vos professeurs.
+              <ShieldCheck className="size-4 text-primary" /> Vos moyennes sont comparées à l'ensemble du niveau {promotionPrefix}.
             </p>
           </div>
           <Badge className="bg-primary text-white border-none px-8 py-3 rounded-2xl font-black text-xl shadow-xl shadow-primary/20">
-            MOYENNE GÉNÉRALE : {generalAverage}
+            MA MOYENNE : {analysis?.myAvg.toFixed(2) || "0.00"}
           </Badge>
+        </div>
+
+        {/* CARTES DE COMPARAISON PROMOTION */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-lg transition-all">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Ma Moyenne</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-4xl font-black text-foreground">{analysis?.myAvg.toFixed(2) || "0.00"}</h3>
+                <div className="p-3 bg-primary/10 text-primary rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Trophy className="size-6" /></div>
+              </div>
+           </Card>
+
+           <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-lg transition-all border-l-8 border-amber-400">
+              <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Moyenne Classe</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-4xl font-black text-foreground">{analysis?.classAvg.toFixed(2) || "0.00"}</h3>
+                {analysis && analysis.myAvg >= analysis.classAvg ? (
+                   <Badge className="bg-emerald-50 text-emerald-600 border-none font-black px-3 py-1"><ArrowUpRight className="size-3 mr-1" /> AU-DESSUS</Badge>
+                ) : (
+                   <Badge className="bg-red-50 text-red-600 border-none font-black px-3 py-1"><ArrowDownRight className="size-3 mr-1" /> EN-DESSOUS</Badge>
+                )}
+              </div>
+           </Card>
+
+           <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl flex flex-col justify-between">
+              <p className="text-[10px] font-black uppercase text-white/40 tracking-widest mb-4">Moyenne Promotion {promotionPrefix}</p>
+              <div className="flex items-center justify-between">
+                <h3 className="text-4xl font-black text-primary">{analysis?.promoAvg.toFixed(2) || "0.00"}</h3>
+                <div className="p-3 bg-white/10 rounded-2xl"><Zap className="size-6 text-primary fill-primary" /></div>
+              </div>
+              <p className="text-[9px] font-bold text-white/60 mt-4 uppercase tracking-tighter italic">"Vous êtes comparé à toutes les classes du niveau {promotionPrefix}"</p>
+           </Card>
         </div>
 
         <Tabs value={activeTerm} onValueChange={setActiveTab} className="space-y-8">
@@ -131,16 +191,16 @@ export default function StudentGradesPage() {
               {loadingMyGrades ? (
                 <div className="col-span-full py-20 text-center animate-pulse font-black text-muted-foreground flex flex-col items-center gap-4">
                   <Loader2 className="size-12 animate-spin text-primary" />
-                  Mise à jour du carnet...
+                  Calcul des moyennes promotionnelles...
                 </div>
-              ) : subjectAnalyses.length === 0 ? (
+              ) : !analysis || analysis.subjects.length === 0 ? (
                 <Card className="col-span-full p-24 text-center border-4 border-dashed rounded-[3rem] bg-muted/20 opacity-40">
                   <FileText className="size-20 mx-auto mb-6" />
                   <h3 className="text-2xl font-black">Aucun point scellé</h3>
                   <p className="font-medium text-muted-foreground">Tes résultats apparaîtront dès que tes professeurs auront publié les notes du {activeTerm}.</p>
                 </Card>
               ) : (
-                subjectAnalyses.map((subject: any, i) => (
+                analysis.subjects.map((subject: any, i: number) => (
                   <Card key={i} className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden group hover:shadow-xl transition-all">
                     <div className={cn("h-3 w-full", subject.myAverage >= 14 ? "bg-emerald-500" : subject.myAverage >= 10 ? "bg-primary" : "bg-destructive")} />
                     <CardContent className="p-8 space-y-6">
@@ -157,7 +217,7 @@ export default function StudentGradesPage() {
 
                       <div className="space-y-6">
                          <div className="space-y-2">
-                           <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-1">Interrogations (3)</p>
+                           <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-1">Performance Réelle</p>
                            <div className="flex gap-2">
                               {[subject.i1, subject.i2, subject.i3].map((n, idx) => (
                                 <div key={idx} className={cn("flex-1 h-12 rounded-xl flex items-center justify-center text-sm font-black border-2 transition-all", n === null ? "border-dashed border-muted text-muted-foreground/20" : "bg-muted/30 border-transparent text-foreground")}>
@@ -166,36 +226,16 @@ export default function StudentGradesPage() {
                               ))}
                            </div>
                          </div>
-                         <div className="space-y-2">
-                           <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-1">Devoirs (2)</p>
-                           <div className="flex gap-2">
-                              {[subject.d1, subject.d2].map((n, idx) => (
-                                <div key={idx} className={cn("flex-1 h-12 rounded-xl flex items-center justify-center text-sm font-black border-2 transition-all", n === null ? "border-dashed border-muted text-muted-foreground/20" : "bg-primary/5 border-primary/20 text-primary")}>
-                                  {n !== null ? n.toFixed(1) : '-'}
-                                </div>
-                              ))}
-                           </div>
-                         </div>
-                      </div>
-
-                      <div className="pt-4 border-t border-dashed flex justify-between items-center text-center">
-                         <div>
-                            <p className="text-[9px] font-black uppercase text-muted-foreground">Max Classe</p>
-                            <p className="text-lg font-black text-primary">{subject.classHigh || '---'}</p>
-                         </div>
-                         <div className="h-8 w-px bg-muted mx-4" />
-                         <div>
-                            <p className="text-[9px] font-black uppercase text-muted-foreground">Min Classe</p>
-                            <p className="text-lg font-black text-muted-foreground">{subject.classLow || '---'}</p>
-                         </div>
                       </div>
 
                       <div className="flex items-start gap-4 p-4 bg-muted/10 rounded-2xl border border-muted/20">
                          <div className="size-8 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                           {subject.myAverage >= 12 ? <TrendingUp className="size-4 text-emerald-500" /> : <TrendingDown className="size-4 text-red-500" />}
+                           {subject.myAverage >= analysis.promoAvg ? <TrendingUp className="size-4 text-emerald-500" /> : <TrendingDown className="size-4 text-red-500" />}
                          </div>
                          <p className="text-[11px] font-bold text-muted-foreground italic leading-tight">
-                           {subject.myAverage >= 15 ? "Tu es dans le top de la classe. Maintiens ce niveau d'excellence." : subject.myAverage >= 10 ? "Résultats satisfaisants. Travail régulier à maintenir pour progresser." : "Zone de fragilité détectée. Rapproche-toi de ton professeur pour des conseils."}
+                           {subject.myAverage >= analysis.promoAvg 
+                             ? "Ta performance dans cette matière est au-dessus de la moyenne du niveau." 
+                             : "Attention, tu es en dessous du niveau global de la promotion dans cette matière."}
                          </p>
                       </div>
                     </CardContent>
@@ -209,16 +249,16 @@ export default function StudentGradesPage() {
         <div className="p-8 bg-muted/20 rounded-[3rem] flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-dashed border-muted-foreground/10">
            <div className="flex items-center gap-4">
               <div className="size-14 bg-white rounded-2xl flex items-center justify-center shadow-md">
-                <Info className="text-primary size-7" />
+                <ShieldCheck className="text-primary size-7" />
               </div>
               <div>
-                <p className="font-black text-foreground uppercase tracking-widest text-xs">Note de Sincérité Acadex</p>
+                <p className="font-black text-foreground uppercase tracking-widest text-xs">Note de Sincérité Promotionnelle</p>
                 <p className="text-sm font-medium text-muted-foreground max-w-xl">
-                  Les meilleures et plus faibles notes sont affichées anonymement pour préserver la confidentialité tout en te permettant de te situer.
+                  Les moyennes de classe et de promotion sont calculées à partir de toutes les notes scellées du niveau {promotionPrefix}.
                 </p>
               </div>
            </div>
-           <Button className="rounded-2xl font-black bg-foreground text-white px-10 h-14 shadow-xl">Signaler une erreur</Button>
+           <Button className="rounded-2xl font-black bg-foreground text-white px-10 h-14 shadow-xl">Imprimer mon carnet</Button>
         </div>
       </div>
     </DashboardLayout>
