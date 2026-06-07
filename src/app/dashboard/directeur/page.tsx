@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -119,7 +118,9 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">{loadingStudents ? <Loader2 className="animate-spin" /> : stats.totalStudents}</p>
+              <div className="text-4xl font-black text-foreground">
+                {loadingStudents ? <Loader2 className="animate-spin size-6" /> : stats.totalStudents}
+              </div>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Users className="size-6" /></div>
             </div>
           </Card>
@@ -127,7 +128,9 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Enseignants</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">{loadingTeachers ? <Loader2 className="animate-spin" /> : stats.totalTeachers}</p>
+              <div className="text-4xl font-black text-foreground">
+                {loadingTeachers ? <Loader2 className="animate-spin size-6" /> : stats.totalTeachers}
+              </div>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
             </div>
           </Card>

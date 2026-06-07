@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -28,7 +27,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo } from "react"
-import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where, doc, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -50,6 +48,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { toast } from "@/hooks/use-toast"
 
 export default function ArchivesPage() {
   const db = useFirestore()

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -142,9 +141,9 @@ export default function StudentDashboard() {
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.title}</p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <span className="text-3xl font-black text-foreground">
+                    <div className="text-3xl font-black text-foreground">
                       {loadingGrades && stat.title === "Ma Moyenne" ? <Loader2 className="animate-spin size-5" /> : stat.value}
-                    </span>
+                    </div>
                   </div>
                   <p className="text-[10px] font-bold text-muted-foreground/60 mt-2">{stat.label}</p>
                 </div>
