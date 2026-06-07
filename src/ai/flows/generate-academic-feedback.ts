@@ -1,35 +1,36 @@
 'use server';
 /**
- * @fileOverview A Genkit flow for generating personalized academic feedback and summary reports for students.
+ * @fileOverview Flux Genkit pour la génération de feedbacks académiques personnalisés.
  *
- * - generateAcademicFeedback - A function that handles the academic feedback generation process.
- * - GenerateAcademicFeedbackInput - The input type for the generateAcademicFeedback function.
- * - GenerateAcademicFeedbackOutput - The return type for the generateAcademicFeedback function.
+ * - generateAcademicFeedback - Analyse les notes et produit un rapport détaillé.
+ * - GenerateAcademicFeedbackInput - Schéma d'entrée (Nom, Notes, Contexte).
+ * - GenerateAcademicFeedbackOutput - Schéma de sortie (Observation, Synthèse, Actions).
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateAcademicFeedbackInputSchema = z.object({
-  studentName: z.string().describe("The name of the student."),
+  studentName: z.string().describe("Le nom complet de l'élève."),
   grades: z.array(
     z.object({
-      subject: z.string().describe("The name of the subject."),
-      grade: z.number().describe("The student's grade for the subject (e.g., 15 for 15/20)."),
-      maxGrade: z.number().describe("The maximum possible grade for the subject, typically 20."),
+      subject: z.string().describe("La matière."),
+      grade: z.number().describe("La moyenne de l'élève."),
+      maxGrade: z.number().describe("La note maximale (souvent 20)."),
     })
-  ).describe("A list of grades for different subjects, including the subject name, the student's grade, and the maximum possible grade."),
-  evaluationContext: z.string().optional().describe("Optional context for the evaluation, e.g., 'rapport trimestriel', 'évaluation de fin d\'année'."),
-  teacherComments: z.string().optional().describe("Optional specific comments or observations from the teacher."),
-  predefinedCriteria: z.string().optional().describe("Optional predefined criteria or areas for improvement, provided by the teacher."),
+  ).describe("Liste des moyennes par matière."),
+  evaluationContext: z.string().optional().describe("Contexte de l'évaluation."),
+  teacherComments: z.string().optional().describe("Commentaires éventuels du professeur."),
 });
+
 export type GenerateAcademicFeedbackInput = z.infer<typeof GenerateAcademicFeedbackInputSchema>;
 
 const GenerateAcademicFeedbackOutputSchema = z.object({
-  academicFeedback: z.string().describe("Personalized academic feedback for the student, highlighting strengths and areas for improvement."),
-  summaryReport: z.string().describe("A comprehensive summary report of the student's overall academic performance."),
-  recommendations: z.array(z.string()).describe("A list of specific, actionable recommendations for the student's improvement."),
+  academicFeedback: z.string().describe("Observation pédagogique globale et encourageante."),
+  summaryReport: z.string().describe("Synthèse de la performance par bloc de compétences."),
+  recommendations: z.array(z.string()).describe("Liste de 3 recommandations concrètes pour progresser."),
 });
+
 export type GenerateAcademicFeedbackOutput = z.infer<typeof GenerateAcademicFeedbackOutputSchema>;
 
 export async function generateAcademicFeedback(input: GenerateAcademicFeedbackInput): Promise<GenerateAcademicFeedbackOutput> {
@@ -40,51 +41,26 @@ const academicFeedbackPrompt = ai.definePrompt({
   name: 'academicFeedbackPrompt',
   input: { schema: GenerateAcademicFeedbackInputSchema },
   output: { schema: GenerateAcademicFeedbackOutputSchema },
-  prompt: `Vous êtes un conseiller pédagogique expérimenté et professionnel, spécialisé dans l'évaluation scolaire au Bénin. Votre tâche est de générer des observations académiques personnalisées et un rapport de synthèse détaillé pour l'élève suivant, en vous basant sur ses notes et les informations fournies par l'enseignant et les critères prédéfinis.
+  prompt: `Vous êtes le Conseiller Pédagogique Expert d'ACADEX Bénin. Votre mission est d'analyser les résultats réels de l'élève {{{studentName}}} pour l'orienter vers l'excellence.
 
-**Informations sur l'élève :**
-Nom : {{{studentName}}}
-
-**Notes détaillées :**
+**RESULTATS RÉELS :**
 {{#each grades}}
 - {{{subject}}} : {{{grade}}}/{{{maxGrade}}}
 {{/each}}
 
-**Contexte de l'évaluation :**
-{{#if evaluationContext}}
+**CONTEXTE :**
 {{{evaluationContext}}}
-{{else}}
-Non spécifié. Veuillez utiliser un ton général de suivi académique.
-{{/if}}
 
-**Commentaires spécifiques de l'enseignant (si fournis) :**
-{{#if teacherComments}}
+**REMARQUES ENSEIGNANT :**
 {{{teacherComments}}}
-{{else}}
-Aucun commentaire spécifique de l'enseignant n'a été fourni.
-{{/if}}
 
-**Critères prédéfinis ou axes d'amélioration (si applicables) :**
-{{#if predefinedCriteria}}
-{{{predefinedCriteria}}}
-{{else}}
-Aucun critère prédéfini n'a été fourni.
-{{/if}}
+**VOTRE ANALYSE :**
+1. Identifiez les matières où l'élève excelle.
+2. Repérez les zones de fragilité (moyenne < 10).
+3. Produisez une observation motivante, professionnelle et constructive.
+4. Donnez 3 conseils ultra-spécifiques pour la période suivante.
 
-
-Veuillez générer des retours constructifs, professionnels, encourageants et équilibrés. Le ton doit être approprié pour un rapport scolaire destiné aux parents et aux élèves.
-
-Le feedback doit inclure les sections suivantes, dans l'ordre :
-1.  **academicFeedback**: Une observation académique personnalisée. Mettez en évidence les points forts de l'élève et identifiez clairement les domaines nécessitant une amélioration. Le langage doit être clair et compréhensible.
-2.  **summaryReport**: Un rapport de synthèse global évaluant la performance générale de l'élève dans l'ensemble des matières. Incluez une appréciation générale du niveau de compétence.
-3.  **recommendations**: Une liste de 3 à 5 recommandations spécifiques, actionnables et réalisables pour que l'élève puisse améliorer ses performances et développer ses compétences académiques. Ces recommandations doivent être concises.
-
-Formatez l'intégralité de votre réponse en un objet JSON valide, strictement conforme au schéma de sortie fourni ci-dessous, sans aucun texte additionnel ou marque de mise en forme en dehors de l'objet JSON. Utilisez les descriptions du schéma pour guider la profondeur et le contenu de chaque champ.
-
-\`\`\`json
-{{jsonSchema output}}
-\`\`\`
-`,
+Répondez uniquement avec l'objet structuré selon le schéma de sortie.`,
 });
 
 const generateAcademicFeedbackFlow = ai.defineFlow(
@@ -96,7 +72,7 @@ const generateAcademicFeedbackFlow = ai.defineFlow(
   async (input) => {
     const { output } = await academicFeedbackPrompt(input);
     if (!output) {
-      throw new Error('Failed to generate academic feedback. Output was empty.');
+      throw new Error('Le moteur IA ACADEX n\'a pas pu générer de réponse.');
     }
     return output;
   }

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -8,12 +7,13 @@ import {
   TrendingUp, 
   Sparkles, 
   Zap, 
-  ArrowUpRight, 
   CheckCircle2, 
   Loader2,
   Trophy,
   Target,
-  Info
+  Info,
+  TrendingDown,
+  ArrowRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -43,16 +43,18 @@ export default function StudentProgressionPage() {
 
   // CALCULS RÉELS BASÉS SUR LES NOTES SCELLÉES
   const analysis = useMemo(() => {
-    if (!grades || grades.length === 0) return { generalAvg: "0.00", topSubjects: [] }
+    if (!grades || grades.length === 0) return { generalAvg: "0.00", topSubjects: [], calculatedSubjects: [] }
     
     const subjects: Record<string, any> = {}
     grades.forEach((g: any) => {
       const sub = g.subject
       if (!subjects[sub]) {
-        subjects[sub] = { name: sub, i1: 0, i2: 0, i3: 0, d1: 0, d2: 0, coef: Number(g.coefficient) || 1 }
+        subjects[sub] = { name: sub, i1: null, i2: null, i3: null, d1: null, d2: null, coef: Number(g.coefficient) || 1 }
       }
       const s = subjects[sub]
-      const val = Number(g.value) || 0
+      const val = Number(g.value)
+      if (isNaN(val)) return
+
       if (g.type === "int1") s.i1 = val
       if (g.type === "int2") s.i2 = val
       if (g.type === "int3") s.i3 = val
@@ -61,8 +63,8 @@ export default function StudentProgressionPage() {
     })
 
     const calculatedSubjects = Object.values(subjects).map((s: any) => {
-      const avgInt = (s.i1 + s.i2 + s.i3) / 3
-      const subjectAvg = (avgInt + s.d1 + s.d2) / 3
+      const avgInt = ((s.i1 || 0) + (s.i2 || 0) + (s.i3 || 0)) / 3
+      const subjectAvg = (avgInt + (s.d1 || 0) + (s.d2 || 0)) / 3
       return {
         name: s.name,
         average: subjectAvg,
@@ -85,8 +87,8 @@ export default function StudentProgressionPage() {
   const handleAnalyze = async () => {
     if (!analysis.calculatedSubjects || analysis.calculatedSubjects.length === 0) {
       toast({ 
-        title: "Données insuffisantes", 
-        description: "Attendez que vos professeurs scellent vos premières notes.", 
+        title: "Notes manquantes", 
+        description: "L'IA a besoin de vos notes scellées pour vous diagnostiquer.", 
         variant: "destructive" 
       })
       return
@@ -101,14 +103,15 @@ export default function StudentProgressionPage() {
           grade: Number(s.average.toFixed(2)),
           maxGrade: 20
         })),
-        evaluationContext: "Analyse de progression mi-trimestre",
-        teacherComments: "L'élève sollicite un diagnostic de performance basé sur ses notes réelles."
+        evaluationContext: "Diagnostic de mi-trimestre",
+        teacherComments: "Demande autonome de l'élève via son cockpit."
       }
       const data = await generateAcademicFeedback(input)
       setResult(data)
-      toast({ title: "Analyse terminée avec succès" })
+      toast({ title: "Analyse réussie", description: "Le coach IA a scellé votre rapport." })
     } catch (e) {
-      toast({ title: "Erreur IA", description: "Le cerveau ACADEX est momentanément indisponible.", variant: "destructive" })
+      console.error(e)
+      toast({ title: "Échec du Diagnostic", description: "Le cerveau ACADEX est momentanément indisponible.", variant: "destructive" })
     } finally {
       setAnalyzing(false)
     }
@@ -120,15 +123,15 @@ export default function StudentProgressionPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Ma <span className="text-primary italic">Progression</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Visualisez votre évolution réelle certifiée par vos professeurs.</p>
+            <p className="text-muted-foreground mt-2 font-medium">Analyse temps réel de votre évolution certifiée.</p>
           </div>
           <Button 
             onClick={handleAnalyze} 
             disabled={analyzing || loading || !grades?.length}
-            className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black text-lg group"
+            className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black text-lg group transition-all active:scale-95"
           >
             {analyzing ? <Loader2 className="mr-3 size-6 animate-spin" /> : <Sparkles className="mr-3 size-6 group-hover:scale-125 transition-transform" />}
-            {analyzing ? "Calcul en cours..." : "Lancer le Diagnostic IA"}
+            {analyzing ? "Analyse en cours..." : "Lancer le Diagnostic IA"}
           </Button>
         </div>
 
@@ -141,19 +144,19 @@ export default function StudentProgressionPage() {
                   <Trophy className="size-8" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-1">Moyenne Actuelle</p>
+                  <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-1">Moyenne Générale</p>
                   <p className="text-5xl font-black">{loading ? "..." : analysis.generalAvg}</p>
-                  <p className="text-xs font-medium text-primary mt-2">Objectif : Excellence Académique</p>
+                  <p className="text-xs font-medium text-primary mt-2">Objectif : Excellence Pédagogique</p>
                 </div>
                 <div className="pt-4 border-t border-white/10 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/40">
-                   <span>Performance Certifiée</span>
+                   <span>Certification ACADEX</span>
                    <Badge className="bg-primary/20 text-primary border-none">LIVE</Badge>
                 </div>
               </div>
               <TrendingUp className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-700" />
             </Card>
 
-            <Card className="premium-card p-8 border-l-[10px] border-primary">
+            <Card className="premium-card p-8 border-l-[10px] border-primary bg-white">
                <h3 className="font-black text-lg mb-6 flex items-center gap-3"><Target className="text-primary" /> Mes points forts</h3>
                <div className="space-y-4">
                  {loading ? (
@@ -162,22 +165,24 @@ export default function StudentProgressionPage() {
                      <div className="h-14 bg-muted rounded-2xl" />
                    </div>
                  ) : analysis.topSubjects.length === 0 ? (
-                   <p className="text-sm font-medium text-muted-foreground italic">En attente de vos premières notes.</p>
+                   <div className="text-center py-6">
+                      <p className="text-sm font-medium text-muted-foreground italic">En attente de vos premiers points scellés.</p>
+                   </div>
                  ) : (
                    analysis.topSubjects.map((s, i) => (
-                     <div key={i} className="flex items-center justify-between p-5 bg-muted/30 rounded-2xl border border-transparent hover:border-primary/10 transition-all">
-                        <span className="font-black text-foreground">{s.name}</span>
-                        <Badge className="bg-primary text-white h-8 px-4 rounded-xl font-black">{s.average.toFixed(2)}</Badge>
+                     <div key={i} className="flex items-center justify-between p-5 bg-muted/30 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all">
+                        <span className="font-black text-foreground uppercase tracking-tight">{s.name}</span>
+                        <Badge className="bg-primary text-white h-8 px-4 rounded-xl font-black text-base">{s.average.toFixed(2)}</Badge>
                      </div>
                    ))
                  )}
                </div>
             </Card>
             
-            <Card className="p-6 bg-amber-50 border-2 border-amber-100 rounded-3xl flex items-start gap-4">
-              <Info className="size-6 text-amber-600 shrink-0" />
-              <p className="text-xs font-medium text-amber-800 leading-relaxed">
-                Les statistiques de progression sont calculées instantanément dès qu'une note est scellée par un professeur dans votre classe.
+            <Card className="p-6 bg-amber-50 border-2 border-amber-100 rounded-[2rem] flex items-start gap-4">
+              <Info className="size-6 text-amber-600 shrink-0 mt-1" />
+              <p className="text-[11px] font-bold text-amber-800 leading-relaxed uppercase tracking-tight">
+                Les statistiques de progression sont synchronisées spontanément avec les carnets de notes de vos professeurs.
               </p>
             </Card>
           </div>
@@ -185,34 +190,37 @@ export default function StudentProgressionPage() {
           {/* Analyse IA ou Placeholder */}
           <div className="lg:col-span-8">
              {!result ? (
-               <Card className="border-none shadow-sm bg-white rounded-[3rem] p-20 text-center flex flex-col items-center justify-center h-full space-y-8 border-4 border-dashed">
-                 <div className="size-32 bg-muted rounded-[2.5rem] flex items-center justify-center opacity-30 shadow-inner">
+               <Card className="border-none shadow-sm bg-white rounded-[3rem] p-20 text-center flex flex-col items-center justify-center h-full space-y-8 border-4 border-dashed border-muted">
+                 <div className="size-32 bg-muted rounded-[2.5rem] flex items-center justify-center opacity-20 shadow-inner">
                     <Sparkles className="size-16" />
                  </div>
                  <div className="space-y-3">
-                   <h3 className="text-3xl font-black text-foreground">Le Coach ACADEX</h3>
+                   <h3 className="text-3xl font-black text-foreground tracking-tight">Le Coach Personnel ACADEX</h3>
                    <p className="text-muted-foreground font-medium max-w-sm mx-auto leading-relaxed">
-                     L'IA analyse vos notes réelles pour identifier vos lacunes et vous proposer un plan de révision sur-mesure.
+                     L'intelligence artificielle analyse vos notes réelles pour identifier vos forces et vous proposer un plan de réussite sur-mesure.
                    </p>
                  </div>
                  <Button 
                    onClick={handleAnalyze} 
                    disabled={analyzing || loading || !grades?.length} 
-                   className="rounded-2xl h-16 px-12 bg-primary font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-transform"
+                   className="rounded-2xl h-16 px-12 bg-primary font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all active:scale-95"
                  >
-                   {loading ? "Chargement des notes..." : "Débloquer mon diagnostic personnel"}
+                   {loading ? "Calcul des moyennes..." : "Débloquer mon diagnostic personnel"}
                  </Button>
                  {!grades?.length && !loading && (
-                   <p className="text-[10px] font-black uppercase text-destructive tracking-widest">Aucune note scellée détectée pour le moment.</p>
+                   <div className="flex items-center gap-2 text-destructive font-black text-[10px] uppercase tracking-widest">
+                     <TrendingDown className="size-3" /> Aucune note scellée détectée pour le moment.
+                   </div>
                  )}
                </Card>
              ) : (
                <div className="space-y-8 animate-in zoom-in-95 duration-500">
-                 <Card className="premium-card p-10 border-l-[12px] border-primary shadow-xl">
+                 <Card className="premium-card p-10 border-l-[12px] border-primary shadow-2xl bg-white">
                     <div className="flex justify-between items-start mb-10">
-                      <Badge className="bg-primary px-6 py-2 rounded-full font-black text-sm">RAPPORT D'ANALYSE IA</Badge>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Généré le {new Date().toLocaleDateString()}</span>
+                      <Badge className="bg-primary px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest">RAPPORT D'ANALYSE IA</Badge>
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted px-4 py-1.5 rounded-full">Généré le {new Date().toLocaleDateString('fr-FR')}</span>
                     </div>
+                    
                     <div className="space-y-12">
                       <section className="space-y-6">
                         <h4 className="flex items-center gap-3 font-black text-2xl text-foreground">
@@ -229,7 +237,7 @@ export default function StudentProgressionPage() {
                          </h4>
                          <div className="grid gap-4">
                             {result.recommendations.map((rec, i) => (
-                              <div key={i} className="flex gap-6 items-start p-6 bg-white border-2 border-muted/50 rounded-3xl group hover:border-primary/30 transition-all hover:shadow-md">
+                              <div key={i} className="flex gap-6 items-start p-6 bg-white border-2 border-muted/50 rounded-[2rem] group hover:border-primary/30 transition-all hover:shadow-md">
                                 <div className="size-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl group-hover:bg-primary group-hover:text-white transition-all">
                                   {i + 1}
                                 </div>
@@ -239,9 +247,12 @@ export default function StudentProgressionPage() {
                          </div>
                       </section>
 
-                      <div className="pt-8 border-t border-dashed flex justify-between items-center">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Certification Intelligence Pédagogique ACADEX</p>
-                        <Button variant="ghost" className="font-black text-primary hover:bg-primary/5 rounded-xl">Partager aux parents</Button>
+                      <div className="pt-8 border-t border-dashed flex flex-col sm:flex-row justify-between items-center gap-6">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-center">Intelligence Pédagogique certifiée ACADEX V1</p>
+                        <div className="flex gap-4">
+                           <Button variant="outline" className="font-black text-xs rounded-xl h-10 border-2">Signaler Erreur</Button>
+                           <Button className="font-black text-xs rounded-xl h-10 bg-foreground text-white px-6">Partager aux parents</Button>
+                        </div>
                       </div>
                     </div>
                  </Card>
