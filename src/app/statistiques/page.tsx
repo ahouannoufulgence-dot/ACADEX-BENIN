@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Users, 
@@ -238,7 +238,6 @@ export default function StatisticsPage() {
             ))}
           </TabsList>
 
-          {/* TAB: VUE GÉNÉRALE */}
           <TabsContent value="generale" className="space-y-8">
              <div className="grid lg:grid-cols-12 gap-8">
                 <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-10">
@@ -293,7 +292,6 @@ export default function StatisticsPage() {
              </div>
           </TabsContent>
 
-          {/* TAB: PÉDAGOGIE / RÉSULTATS */}
           <TabsContent value="pedagogie" className="space-y-8">
              <div className="grid lg:grid-cols-12 gap-8">
                 <Card className="lg:col-span-12 p-10 rounded-[3rem] bg-white border-none shadow-sm">
@@ -317,7 +315,6 @@ export default function StatisticsPage() {
              </div>
           </TabsContent>
 
-          {/* TAB: COMPARAISON */}
           <TabsContent value="comparaison" className="space-y-8">
              <Card className="p-10 rounded-[3rem] bg-white border-none shadow-sm">
                 <div className="flex flex-col md:flex-row items-center gap-6 mb-12">
@@ -345,8 +342,10 @@ export default function StatisticsPage() {
                        { label: "Moyenne / 20", key: "avg", icon: GraduationCap },
                        { label: "Incidents (Abs)", key: "absences", icon: Clock },
                      ].map((metric) => {
-                       const valA = classStats.find(c => c.name === classA)?.[metric.key as keyof typeof classStats[0]] || 0
-                       const valB = classStats.find(c => c.name === classB)?.[metric.key as keyof typeof classStats[0]] || 0
+                       const statsA = classStats.find(c => c.name === classA)
+                       const statsB = classStats.find(c => c.name === classB)
+                       const valA = statsA ? (statsA as any)[metric.key] : 0
+                       const valB = statsB ? (statsB as any)[metric.key] : 0
                        return (
                          <div key={metric.label} className="space-y-6 p-8 bg-muted/20 rounded-[2rem] border border-muted">
                             <div className="flex items-center gap-3 font-black text-muted-foreground uppercase text-xs">
@@ -366,11 +365,11 @@ export default function StatisticsPage() {
                             <div className="w-full bg-white h-2 rounded-full overflow-hidden flex">
                                <div 
                                  className="h-full bg-primary" 
-                                 style={{ width: `${(Number(valA) / (Number(valA) + Number(valB))) * 100}%` }} 
+                                 style={{ width: `${(Number(valA) / (Math.max(1, Number(valA) + Number(valB)))) * 100}%` }} 
                                />
                                <div 
                                  className="h-full bg-amber-400" 
-                                 style={{ width: `${(Number(valB) / (Number(valA) + Number(valB))) * 100}%` }} 
+                                 style={{ width: `${(Number(valB) / (Math.max(1, Number(valA) + Number(valB)))) * 100}%` }} 
                                />
                             </div>
                          </div>
@@ -386,7 +385,6 @@ export default function StatisticsPage() {
              </Card>
           </TabsContent>
 
-          {/* TAB: IA ANALYTIQUE */}
           <TabsContent value="ia" className="space-y-8">
              <div className="grid md:grid-cols-2 gap-8">
                 <Card className="p-10 rounded-[3rem] bg-white border-none shadow-sm flex flex-col">
@@ -446,7 +444,6 @@ export default function StatisticsPage() {
           </TabsContent>
         </Tabs>
         
-        {/* Real-time Data sync notice */}
         <div className="flex items-center justify-center gap-4 py-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">
            <ShieldCheck className="size-4" /> Toute modification de note ou paiement impacte ces chiffres instantanément.
         </div>

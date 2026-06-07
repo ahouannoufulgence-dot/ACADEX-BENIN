@@ -32,6 +32,7 @@ import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where, doc, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,9 +82,8 @@ export default function ArchivesPage() {
 
   const handleRestore = async (id: string, type: 'student' | 'teacher') => {
     const colName = type === 'student' ? 'students' : 'teachers'
-    const newStatus = type === 'student' ? 'Actif' : 'Actif'
     try {
-      await updateDoc(doc(db, colName, id), { status: newStatus })
+      await updateDoc(doc(db, colName, id), { status: 'Actif' })
       toast({ title: "Restauration réussie", description: "Le profil est de nouveau actif dans l'école." })
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
@@ -146,7 +146,6 @@ export default function ArchivesPage() {
             ))}
           </TabsList>
 
-          {/* TAB: ÉLÈVES ARCHIVÉS */}
           <TabsContent value="eleves" className="space-y-6">
             <div className="relative group max-w-xl">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -214,7 +213,6 @@ export default function ArchivesPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB: ENSEIGNANTS ARCHIVÉS */}
           <TabsContent value="profs" className="space-y-6">
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden min-h-[400px]">
               {loadingTeachers ? (
@@ -250,7 +248,6 @@ export default function ArchivesPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB: HISTORIQUE ANNÉES */}
           <TabsContent value="annees" className="space-y-8">
              <Card className="p-10 rounded-[3rem] bg-white border-none shadow-sm">
                 <div className="flex flex-col items-center justify-center p-20 text-center space-y-6">
