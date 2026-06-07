@@ -71,6 +71,7 @@ export default function DirectorDashboard() {
     const idsCount = unusedIds?.length || 0
     const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
+    // Calcul de la moyenne de l'école (moyenne des moyennes enregistrées)
     const validGrades = grades?.filter((g: any) => g.value !== undefined) || []
     const avg = validGrades.length 
       ? (validGrades.reduce((acc, g: any) => acc + (Number(g.value) || 0), 0) / validGrades.length).toFixed(2)

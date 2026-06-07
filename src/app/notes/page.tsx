@@ -61,6 +61,7 @@ export default function GradesPage() {
     setUserName(name)
   }, [])
 
+  // Récupérer le coefficient de la matière pour cette classe (configuré par le Directeur)
   useEffect(() => {
     const fetchCoef = async () => {
       if (!selectedClass || !userSubject) return
@@ -70,7 +71,7 @@ export default function GradesPage() {
         if (snap.exists()) {
           setClassCoefficient(snap.data().coef || 1)
         } else {
-          setClassCoefficient(1)
+          setClassCoefficient(1) // Par défaut si non configuré
         }
       } catch (e) {
         console.warn("Erreur chargement coef", e)

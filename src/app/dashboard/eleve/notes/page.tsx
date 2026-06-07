@@ -39,6 +39,7 @@ export default function StudentGradesPage() {
 
   const { data: allGrades, loading } = useCollection(allGradesQuery)
 
+  // Organisation des données par trimestre et par matière
   const subjectStats = useMemo(() => {
     if (!allGrades) return {}
     
@@ -76,6 +77,7 @@ export default function StudentGradesPage() {
     let totalCoef = 0
     
     Object.values(subjects).forEach((s: any) => {
+      // Calcul Moyenne Matière : ((I1+I2+I3)/3 + D1 + D2) / 3
       const avgInt = ((s.int1 || 0) + (s.int2 || 0) + (s.int3 || 0)) / 3
       const avgSub = (avgInt + (s.dev1 || 0) + (s.dev2 || 0)) / 3
       totalWeighted += avgSub * s.coef
@@ -94,7 +96,7 @@ export default function StudentGradesPage() {
             <p className="text-muted-foreground mt-2 font-medium">Suivi académique officiel : 3 Interros & 2 Devoirs.</p>
           </div>
           <Button variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white group">
-            <Download className="mr-2 size-5 group-hover:translate-y-1 transition-transform" /> Télécharger Bulletin
+            <Download className="mr-2 size-5" /> Télécharger Bulletin
           </Button>
         </div>
 
