@@ -17,7 +17,7 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc } from "firebase/firestore"
+import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc, setDoc } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
@@ -47,7 +47,7 @@ export default function GradesPage() {
   const [selectedEvalType, setSelectedEvalType] = useState("int1")
   const [saving, setSaving] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
-  const [classCoefficient, setClassCoefficient] = useState(1)
+  const [classCoefficient, setClassCoefficient] = useState<number>(1)
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
@@ -61,7 +61,7 @@ export default function GradesPage() {
     setUserName(name)
   }, [])
 
-  // Récupérer le coefficient de la matière pour cette classe configurée par le directeur
+  // Récupérer le coefficient de la matière pour cette classe
   useEffect(() => {
     const fetchCoef = async () => {
       if (!selectedClass || !userSubject) return
@@ -69,7 +69,7 @@ export default function GradesPage() {
         const configRef = doc(db, "subject_configs", `${selectedClass}_${userSubject}`)
         const snap = await getDoc(configRef)
         if (snap.exists()) {
-          setClassCoefficient(snap.data().coef || 1)
+          setClassCoefficient(Number(snap.data().coef) || 1)
         } else {
           setClassCoefficient(1)
         }
@@ -110,9 +110,18 @@ export default function GradesPage() {
     const batch = writeBatch(db)
 
     try {
+      // 1. Mettre à jour (ou créer) le coefficient pour cette classe/matière
+      const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
+      const configRef = doc(db, "subject_configs", configId)
+      batch.set(configRef, { 
+        level: selectedClass, 
+        subject: userSubject, 
+        coef: Number(classCoefficient) || 1 
+      }, { merge: true })
+
+      // 2. Enregistrer les notes
       students?.forEach((student: any) => {
         const gradeValue = parseFloat(gradesData[student.id] || "0")
-        // ID déterministe pour synchronisation parfaite
         const gradeId = `${student.id}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
@@ -124,7 +133,7 @@ export default function GradesPage() {
           term: selectedTrimestre,
           type: selectedEvalType,
           value: gradeValue,
-          coefficient: classCoefficient,
+          coefficient: Number(classCoefficient) || 1,
           teacherName: userName,
           registeredAt: serverTimestamp()
         }, { merge: true })
@@ -132,7 +141,7 @@ export default function GradesPage() {
 
       await batch.commit()
       setGradesData({})
-      toast({ title: "Notes scellées !", description: `Les notes du ${selectedTrimestre} ont été publiées et synchronisées.` })
+      toast({ title: "Notes scellées !", description: `Notes du ${selectedTrimestre} publiées avec coefficient ${classCoefficient}.` })
     } catch (e) {
       const error = new FirestorePermissionError({ path: 'grades', operation: 'write' })
       errorEmitter.emit('permission-error', error)
@@ -192,10 +201,16 @@ export default function GradesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-end pb-1">
-               <Badge className="h-12 w-full justify-center rounded-xl bg-muted text-muted-foreground font-bold border-none">
-                 Pondération Automatique Active
-               </Badge>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Coefficient de la matière</label>
+              <Input 
+                type="number" 
+                min="1"
+                max="10"
+                value={classCoefficient}
+                onChange={(e) => setClassCoefficient(Number(e.target.value))}
+                className="h-14 rounded-2xl border-2 font-black text-center text-xl focus-visible:ring-primary"
+              />
             </div>
           </div>
         </Card>
@@ -210,7 +225,7 @@ export default function GradesPage() {
               </div>
               <div className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm border border-primary/10">
                  <Calculator className="size-4 text-primary" />
-                 <span className="text-xs font-black uppercase text-primary">Coefficient : {classCoefficient}</span>
+                 <span className="text-xs font-black uppercase text-primary">Coef. appliqué : {classCoefficient}</span>
               </div>
             </div>
             
@@ -218,7 +233,7 @@ export default function GradesPage() {
               {loadingStudents ? (
                 <div className="p-20 text-center animate-pulse font-black text-muted-foreground">Synchronisation de la classe...</div>
               ) : !students || students.length === 0 ? (
-                <div className="p-20 text-center italic text-muted-foreground font-medium">Aucun élève actif trouvé.</div>
+                <div className="p-20 text-center italic text-muted-foreground font-medium">Aucun élève actif trouvé pour cette classe.</div>
               ) : (
                 <table className="w-full">
                   <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-b">
@@ -231,7 +246,7 @@ export default function GradesPage() {
                   <tbody className="divide-y divide-muted/30">
                     {students.map((student: any) => {
                       const val = parseFloat(gradesData[student.id] || "0")
-                      const impact = (val * classCoefficient).toFixed(2)
+                      const impact = (val * (Number(classCoefficient) || 1)).toFixed(2)
                       return (
                         <tr key={student.id} className="hover:bg-muted/5 transition-colors group">
                           <td className="px-10 py-6">

@@ -86,16 +86,13 @@ export default function StatisticsPage() {
     const totalStudents = students?.length || 0
     const totalTeachers = teachers?.length || 0
     
-    // Recouvrement (Sécurisé contre NaN)
-    const revenue = (payments || []).reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0)
+    const revenue = (payments || []).reduce((acc, p: any) => acc + (parseFloat(p.amountPaid) || 0), 0)
     
-    // Moyenne École (Sécurisée contre NaN)
-    const validGrades = (grades || []).map((g: any) => Number(g.value)).filter(v => !isNaN(v) && v >= 0)
+    const validGrades = (grades || []).map((g: any) => parseFloat(g.value)).filter(v => !isNaN(v) && v >= 0)
     const avgSchool = validGrades.length > 0 
       ? (validGrades.reduce((acc, v) => acc + v, 0) / validGrades.length).toFixed(2)
       : "0.00"
 
-    // Taux de présence
     const totalAbsences = absences?.length || 0
     const presenceRate = totalStudents > 0 
       ? (Math.max(0, 100 - (totalAbsences / (totalStudents * 5) * 100))).toFixed(1)
@@ -121,7 +118,7 @@ export default function StatisticsPage() {
     const map: Record<string, { sum: number, count: number }> = {}
     
     grades.forEach((g: any) => {
-      const val = Number(g.value)
+      const val = parseFloat(g.value)
       if (isNaN(val) || !g.subject) return
       if (!map[g.subject]) map[g.subject] = { sum: 0, count: 0 }
       map[g.subject].sum += val
@@ -131,15 +128,17 @@ export default function StatisticsPage() {
     return Object.entries(map)
       .map(([name, data]) => ({ 
         name, 
-        avg: Number((data.sum / data.count).toFixed(2)) 
+        avg: parseFloat((data.sum / data.count).toFixed(2)) 
       }))
+      .filter(s => !isNaN(s.avg))
       .sort((a, b) => b.avg - a.avg)
   }, [grades])
 
   // 4. IA INSIGHTS
   const aiInsights = useMemo(() => {
     const list = []
-    if (Number(stats.avgSchool) < 10 && Number(stats.avgSchool) > 0) list.push({ text: "Niveau global fragile. Un renforcement pédagogique est conseillé.", type: "warning" })
+    const avgVal = parseFloat(stats.avgSchool)
+    if (avgVal < 10 && avgVal > 0) list.push({ text: "Niveau global fragile. Un renforcement pédagogique est conseillé.", type: "warning" })
     if (stats.totalStudents > 0) list.push({ text: `Le cockpit gère actuellement ${stats.totalStudents} élèves actifs avec une précision certifiée.`, type: "success" })
     if (stats.totalAbsences > 10) list.push({ text: "Hausse anormale de l'absentéisme détectée sur les 7 derniers jours.", type: "danger" })
     const bestSub = subjectPerformance[0]
@@ -301,7 +300,7 @@ export default function StatisticsPage() {
                           <span>{s.name}</span>
                           <span className="text-primary">{s.avg.toFixed(2)}/20</span>
                         </div>
-                        <Progress value={s.avg * 5} className="h-1.5 rounded-full" />
+                        <Progress value={Math.min(100, s.avg * 5)} className="h-1.5 rounded-full" />
                       </div>
                     ))}
                     {subjectPerformance.length === 0 && <p className="text-center py-10 opacity-30 italic font-bold">Aucune note scellée.</p>}
