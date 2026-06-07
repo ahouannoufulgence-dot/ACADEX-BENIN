@@ -14,7 +14,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp } from "firebase/firestore"
@@ -47,13 +47,11 @@ export default function GradesPage() {
     setUserClasses(classes)
     setUserSubject(subject)
 
-    // Si enseignant, sa matière est imposée et verrouillée
     if (role === "Enseignant" && subject) {
       setSelectedSubject(subject)
     }
   }, [])
 
-  // Récupérer les élèves réels de la classe sélectionnée
   const studentsQuery = useMemo(() => {
     if (!db || !selectedClass) return null
     return query(collection(db, 'students'), where("classId", "==", selectedClass), orderBy("matricule", "asc"))
@@ -61,16 +59,19 @@ export default function GradesPage() {
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
-  const handleGradeChange = (studentId: string, field: string, value: string) => {
+  const handleGradeChange = useCallback((studentId: string, field: string, value: string) => {
     const num = parseFloat(value)
     if (num > 20) {
       toast({ title: "Valeur invalide", description: "La note maximale est 20/20", variant: "destructive" })
       return
     }
-    setGradesData(prev => ({ ...prev, [studentId]: { ...prev[studentId], [field]: value } }))
-  }
+    setGradesData(prev => ({ 
+      ...prev, 
+      [studentId]: { ...prev[studentId], [field]: value } 
+    }))
+  }, [])
 
-  const calculateAverage = (studentId: string) => {
+  const calculateAverage = useCallback((studentId: string) => {
     const data = gradesData[studentId]
     if (!data) return "0.00"
     const i1 = parseFloat(data.int1) || 0
@@ -80,7 +81,7 @@ export default function GradesPage() {
     const d1 = parseFloat(data.dev1) || 0
     const d2 = parseFloat(data.dev2) || 0
     return ((avgInt + d1 + d2) / 3).toFixed(2)
-  }
+  }, [gradesData])
 
   const handleSaveGrades = async () => {
     if (!selectedClass || !selectedSubject) {
@@ -114,15 +115,13 @@ export default function GradesPage() {
       })
 
       await batch.commit()
-      toast({ title: "Notes validées !", description: `Le registre de ${selectedSubject} pour la classe ${selectedClass} a été scellé.` })
+      toast({ title: "Notes scellées !", description: "Le registre a été synchronisé avec le cockpit des élèves." })
     } catch (e) {
-      console.error(e)
       const error = new FirestorePermissionError({
         path: 'grades',
         operation: 'write',
       })
       errorEmitter.emit('permission-error', error)
-      toast({ title: "Erreur de sauvegarde", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -136,11 +135,11 @@ export default function GradesPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des <span className="text-primary italic">Notes</span></h1>
-            <p className="text-muted-foreground font-medium italic">Saisie des évaluations avec application automatique des coefficients.</p>
+            <p className="text-muted-foreground font-medium italic">Saisie haute performance synchronisée avec le Directeur et les Élèves.</p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="bg-primary hover:bg-primary/90 shadow-xl h-14 px-10 rounded-2xl font-black">
             {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} 
-            {saving ? "Scellage en cours..." : "Valider & Sceller les Notes"}
+            {saving ? "Synchronisation..." : "Valider & Sceller"}
           </Button>
         </div>
 
@@ -236,12 +235,24 @@ export default function GradesPage() {
                           </td>
                           {['int1', 'int2', 'int3'].map((f) => (
                             <td key={f} className="py-4 bg-muted/5">
-                              <Input type="number" step="0.25" className="w-16 mx-auto h-11 rounded-xl text-center font-black border-2" value={gradesData[student.id]?.[f] || ""} onChange={(e) => handleGradeChange(student.id, f, e.target.value)} />
+                              <Input 
+                                type="number" 
+                                step="0.25" 
+                                className="w-16 mx-auto h-11 rounded-xl text-center font-black border-2" 
+                                value={gradesData[student.id]?.[f] || ""} 
+                                onChange={(e) => handleGradeChange(student.id, f, e.target.value)} 
+                              />
                             </td>
                           ))}
                           {['dev1', 'dev2'].map((f) => (
                             <td key={f} className="py-4 bg-primary/5">
-                              <Input type="number" step="0.25" className="w-16 mx-auto h-11 rounded-xl text-center font-black border-2 border-primary/20" value={gradesData[student.id]?.[f] || ""} onChange={(e) => handleGradeChange(student.id, f, e.target.value)} />
+                              <Input 
+                                type="number" 
+                                step="0.25" 
+                                className="w-16 mx-auto h-11 rounded-xl text-center font-black border-2 border-primary/20" 
+                                value={gradesData[student.id]?.[f] || ""} 
+                                onChange={(e) => handleGradeChange(student.id, f, e.target.value)} 
+                              />
                             </td>
                           ))}
                           <td className="px-4 py-5 text-center font-black text-foreground">{avg}</td>
@@ -260,10 +271,10 @@ export default function GradesPage() {
             <div className="p-10 bg-muted/10 border-t flex justify-between items-center">
                <div className="flex items-center gap-3 text-muted-foreground">
                  <ShieldCheck className="size-6 text-emerald-500" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Calcul automatique et stockage haute performance</span>
+                 <span className="text-[10px] font-black uppercase tracking-widest">Liaison Élève/Parent Active</span>
                </div>
                <Button onClick={handleSaveGrades} disabled={saving} className="rounded-xl font-black h-12 px-10 bg-foreground">
-                 {saving ? "Synchronisation..." : "Valider le Registre"}
+                 {saving ? "Mise à jour..." : "Sceller le Registre"}
                </Button>
             </div>
           </Card>

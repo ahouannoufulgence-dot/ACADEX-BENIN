@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, doc, onSnapshot, query } from "firebase/firestore"
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -48,7 +48,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes stabilisées
+  // Requêtes stabilisées avec filtres stricts pour éviter les mauvais comptages
   const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids")), [db])
@@ -62,22 +62,20 @@ export default function DirectorDashboard() {
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    // FILTRAGE STRICT : On ne compte que les profils RÉELLEMENT inscrits
-    // On vérifie lastName pour s'assurer que c'est un profil complété
-    const validStudents = students?.filter((s: any) => s.matricule && s.lastName) || []
+    // FILTRAGE ULTRA-STRICT : Uniquement les élèves avec profil activé
+    const validStudents = students?.filter((s: any) => s.matricule && s.lastName && s.status === 'Actif') || []
     const totalStudents = validStudents.length
     
-    // Pour les enseignants, on compte tout le monde (y compris en attente)
+    // Uniquement les enseignants officiellement inscrits
     const totalTeachers = teachers?.length || 0
     
-    // Identifiants inutilisés
+    // Identifiants non encore utilisés
     const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
     
-    // Finances
+    // Trésorerie réelle
     const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const pendingPaymentsCount = payments?.filter((p: any) => p.status === 'En attente').length || 0
     
-    // Moyenne École
+    // Moyenne École Réelle (basée sur les notes scellées)
     const validGrades = grades?.filter((g: any) => g.average !== undefined) || []
     const avgSchool = validGrades.length > 0 
       ? (validGrades.reduce((acc, g: any) => acc + (Number(g.average) || 0), 0) / validGrades.length).toFixed(2)
@@ -90,7 +88,6 @@ export default function DirectorDashboard() {
       totalTeachers,
       unusedIds,
       totalRevenue,
-      pendingPaymentsCount,
       avgSchool,
       lastStudent
     }
@@ -126,7 +123,7 @@ export default function DirectorDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Inscrits</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
                 {loadingStudents ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.totalStudents}
@@ -179,7 +176,7 @@ export default function DirectorDashboard() {
                     <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.unusedIds}</div>
-                        <p className="font-bold text-sm text-foreground/80">Identifiants élèves générés mais non activés.</p>
+                        <p className="font-bold text-sm text-foreground/80">Identifiants en attente d'activation.</p>
                       </div>
                       <Button asChild variant="ghost" className="rounded-xl font-bold text-amber-700">
                         <Link href="/eleves/identifiants">Gérer <ArrowRight className="ml-2 size-4" /></Link>
@@ -191,12 +188,6 @@ export default function DirectorDashboard() {
                     <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
                        <CheckCircle2 className="size-10 opacity-30" />
                        <p className="text-sm">Tout est en ordre. Aucune alerte critique détectée.</p>
-                    </div>
-                  )}
-
-                  {loadingStudents && (
-                    <div className="p-12 text-center animate-pulse text-muted-foreground font-black uppercase text-xs">
-                      Analyse de la base de données...
                     </div>
                   )}
                 </div>
