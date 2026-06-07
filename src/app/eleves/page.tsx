@@ -125,9 +125,10 @@ export default function StudentsPage() {
             <h1 className="text-4xl font-black text-foreground tracking-tight">
               {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
             </h1>
-            <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
+            {/* Correction de l'erreur d'hydratation : Remplacement de <p> par <div> pour contenir le <Badge> */}
+            <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
               Univers scolaire de l'année <Badge className="bg-primary">{activeYear}</Badge>
-            </p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">

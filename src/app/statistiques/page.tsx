@@ -181,9 +181,10 @@ export default function StatisticsPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">Bonjour Monsieur <span className="text-primary italic">{directorName}</span>,</h1>
-            <p className="text-muted-foreground font-medium flex items-center gap-2">
+            {/* Correction de l'erreur d'hydratation : Remplacement de <p> par <div> pour contenir le <Badge> */}
+            <div className="text-muted-foreground font-medium flex items-center gap-2">
               <ShieldCheck className="size-4 text-emerald-500" /> Pilotage analytique de l'année <Badge className="bg-primary">{activeYear}</Badge>
-            </p>
+            </div>
           </div>
           <div className="flex items-center gap-3 relative z-10">
              <Button onClick={handleExportPDF} variant="outline" className="h-14 px-8 rounded-2xl border-2 font-black bg-white hover:bg-muted">
