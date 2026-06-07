@@ -50,27 +50,36 @@ export default function StudentsPage() {
   const [studentToDelete, setStudentToDelete] = useState<any>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClasses, setUserClasses] = useState<string[]>([])
+  const [activeYear, setActiveYear] = useState("2024-2025")
   
   const db = useFirestore()
 
   useEffect(() => {
     setUserRole(localStorage.getItem('acadex_user_role'))
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
+    
+    const updateYear = () => {
+      setActiveYear(localStorage.getItem('acadex_active_year') || "2024-2025")
+    }
+    updateYear()
+    window.addEventListener('storage', updateYear)
+    return () => window.removeEventListener('storage', updateYear)
   }, [])
 
-  // REQUÊTE SÉCURISÉE : Si enseignant, on filtre par ses classes
+  // REQUÊTE SÉCURISÉE : Filtrée par ANNÉE SCOLAIRE ACTIVE
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     
     const baseCol = collection(db, "students")
     
+    let q = query(baseCol, where("academicYear", "==", activeYear))
+    
     if (userRole === "Enseignant" && userClasses.length > 0) {
-      // Restriction aux classes de l'enseignant
-      return query(baseCol, where("classId", "in", userClasses), orderBy("registeredAt", "desc"))
+      q = query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
     }
     
-    return query(baseCol, orderBy("registeredAt", "desc"))
-  }, [db, userRole, userClasses])
+    return q
+  }, [db, userRole, userClasses, activeYear])
 
   const { data: students, loading } = useCollection(studentsQuery)
 
@@ -97,7 +106,7 @@ export default function StudentsPage() {
     docPdf.rect(0, 0, 210, 30, 'F')
     docPdf.setTextColor(255, 255, 255)
     docPdf.setFontSize(16)
-    docPdf.text(`ACADEX - RÉPERTOIRE DES ÉLÈVES (${userRole})`, 105, 20, { align: "center" })
+    docPdf.text(`ACADEX - RÉPERTOIRE DES ÉLÈVES (${activeYear})`, 105, 20, { align: "center" })
 
     autoTable(docPdf, {
       startY: 40,
@@ -105,7 +114,7 @@ export default function StudentsPage() {
       body: filteredStudents.map((s: any) => [s.matricule, s.lastName.toUpperCase(), s.firstName, s.classId, s.gender, s.phone]),
       headStyles: { fillColor: [20, 83, 45] }
     })
-    docPdf.save(`REPERTOIRE_ELEVES_${new Date().getTime()}.pdf`)
+    docPdf.save(`REPERTOIRE_ELEVES_${activeYear}.pdf`)
   }
 
   return (
@@ -116,10 +125,8 @@ export default function StudentsPage() {
             <h1 className="text-4xl font-black text-foreground tracking-tight">
               {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
             </h1>
-            <p className="text-muted-foreground mt-2 font-medium">
-              {userRole === "Enseignant" 
-                ? `Liste des élèves de vos ${userClasses.length} classes attribuées.`
-                : "Répertoire centralisé des profils auto-inscrits."}
+            <p className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
+              Univers scolaire de l'année <Badge className="bg-primary">{activeYear}</Badge>
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -150,8 +157,8 @@ export default function StudentsPage() {
           ) : filteredStudents.length === 0 ? (
             <Card className="p-16 text-center bg-white rounded-[3.5rem] border-none shadow-sm">
               <Users className="size-16 text-muted-foreground mx-auto mb-6 opacity-20" />
-              <h3 className="text-xl font-black">Aucun élève trouvé</h3>
-              <p className="text-muted-foreground font-medium">Les profils apparaîtront selon vos droits d'accès et les inscriptions réelles.</p>
+              <h3 className="text-xl font-black">Aucun élève en {activeYear}</h3>
+              <p className="text-muted-foreground font-medium">Les profils apparaîtront selon l'année sélectionnée dans le sélecteur global.</p>
             </Card>
           ) : (
             <div className="grid gap-4">
@@ -173,8 +180,8 @@ export default function StudentsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right hidden sm:block">
-                        <p className="text-[9px] font-black text-muted-foreground uppercase">Inscrit le</p>
-                        <p className="text-xs font-bold">{student.registeredAt ? new Date(student.registeredAt).toLocaleDateString() : '---'}</p>
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Année</p>
+                        <p className="text-xs font-bold">{student.academicYear}</p>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -211,7 +218,7 @@ export default function StudentsPage() {
             <AlertDialogTitle className="text-2xl font-black">Supprimer définitivement ?</AlertDialogTitle>
             <AlertDialogDescription className="font-medium">
               Voulez-vous supprimer le profil de <span className="font-black text-foreground">{studentToDelete?.lastName} {studentToDelete?.firstName}</span> ?
-              Cette action supprimera également toutes ses notes et paiements.
+              Cette action supprimera également toutes ses notes et paiements de l'année {activeYear}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

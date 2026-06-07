@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -22,21 +23,18 @@ import {
   Loader2,
   CheckCircle2,
   Clock,
-  Zap
+  Zap,
+  Plus,
+  ArrowRight,
+  AlertTriangle
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { collection, query, where, doc, updateDoc, getDoc, setDoc, serverTimestamp, arrayUnion } from "firebase/firestore"
 import { cn } from "@/lib/utils"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,54 +46,48 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { toast } from "@/hooks/use-toast"
 
-export default function ArchivesPage() {
+export default function AcademicYearsPage() {
   const db = useFirestore()
-  const [activeTab, setActiveTab] = useState("eleves")
-  const [searchTerm, setSearchTerm] = useState("")
+  const [activeTab, setActiveTab] = useState("annees")
+  const [schoolConfig, setSchoolConfig] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [activeYear, setActiveYear] = useState("")
 
-  // FETCHING ARCHIVED DATA
-  const archivedStudentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Archivé")), [db])
-  const archivedTeachersQuery = useMemo(() => query(collection(db, "teachers"), where("status", "==", "Archivé")), [db])
-  
-  const { data: students, loading: loadingStudents } = useCollection(archivedStudentsQuery)
-  const { data: teachers, loading: loadingTeachers } = useCollection(archivedTeachersQuery)
+  useEffect(() => {
+    setActiveYear(localStorage.getItem('acadex_active_year') || "2024-2025")
+    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
+      if (snap.exists()) setSchoolConfig(snap.data())
+    })
+    return () => unsub()
+  }, [db])
 
-  const filteredStudents = useMemo(() => {
-    if (!students) return []
-    return students.filter((s: any) => 
-      (s.lastName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (s.firstName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (s.matricule?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    )
-  }, [students, searchTerm])
-
-  const filteredTeachers = useMemo(() => {
-    if (!teachers) return []
-    return teachers.filter((t: any) => 
-      (t.fullName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (t.officialId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    )
-  }, [teachers, searchTerm])
-
-  const handleRestore = async (id: string, type: 'student' | 'teacher') => {
-    const colName = type === 'student' ? 'students' : 'teachers'
+  const handleCloseYear = async () => {
+    if (!schoolConfig) return
+    setLoading(true)
     try {
-      await updateDoc(doc(db, colName, id), { status: 'Actif' })
-      toast({ title: "Restauration réussie", description: "Le profil est de nouveau actif dans l'école." })
-    } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" })
-    }
-  }
+      const currentYear = schoolConfig.academicYear
+      const [start, end] = currentYear.split('-').map(Number)
+      const nextYear = `${start + 1}-${end + 1}`
 
-  const handleDeletePermanent = async (id: string, type: 'student' | 'teacher') => {
-    const colName = type === 'student' ? 'students' : 'teachers'
-    try {
-      await deleteDoc(doc(db, colName, id))
-      toast({ title: "Suppression définitive", description: "Les données ont été effacées du coffre-fort." })
+      // 1. Ajouter la nouvelle année à la liste des années disponibles
+      const configRef = doc(db, "school_settings", "main_config")
+      await updateDoc(configRef, {
+        availableYears: arrayUnion(nextYear),
+        academicYear: nextYear, // On bascule sur la nouvelle
+        updatedAt: serverTimestamp()
+      })
+
+      localStorage.setItem('acadex_active_year', nextYear)
+      toast({ 
+        title: "Année Clôturée avec Succès", 
+        description: `L'année ${currentYear} est scellée. Bienvenue en ${nextYear} !` 
+      })
+      window.location.reload() // On recharge pour réinitialiser tout le contexte
     } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" })
+      toast({ title: "Erreur lors de la clôture", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -104,40 +96,20 @@ export default function ArchivesPage() {
       <div className="space-y-8 animate-in fade-in duration-700">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">Archives <span className="text-primary italic">Sincères</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Coffre-fort numérique de l'établissement Acadex.</p>
+            <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des <span className="text-primary italic">Années Scolaires</span></h1>
+            <p className="text-muted-foreground mt-2 font-medium">Univers multi-temporels d'ACADEX.</p>
           </div>
           <Badge className="bg-primary text-white h-12 px-8 rounded-2xl flex items-center gap-3 font-black text-lg shadow-xl shadow-primary/20">
-             <ShieldCheck className="size-6" /> MÉMOIRE SÉCURISÉE
+             <History className="size-6" /> MÉMOIRE INSTITUTIONNELLE
           </Badge>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-4">
-           {[
-             { label: "Élèves Archivés", value: students?.length || 0, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
-             { label: "Enseignants", value: teachers?.length || 0, icon: UserSquare2, color: "text-emerald-600", bg: "bg-emerald-50" },
-             { label: "Années Scellées", value: "0", icon: History, color: "text-amber-600", bg: "bg-amber-50" },
-             { label: "Historique Financier", value: "Actif", icon: CreditCard, color: "text-purple-600", bg: "bg-purple-50" },
-           ].map((stat, i) => (
-             <Card key={i} className="border-none shadow-sm rounded-3xl bg-white group hover:shadow-lg transition-all">
-                <CardContent className="p-6">
-                   <div className="flex items-center justify-between mb-4">
-                      <div className={cn("p-3 rounded-2xl", stat.bg, stat.color)}><stat.icon className="size-6" /></div>
-                   </div>
-                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.label}</p>
-                   <p className="text-2xl font-black text-foreground mt-1">{stat.value}</p>
-                </CardContent>
-             </Card>
-           ))}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-white border-2 rounded-[2rem] h-20 p-2 flex w-fit shadow-md overflow-x-auto no-scrollbar">
             {[
-              { id: "eleves", label: "Élèves Archivés", icon: Users },
-              { id: "profs", label: "Enseignants Archivés", icon: UserSquare2 },
-              { id: "annees", label: "Historique Années", icon: Calendar },
-              { id: "logs", label: "Journaux Critiques", icon: FileText },
+              { id: "annees", label: "Historique & Clôture", icon: Calendar },
+              { id: "comparaison", label: "Comparateur Temporel", icon: BarChart3 },
+              { id: "audit", label: "Audit de Sincérité", icon: ShieldCheck },
             ].map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="rounded-2xl font-black px-8 text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex gap-2">
                 <t.icon className="size-4" /> {t.label}
@@ -145,138 +117,82 @@ export default function ArchivesPage() {
             ))}
           </TabsList>
 
-          <TabsContent value="eleves" className="space-y-6">
-            <div className="relative group max-w-xl">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input 
-                placeholder="Chercher un élève historique..." 
-                className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl font-medium"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden min-h-[400px]">
-              {loadingStudents ? (
-                <div className="flex items-center justify-center p-20"><Loader2 className="animate-spin text-primary size-10" /></div>
-              ) : filteredStudents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-24 text-center opacity-30 italic">
-                  <Archive className="size-20 mb-4" />
-                  <p className="text-xl font-black">Aucun élève dans le coffre-fort</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-muted/30">
-                  {filteredStudents.map((s: any) => (
-                    <div key={s.id} className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
-                       <div className="flex items-center gap-6">
-                         <Avatar className="size-14 border-4 border-muted">
-                           <AvatarFallback className="bg-muted text-muted-foreground font-black">{s.lastName?.[0]}{s.firstName?.[0]}</AvatarFallback>
-                         </Avatar>
-                         <div>
-                            <h4 className="font-black text-lg">{s.lastName?.toUpperCase()} {s.firstName}</h4>
-                            <div className="flex gap-4 items-center mt-1">
-                               <Badge variant="outline" className="font-bold border-muted text-muted-foreground">{s.classId}</Badge>
-                               <span className="text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span>
-                               <span className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1"><Clock className="size-3" /> Archivé en {s.academicYear || '---'}</span>
-                            </div>
-                         </div>
-                       </div>
-                       <div className="flex items-center gap-2">
-                          <Button onClick={() => handleRestore(s.id, 'student')} variant="outline" className="rounded-xl font-black h-11 px-6 border-2 border-emerald-100 text-emerald-600 hover:bg-emerald-50">
-                            <RefreshCw className="size-4 mr-2" /> Restaurer
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="size-11 rounded-xl text-destructive hover:bg-destructive/10">
-                                <Trash2 className="size-5" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="rounded-[2.5rem]">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-2xl font-black">Supprimer Définitivement ?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Cette action est irréversible. L'élève sera totalement effacé de la base de données ACADEX, y compris ses notes et archives.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="rounded-xl font-bold">Annuler</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeletePermanent(s.id, 'student')} className="bg-destructive hover:bg-destructive/90 rounded-xl font-black">Effacer du coffre-fort</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="profs" className="space-y-6">
-            <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden min-h-[400px]">
-              {loadingTeachers ? (
-                <div className="flex items-center justify-center p-20"><Loader2 className="animate-spin text-primary size-10" /></div>
-              ) : filteredTeachers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-24 text-center opacity-30 italic">
-                  <Archive className="size-20 mb-4" />
-                  <p className="text-xl font-black">Aucun enseignant archivé</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-muted/30">
-                  {filteredTeachers.map((t: any) => (
-                    <div key={t.id} className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all group">
-                       <div className="flex items-center gap-6">
-                         <Avatar className="size-14 border-4 border-muted">
-                           <AvatarFallback className="bg-muted text-muted-foreground font-black">{t.fullName?.[0]}</AvatarFallback>
-                         </Avatar>
-                         <div>
-                            <h4 className="font-black text-lg">{t.fullName}</h4>
-                            <div className="flex gap-4 items-center mt-1">
-                               <Badge className="bg-primary/10 text-primary border-none font-bold px-3">{t.subject}</Badge>
-                               <span className="text-[10px] font-bold text-muted-foreground uppercase">{t.officialId}</span>
-                            </div>
-                         </div>
-                       </div>
-                       <Button onClick={() => handleRestore(t.id, 'teacher')} variant="outline" className="rounded-xl font-black h-11 px-6 border-2 border-emerald-100 text-emerald-600 hover:bg-emerald-50">
-                          <RefreshCw className="size-4 mr-2" /> Restaurer Profil
-                       </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-          </TabsContent>
-
           <TabsContent value="annees" className="space-y-8">
-             <Card className="p-10 rounded-[3rem] bg-white border-none shadow-sm">
-                <div className="flex flex-col items-center justify-center p-20 text-center space-y-6">
-                   <div className="size-24 bg-muted rounded-full flex items-center justify-center opacity-30">
-                      <Zap className="size-12" />
+             <div className="grid lg:grid-cols-12 gap-8">
+                <Card className="lg:col-span-8 p-10 rounded-[3rem] bg-white border-none shadow-sm flex flex-col justify-center">
+                   <div className="flex flex-col items-center justify-center p-12 text-center space-y-6">
+                      <div className="size-24 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                         <Zap className="size-12 fill-primary" />
+                      </div>
+                      <div className="space-y-2">
+                         <h3 className="text-3xl font-black">Clôturer l'Année {activeYear}</h3>
+                         <p className="text-muted-foreground max-w-md mx-auto font-medium leading-relaxed">
+                           Cette action scelle définitivement les notes, moyennes et paiements de l'année actuelle et initialise l'univers scolaire suivant.
+                         </p>
+                      </div>
+                      
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button disabled={loading} className="bg-primary hover:bg-primary/90 rounded-2xl h-16 px-12 font-black text-xl shadow-xl shadow-primary/20 transition-all active:scale-95">
+                             {loading ? <Loader2 className="animate-spin mr-3" /> : <ShieldCheck className="mr-3" />}
+                             Sceller l'Année & Ouvrir la Suivante
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
+                           <AlertDialogHeader>
+                             <AlertDialogTitle className="text-2xl font-black flex items-center gap-3">
+                               <AlertTriangle className="text-destructive" /> Confirmation de Clôture
+                             </AlertDialogTitle>
+                             <AlertDialogDescription className="text-base font-medium">
+                               Êtes-vous certain de vouloir clôturer l'année <b>{activeYear}</b> ? 
+                               <br /><br />
+                               Toutes les données seront scellées dans l'historique. Une nouvelle session <b>2025-2026</b> sera créée automatiquement.
+                             </AlertDialogDescription>
+                           </AlertDialogHeader>
+                           <AlertDialogFooter className="p-6 bg-muted/20 rounded-b-[2.5rem]">
+                             <AlertDialogCancel className="rounded-xl font-bold">Annuler</AlertDialogCancel>
+                             <AlertDialogAction onClick={handleCloseYear} className="bg-primary hover:bg-primary/90 rounded-xl font-black px-8">
+                               Valider la Clôture
+                             </AlertDialogAction>
+                           </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                    </div>
-                   <div className="space-y-2">
-                      <h3 className="text-2xl font-black">Clôture d'Année Scolaire</h3>
-                      <p className="text-muted-foreground max-w-md mx-auto font-medium leading-relaxed">
-                        À la fin de chaque cycle, vous pouvez figer l'ensemble des données (élèves, notes, paiements) pour créer une archive historique immuable.
-                      </p>
-                   </div>
-                   <Button className="bg-primary hover:bg-primary/90 rounded-2xl h-14 px-10 font-black shadow-xl shadow-primary/20">
-                      Sceller l'Année 2024-2025
-                   </Button>
-                </div>
-             </Card>
+                </Card>
 
-             <div className="grid md:grid-cols-2 gap-8">
-                <Card className="p-8 rounded-[2.5rem] bg-muted/20 border-2 border-dashed border-muted-foreground/10">
-                   <h4 className="font-black text-lg mb-4">Années Disponibles</h4>
-                   <p className="text-sm font-medium text-muted-foreground italic">Aucune archive historique détectée. ACADEX est en cours d'utilisation sur son premier cycle.</p>
-                </Card>
-                <Card className="p-8 rounded-[2.5rem] bg-foreground text-white">
-                   <h4 className="font-black text-lg mb-4 text-primary">Note de Sincérité</h4>
-                   <p className="text-sm font-medium opacity-60 leading-relaxed">
-                     L'archivage n'est pas une suppression. C'est une sécurisation. Une fois archivées, les notes et moyennes sont certifiées "Historiques" et ne peuvent plus être modifiées par les enseignants.
-                   </p>
-                </Card>
+                <div className="lg:col-span-4 space-y-8">
+                   <Card className="p-8 rounded-[3rem] bg-foreground text-white shadow-2xl relative overflow-hidden group">
+                      <h4 className="text-xl font-black mb-6 flex items-center gap-3"><Clock className="text-primary" /> Années Scellées</h4>
+                      <div className="space-y-4 relative z-10">
+                         {schoolConfig?.availableYears?.map((year: string) => (
+                           <div key={year} className={cn("p-4 rounded-2xl border-2 flex items-center justify-between transition-all", year === activeYear ? "bg-primary/20 border-primary" : "bg-white/5 border-white/10 opacity-60")}>
+                              <span className="font-black">{year}</span>
+                              {year === activeYear ? <Badge className="bg-primary">ACTIVE</Badge> : <Badge variant="outline" className="text-white/40 border-white/20">SCELLÉE</Badge>}
+                           </div>
+                         ))}
+                      </div>
+                      <Archive className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-700" />
+                   </Card>
+
+                   <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
+                      <div className="flex items-center gap-3 text-primary mb-4">
+                        <CheckCircle2 className="size-5" />
+                        <h4 className="font-black uppercase text-xs tracking-widest">Intégrité ACADEX</h4>
+                      </div>
+                      <p className="text-xs font-medium text-muted-foreground leading-relaxed">
+                        L'archivage multi-années garantit que vos bulletins de 2023 restent identiques même en 2030. Aucune modification n'est permise sur une année scellée.
+                      </p>
+                   </Card>
+                </div>
              </div>
+          </TabsContent>
+
+          <TabsContent value="comparaison" className="space-y-8">
+            <Card className="p-20 text-center rounded-[3rem] border-4 border-dashed bg-white/50">
+              <BarChart3 className="size-16 text-muted-foreground mx-auto mb-6 opacity-20" />
+              <h3 className="text-2xl font-black">Comparateur Inter-Annuel</h3>
+              <p className="text-muted-foreground font-medium max-w-sm mx-auto">Cette fonction sera activée dès que vous aurez au moins deux années scolaires scellées en base de données.</p>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

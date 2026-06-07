@@ -24,7 +24,9 @@ import {
   Shapes,
   Calculator,
   Zap,
-  BarChart3
+  BarChart3,
+  ChevronDown,
+  History
 } from "lucide-react"
 import {
   Sidebar,
@@ -49,9 +51,15 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { doc, onSnapshot } from "firebase/firestore"
+import { doc, onSnapshot, collection, getDocs } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import placeholderData from "@/app/lib/placeholder-images.json"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const navigationConfig = {
   Directeur: [
@@ -64,7 +72,7 @@ const navigationConfig = {
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
-    { name: "Archives", href: "/archives", icon: Archive },
+    { name: "Années Scolaires", href: "/archives", icon: History },
     { name: "Assistant Brain", href: "/assistant", icon: Sparkles, isIA: true },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
@@ -97,6 +105,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
+  const [availableYears, setAvailableYears] = useState<string[]>(["2024-2025"])
+  const [activeYear, setActiveYear] = useState("2024-2025")
 
   const bgImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
 
@@ -104,6 +114,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const role = localStorage.getItem('acadex_user_role')
     const name = localStorage.getItem('acadex_user_name')
     const id = localStorage.getItem('acadex_user_id')
+    const savedYear = localStorage.getItem('acadex_active_year')
     
     if (!role) {
       router.replace("/login")
@@ -113,16 +124,31 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserName(name || "Monsieur")
     setUserRole(role)
     setUserId(id || "INV-000")
+    if (savedYear) setActiveYear(savedYear)
     setMounted(true)
 
+    // Charger la config école et les années disponibles
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
         const data = snap.data()
         setSchoolInfo({ name: data.schoolName || "ACADEX", logo: data.logoUrl || "" })
+        if (data.availableYears) setAvailableYears(data.availableYears)
+        if (data.academicYear && !savedYear) {
+          setActiveYear(data.academicYear)
+          localStorage.setItem('acadex_active_year', data.academicYear)
+        }
       }
     })
     return () => unsub()
   }, [router, db])
+
+  const handleYearChange = (year: string) => {
+    setActiveYear(year)
+    localStorage.setItem('acadex_active_year', year)
+    // On force un re-render complet ou on laisse le state couler
+    window.dispatchEvent(new Event('storage')) // Notifier les autres composants
+    router.refresh()
+  }
 
   const menuItems = useMemo(() => {
     if (!userRole) return []
@@ -196,16 +222,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <SidebarInset className="flex flex-col flex-1 min-w-0">
           <header className="sticky top-0 z-30 flex h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-6 border-b border-border/40">
-            <div className="flex flex-col">
-              <h2 className="text-lg font-black text-foreground">
-                Bonjour Monsieur <span className="text-primary italic">{userName}</span>
-              </h2>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary uppercase">{userId}</Badge>
-                <span className="text-[8px] font-bold text-muted-foreground uppercase">{userRole}</span>
+            <div className="flex items-center gap-6">
+              <div className="flex flex-col">
+                <h2 className="text-lg font-black text-foreground">
+                  Bonjour <span className="text-primary italic">{userName}</span>
+                </h2>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary uppercase">{userId}</Badge>
+                  <span className="text-[8px] font-bold text-muted-foreground uppercase">{userRole}</span>
+                </div>
+              </div>
+              
+              <div className="h-10 w-px bg-border/40 hidden sm:block" />
+              
+              {/* SÉLECTEUR D'ANNÉE GLOBAL ACADEX */}
+              <div className="hidden sm:flex items-center gap-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-11 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-3 px-4 transition-all">
+                      <Calendar className="size-4 text-primary" />
+                      <span className="text-sm">{activeYear}</span>
+                      <ChevronDown className="size-3 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48 rounded-xl border-2 p-1 shadow-2xl">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest p-2 border-b">Année Scolaire Active</p>
+                    {availableYears.map((year) => (
+                      <DropdownMenuItem 
+                        key={year} 
+                        onClick={() => handleYearChange(year)}
+                        className={cn("p-3 rounded-lg font-bold cursor-pointer transition-all", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}
+                      >
+                        {year}
+                        {activeYear === year && <Badge className="ml-auto bg-white/20 text-[8px]">ACTIVE</Badge>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
+
             <div className="flex items-center gap-4">
+              <div className="flex sm:hidden">
+                 <Badge className="bg-primary text-white font-black">{activeYear}</Badge>
+              </div>
               <Avatar className="size-10 border-2 border-primary/10 shadow-sm">
                 <AvatarImage src={`https://picsum.photos/seed/${userName}/200/200`} />
                 <AvatarFallback className="bg-primary text-white font-black">{userName[0]}</AvatarFallback>

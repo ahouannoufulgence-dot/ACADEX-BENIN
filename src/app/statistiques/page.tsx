@@ -39,12 +39,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
-  AreaChart,
-  Area,
-  LineChart,
-  Line,
-  ComposedChart
+  Legend
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
@@ -61,6 +56,7 @@ export default function StatisticsPage() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("generale")
   const [directorName, setDirectorName] = useState("le Directeur")
+  const [activeYear, setActiveYear] = useState("2024-2025")
   
   // États pour le comparateur
   const [classA, setClassA] = useState("")
@@ -69,14 +65,21 @@ export default function StatisticsPage() {
   useEffect(() => {
     const name = localStorage.getItem('acadex_user_name')
     if (name) setDirectorName(name)
+    
+    const updateYear = () => {
+      setActiveYear(localStorage.getItem('acadex_active_year') || "2024-2025")
+    }
+    updateYear()
+    window.addEventListener('storage', updateYear)
+    return () => window.removeEventListener('storage', updateYear)
   }, [])
 
-  // DATA FETCHING - SYNC TOTALE
-  const studentsCol = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
-  const teachersCol = useMemo(() => query(collection(db, "teachers")), [db])
-  const paymentsCol = useMemo(() => query(collection(db, "payments")), [db])
-  const gradesCol = useMemo(() => query(collection(db, "grades")), [db])
-  const absencesCol = useMemo(() => query(collection(db, "absences")), [db])
+  // DATA FETCHING - FILTRÉE PAR ANNÉE ACTIVE
+  const studentsCol = useMemo(() => query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
+  const teachersCol = useMemo(() => query(collection(db, "teachers")), [db]) // Enseignants globaux
+  const paymentsCol = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
+  const gradesCol = useMemo(() => query(collection(db, "grades"), where("academicYear", "==", activeYear)), [db, activeYear])
+  const absencesCol = useMemo(() => query(collection(db, "absences"), where("academicYear", "==", activeYear)), [db, activeYear])
 
   const { data: students } = useCollection(studentsCol)
   const { data: teachers } = useCollection(teachersCol)
@@ -135,7 +138,6 @@ export default function StatisticsPage() {
     }).sort((a, b) => b.avg - a.avg)
   }, [students, grades, absences, payments])
 
-  // STATS PAR PROMOTION (Calculées à partir des stats de classes)
   const promotionStats = useMemo(() => {
     const promos = Array.from(new Set(classStats.map(c => c.promotion)))
     return promos.map(p => {
@@ -146,37 +148,19 @@ export default function StatisticsPage() {
     }).sort((a, b) => b.avg - a.avg)
   }, [classStats])
 
-  // ANALYSE PERFORMANCE IA
-  const iaAlerts = useMemo(() => {
-    const alerts = []
-    if (Number(kpis.presenceRate) < 95) alerts.push({ type: 'warning', text: "Le taux d'absence est en hausse de 2% cette semaine." })
-    
-    const topClass = classStats[0]
-    if (topClass) alerts.push({ type: 'success', text: `La classe ${topClass.name} maintient son excellence avec ${topClass.avg}/20.` })
-    
-    const weakClass = classStats.find(c => c.avg < 10)
-    if (weakClass) alerts.push({ type: 'danger', text: `Alerte : La moyenne de la classe ${weakClass.name} est préoccupante.` })
-    
-    const weakPromo = promotionStats.find(p => p.avg < 11)
-    if (weakPromo) alerts.push({ type: 'danger', text: `Niveau ${weakPromo.name} en difficulté globale (${weakPromo.avg}/20).` })
-    
-    if (alerts.length === 0) alerts.push({ type: 'info', text: "Stabilité globale détectée. Aucune anomalie majeure." })
-    
-    return alerts
-  }, [kpis, classStats, promotionStats])
-
   const handleExportPDF = () => {
     const doc = new jsPDF()
     doc.setFillColor(20, 83, 45)
     doc.rect(0, 0, 210, 40, 'F')
     doc.setTextColor(255, 255, 255)
     doc.setFontSize(22)
-    doc.text("ACADEX - RAPPORT STRATÉGIQUE", 105, 25, { align: "center" })
+    doc.text(`ACADEX - RAPPORT STRATÉGIQUE ${activeYear}`, 105, 25, { align: "center" })
     
     autoTable(doc, {
       startY: 50,
       head: [['Indicateur', 'Valeur Actuelle']],
       body: [
+        ['Année Scolaire', activeYear],
         ['Effectif Total', kpis.totalStudents],
         ['Moyenne Établissement', kpis.avgSchool + '/20'],
         ['Taux de Présence', kpis.presenceRate + '%'],
@@ -186,20 +170,19 @@ export default function StatisticsPage() {
       headStyles: { fillColor: [20, 83, 45] }
     })
     
-    doc.save(`ACADEX_STRAT_STATS_${new Date().getTime()}.pdf`)
-    toast({ title: "Rapport généré", description: "Le document PDF est prêt." })
+    doc.save(`ACADEX_STRAT_STATS_${activeYear}.pdf`)
+    toast({ title: "Rapport généré", description: `Le bilan de l'année ${activeYear} est prêt.` })
   }
 
   return (
     <DashboardLayout>
       <div className="space-y-10 animate-in">
         
-        {/* Header Stratégique */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">Bonjour Monsieur <span className="text-primary italic">{directorName}</span>,</h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-emerald-500" /> Analyse multi-niveaux scellée en temps réel.
+              <ShieldCheck className="size-4 text-emerald-500" /> Pilotage analytique de l'année <Badge className="bg-primary">{activeYear}</Badge>
             </p>
           </div>
           <div className="flex items-center gap-3 relative z-10">
@@ -210,10 +193,8 @@ export default function StatisticsPage() {
                <Activity className="size-6 animate-pulse" /> LIVE
              </Badge>
           </div>
-          <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
         </div>
 
-        {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
             { label: "Moyenne École", value: kpis.avgSchool, icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", trend: "+0.5" },
@@ -244,7 +225,6 @@ export default function StatisticsPage() {
             {[
               { id: "generale", label: "Vue Générale", icon: BarChart3 },
               { id: "promotions", label: "Analyses Promotions", icon: Shapes },
-              { id: "pedagogie", label: "Moyennes Classes", icon: Target },
               { id: "comparaison", label: "Comparateur", icon: Scale },
               { id: "ia", label: "Cerveau IA", icon: Sparkles }
             ].map((t) => (
@@ -257,7 +237,7 @@ export default function StatisticsPage() {
           <TabsContent value="generale" className="space-y-8">
              <div className="grid lg:grid-cols-12 gap-8">
                 <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-10">
-                   <h3 className="text-2xl font-black mb-10 flex items-center gap-3"><Activity className="text-primary" /> Performance par Promotion</h3>
+                   <h3 className="text-2xl font-black mb-10 flex items-center gap-3"><Activity className="text-primary" /> Performance {activeYear}</h3>
                    <div className="h-[350px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={promotionStats}>
@@ -275,7 +255,7 @@ export default function StatisticsPage() {
                    </div>
                 </Card>
                 <div className="lg:col-span-4 space-y-8">
-                  <Card className="border-none shadow-sm bg-white rounded-[3rem] p-10 flex flex-col items-center">
+                  <Card className="border-none shadow-sm bg-white rounded-[3rem] p-10 flex flex-col items-center h-full">
                     <h3 className="text-xl font-black mb-8 flex items-center gap-2"><PieChartIcon className="size-5 text-primary" /> Répartition Élèves</h3>
                     <div className="h-[250px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -342,138 +322,10 @@ export default function StatisticsPage() {
                 })}
              </div>
           </TabsContent>
-
-          <TabsContent value="comparaison" className="space-y-8">
-             <Card className="p-10 rounded-[3rem] bg-white border-none shadow-sm">
-                <div className="flex flex-col md:flex-row items-center gap-6 mb-12">
-                   <div className="flex-1 space-y-2">
-                      <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe A</label>
-                      <Select value={classA} onValueChange={setClassA}>
-                        <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                        <SelectContent>{classStats.map(c => <SelectItem key={c.name} value={c.name} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
-                      </Select>
-                   </div>
-                   <div className="size-14 bg-muted rounded-full flex items-center justify-center font-black text-primary">VS</div>
-                   <div className="flex-1 space-y-2">
-                      <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe B</label>
-                      <Select value={classB} onValueChange={setClassB}>
-                        <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir..." /></SelectTrigger>
-                        <SelectContent>{classStats.map(c => <SelectItem key={c.name} value={c.name} className="font-bold">{c.name}</SelectItem>)}</SelectContent>
-                      </Select>
-                   </div>
-                </div>
-
-                {classA && classB ? (
-                  <div className="grid md:grid-cols-3 gap-8">
-                     {[
-                       { label: "Effectif", key: "count", icon: Users },
-                       { label: "Moyenne / 20", key: "avg", icon: GraduationCap },
-                       { label: "Incidents (Abs)", key: "absences", icon: Clock },
-                     ].map((metric) => {
-                       const statsA = classStats.find(c => c.name === classA)
-                       const statsB = classStats.find(c => c.name === classB)
-                       const valA = statsA ? (statsA as any)[metric.key] : 0
-                       const valB = statsB ? (statsB as any)[metric.key] : 0
-                       return (
-                         <div key={metric.label} className="space-y-6 p-8 bg-muted/20 rounded-[2rem] border border-muted">
-                            <div className="flex items-center gap-3 font-black text-muted-foreground uppercase text-xs">
-                               <metric.icon className="size-4 text-primary" /> {metric.label}
-                            </div>
-                            <div className="flex items-end justify-between gap-4">
-                               <div className="text-center flex-1">
-                                  <p className="text-xs font-bold text-muted-foreground mb-1">{classA}</p>
-                                  <p className="text-3xl font-black text-primary">{valA}</p>
-                               </div>
-                               <div className="h-10 w-px bg-muted-foreground/20" />
-                               <div className="text-center flex-1">
-                                  <p className="text-xs font-bold text-muted-foreground mb-1">{classB}</p>
-                                  <p className="text-3xl font-black text-primary">{valB}</p>
-                               </div>
-                            </div>
-                            <div className="w-full bg-white h-2 rounded-full overflow-hidden flex">
-                               <div 
-                                 className="h-full bg-primary" 
-                                 style={{ width: `${(Number(valA) / (Math.max(1, Number(valA) + Number(valB)))) * 100}%` }} 
-                               />
-                               <div 
-                                 className="h-full bg-amber-400" 
-                                 style={{ width: `${(Number(valB) / (Math.max(1, Number(valA) + Number(valB)))) * 100}%` }} 
-                               />
-                            </div>
-                         </div>
-                       )
-                     })}
-                  </div>
-                ) : (
-                  <div className="p-20 text-center space-y-6 opacity-30">
-                     <Scale className="size-20 mx-auto" />
-                     <p className="font-black uppercase tracking-widest">Sélectionnez deux classes pour lancer le comparateur.</p>
-                  </div>
-                )}
-             </Card>
-          </TabsContent>
-
-          <TabsContent value="ia" className="space-y-8">
-             <div className="grid md:grid-cols-2 gap-8">
-                <Card className="p-10 rounded-[3rem] bg-white border-none shadow-sm flex flex-col">
-                   <div className="flex items-center gap-4 mb-10">
-                      <div className="size-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg"><Sparkles className="size-8" /></div>
-                      <div>
-                        <h3 className="text-2xl font-black">Cerveau ACADEX</h3>
-                        <p className="text-xs font-bold text-muted-foreground uppercase">Analyse prédictive activée</p>
-                      </div>
-                   </div>
-                   <div className="space-y-4 flex-1">
-                      {iaAlerts.map((alert, i) => (
-                        <div key={i} className={cn("p-6 rounded-[2rem] border-2 flex items-start gap-4 transition-all hover:scale-[1.02]", 
-                          alert.type === 'warning' ? "bg-amber-50 border-amber-100 text-amber-900" : 
-                          alert.type === 'danger' ? "bg-red-50 border-red-100 text-red-900" :
-                          alert.type === 'success' ? "bg-emerald-50 border-emerald-100 text-emerald-900" :
-                          "bg-blue-50 border-blue-100 text-blue-900"
-                        )}>
-                           <div className="size-10 rounded-xl bg-white/50 flex items-center justify-center shrink-0">
-                              {alert.type === 'warning' ? <AlertTriangle className="size-5" /> : 
-                               alert.type === 'danger' ? <ShieldCheck className="size-5 text-red-600" /> :
-                               <CheckCircle2 className="size-5" />}
-                           </div>
-                           <p className="font-bold leading-relaxed">{alert.text}</p>
-                        </div>
-                      ))}
-                   </div>
-                   <Button className="mt-10 h-14 rounded-2xl bg-foreground text-white font-black w-full">Générer Rapport IA Complet</Button>
-                </Card>
-                
-                <Card className="p-10 rounded-[3rem] bg-primary text-white border-none shadow-2xl relative overflow-hidden">
-                   <div className="relative z-10 space-y-6">
-                      <h3 className="text-3xl font-black">Audit Implication</h3>
-                      <p className="text-white/70 font-medium italic">Analyse du taux de saisie des notes par promotion.</p>
-                      
-                      <div className="space-y-8 pt-8">
-                         {promotionStats.slice(0, 3).map((p, i) => (
-                           <div key={i} className="space-y-2">
-                              <div className="flex justify-between items-center px-1">
-                                 <span className="font-black text-sm">{p.name}</span>
-                                 <span className="font-black text-xs">92% scellé</span>
-                              </div>
-                              <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
-                                 <div className="h-full bg-amber-400" style={{ width: '92%' }} />
-                              </div>
-                           </div>
-                         ))}
-                      </div>
-                      
-                      <div className="pt-10 flex items-center gap-4 text-[10px] font-black uppercase tracking-widest text-white/40">
-                         <ShieldCheck className="size-4 text-emerald-400" /> Audit Académique Certifié
-                      </div>
-                   </div>
-                   <PieChartIcon className="absolute -bottom-10 -right-10 size-64 text-white/5 pointer-events-none" />
-                </Card>
-             </div>
-          </TabsContent>
         </Tabs>
         
         <div className="flex items-center justify-center gap-4 py-8 text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">
-           <ShieldCheck className="size-4" /> Toute note scellée impacte les moyennes de classe et de promotion instantanément.
+           <ShieldCheck className="size-4" /> Toute note scellée en {activeYear} impacte les moyennes instantanément.
         </div>
       </div>
     </DashboardLayout>
