@@ -1,8 +1,8 @@
-
 'use client';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import { useFirestore } from "@/firebase";
 import { collection, query, where, getDocs, updateDoc, doc, addDoc } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function RegisterStudentPage() {
   const router = useRouter();
@@ -26,6 +27,8 @@ export default function RegisterStudentPage() {
   
   const [matricule, setMatricule] = useState("");
   const [regDoc, setRegDoc] = useState<any>(null);
+
+  const regImage = placeholderData.placeholderImages.find(img => img.id === "registration-green");
 
   const [form, setForm] = useState({
     lastName: "",
@@ -92,8 +95,7 @@ export default function RegisterStudentPage() {
     const studentRef = collection(db, "students");
     const regIdRef = doc(db, "registration_ids", regDoc.id);
 
-    // 1. Créer le profil élève (Optimiste : pas d'await)
-    addDoc(studentRef, studentData).catch(async (serverError) => {
+    addDoc(studentRef, studentData).catch(async () => {
       const error = new FirestorePermissionError({
         path: 'students',
         operation: 'create',
@@ -102,8 +104,7 @@ export default function RegisterStudentPage() {
       errorEmitter.emit('permission-error', error);
     });
 
-    // 2. Marquer l'identifiant comme utilisé (Optimiste : pas d'await)
-    updateDoc(regIdRef, { status: "utilisé" }).catch(async (serverError) => {
+    updateDoc(regIdRef, { status: "utilisé" }).catch(async () => {
       const error = new FirestorePermissionError({
         path: regIdRef.path,
         operation: 'update',
@@ -112,7 +113,6 @@ export default function RegisterStudentPage() {
       errorEmitter.emit('permission-error', error);
     });
 
-    // Stockage session et transition immédiate
     localStorage.setItem('acadex_user_id', regDoc.matricule);
     localStorage.setItem('acadex_user_role', 'Élève');
     localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
@@ -122,10 +122,23 @@ export default function RegisterStudentPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-6">
-      <div className="w-full max-w-2xl space-y-8 animate-in fade-in duration-700">
+    <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
+      {/* Background with Vibrant Green Overlay */}
+      <div className="absolute inset-0 z-0">
+        <Image 
+          src={regImage?.imageUrl || "https://picsum.photos/seed/green/1920/1080"}
+          alt="Registration Background"
+          fill
+          className="object-cover"
+          priority
+          data-ai-hint={regImage?.imageHint || "green nature"}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-700/90 via-primary/80 to-emerald-400/60" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-2xl space-y-8 animate-in fade-in duration-700">
         
-        <Card className="border-none shadow-2xl rounded-[3rem] bg-white overflow-hidden">
+        <Card className="border-none shadow-2xl rounded-[3rem] bg-white/95 backdrop-blur-xl overflow-hidden">
           <div className="h-2 bg-primary w-full" />
           
           {step === 1 && (

@@ -1,8 +1,8 @@
-
 'use client';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
+import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function RegisterDirectorPage() {
   const router = useRouter();
@@ -30,6 +31,8 @@ export default function RegisterDirectorPage() {
     secretAnswer: ""
   });
 
+  const regImage = placeholderData.placeholderImages.find(img => img.id === "registration-green");
+
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
 
@@ -41,7 +44,6 @@ export default function RegisterDirectorPage() {
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
-      // Save user info for personalization
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
       localStorage.setItem('acadex_user_role', 'Directeur');
       localStorage.setItem('acadex_user_id', 'DIR-001');
@@ -59,23 +61,36 @@ export default function RegisterDirectorPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-6">
-      <div className="w-full max-w-xl space-y-8 animate-in fade-in duration-700">
+    <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
+      {/* Background with Vibrant Green Overlay */}
+      <div className="absolute inset-0 z-0">
+        <Image 
+          src={regImage?.imageUrl || "https://picsum.photos/seed/green/1920/1080"}
+          alt="Registration Background"
+          fill
+          className="object-cover"
+          priority
+          data-ai-hint={regImage?.imageHint || "green nature"}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/70 to-emerald-500/60" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-xl space-y-8 animate-in fade-in duration-700">
         
         {step < 3 && (
           <div className="flex justify-center items-center gap-4 mb-8">
             {[1, 2].map((i) => (
               <div key={i} className="flex items-center gap-2">
-                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs ${step === i ? 'bg-primary text-white shadow-lg shadow-primary/20' : step > i ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs ${step === i ? 'bg-white text-primary shadow-lg' : step > i ? 'bg-white/20 text-white' : 'bg-black/20 text-white/40'}`}>
                   {i}
                 </div>
-                {i === 1 && <div className={`w-12 h-1 rounded-full ${step > 1 ? 'bg-primary' : 'bg-muted'}`} />}
+                {i === 1 && <div className={`w-12 h-1 rounded-full ${step > 1 ? 'bg-white' : 'bg-white/20'}`} />}
               </div>
             ))}
           </div>
         )}
 
-        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white overflow-hidden">
+        <Card className="border-none shadow-2xl rounded-[2.5rem] bg-white/95 backdrop-blur-xl overflow-hidden">
           <div className="h-2 bg-primary w-full" />
           
           {step === 1 && (

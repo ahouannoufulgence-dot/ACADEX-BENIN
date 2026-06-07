@@ -7,6 +7,12 @@
       "imageHint": "smiling students"
     },
     {
+      "id": "registration-green",
+      "description": "Vibrant green educational background with abstract patterns",
+      "imageUrl": "https://picsum.photos/seed/acadex-green-reg/1920/1080",
+      "imageHint": "green nature"
+    },
+    {
       "id": "user-avatar",
       "description": "Premium user profile avatar",
       "imageUrl": "https://picsum.photos/seed/user-1/200/200",
