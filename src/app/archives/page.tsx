@@ -26,13 +26,14 @@ import {
   Zap,
   Plus,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  BarChart3
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, updateDoc, getDoc, setDoc, serverTimestamp, arrayUnion } from "firebase/firestore"
+import { collection, query, where, doc, updateDoc, getDoc, setDoc, serverTimestamp, arrayUnion, onSnapshot } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -55,7 +56,7 @@ export default function AcademicYearsPage() {
   const [activeYear, setActiveYear] = useState("")
 
   useEffect(() => {
-    setActiveYear(localStorage.getItem('acadex_active_year') || "2024-2025")
+    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) setSchoolConfig(snap.data())
     })
@@ -146,7 +147,7 @@ export default function AcademicYearsPage() {
                              <AlertDialogDescription className="text-base font-medium">
                                Êtes-vous certain de vouloir clôturer l'année <b>{activeYear}</b> ? 
                                <br /><br />
-                               Toutes les données seront scellées dans l'historique. Une nouvelle session <b>2025-2026</b> sera créée automatiquement.
+                               Toutes les données seront scellées dans l'historique. Une nouvelle session sera créée automatiquement.
                              </AlertDialogDescription>
                            </AlertDialogHeader>
                            <AlertDialogFooter className="p-6 bg-muted/20 rounded-b-[2.5rem]">
@@ -180,7 +181,7 @@ export default function AcademicYearsPage() {
                         <h4 className="font-black uppercase text-xs tracking-widest">Intégrité ACADEX</h4>
                       </div>
                       <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                        L'archivage multi-années garantit que vos bulletins de 2023 restent identiques même en 2030. Aucune modification n'est permise sur une année scellée.
+                        L'archivage multi-années garantit que vos bulletins de 2026 restent identiques même en 2030. Aucune modification n'est permise sur une année scellée.
                       </p>
                    </Card>
                 </div>
