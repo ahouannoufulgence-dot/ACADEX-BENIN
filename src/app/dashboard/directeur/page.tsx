@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore"
+import { collection, doc, onSnapshot, query } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -48,18 +48,17 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes Firestore mémorisées pour éviter les boucles de chargement infinies
-  const studentsQuery = useMemo(() => query(collection(db, "students"), orderBy("registeredAt", "desc")), [db])
-  const teachersQuery = useMemo(() => collection(db, "teachers"), [db])
-  const regIdsQuery = useMemo(() => collection(db, "registration_ids"), [db])
-  const paymentsQuery = useMemo(() => collection(db, "payments"), [db])
+  // Requêtes stabilisées avec useMemo
+  const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
+  const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
+  const regIdsQuery = useMemo(() => query(collection(db, "registration_ids")), [db])
+  const paymentsQuery = useMemo(() => query(collection(db, "payments")), [db])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
   const { data: registrationIds, loading: loadingIds } = useCollection(regIdsQuery)
   const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
 
-  // Statistiques calculées STRICTEMENT sur les données Firestore
   const stats = useMemo(() => {
     const totalStudents = students?.length || 0
     const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
@@ -67,7 +66,6 @@ export default function DirectorDashboard() {
     const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     const pendingPaymentsCount = payments?.filter((p: any) => p.status === 'En attente').length || 0
     
-    // Dernier élève inscrit (utilisé avec protection optionnelle)
     const lastStudent = (students && students.length > 0) ? students[0] : null
 
     return {
@@ -88,11 +86,10 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
         
-        {/* EN-TÊTE PROFESSIONNEL AVEC FORMULE DE RESPECT */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             <h1 className="text-4xl font-black text-foreground tracking-tight">
-              Bonjour Monsieur <span className="text-primary italic">{directorFullName}</span>,
+              Bonjour Monsieur le Directeur <span className="text-primary italic">{directorFullName}</span>,
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 py-1 text-sm uppercase">
@@ -109,13 +106,12 @@ export default function DirectorDashboard() {
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none hidden md:block" />
         </div>
 
-        {/* CARTES STATISTIQUES PRINCIPALES (100% RÉELLES) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Élèves</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingStudents ? <Loader2 className="animate-spin size-6 text-primary/20" /> : stats.totalStudents}
+                {loadingStudents ? "..." : stats.totalStudents}
               </p>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Users className="size-6" /></div>
             </div>
@@ -125,7 +121,7 @@ export default function DirectorDashboard() {
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Enseignants Actifs</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingTeachers ? <Loader2 className="animate-spin size-6 text-primary/20" /> : stats.activeTeachers}
+                {loadingTeachers ? "..." : stats.activeTeachers}
               </p>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
             </div>
@@ -143,7 +139,7 @@ export default function DirectorDashboard() {
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Paiements en attente</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingPayments ? <Loader2 className="animate-spin size-6 text-primary/20" /> : stats.pendingPaymentsCount}
+                {loadingPayments ? "..." : stats.pendingPaymentsCount}
               </p>
               <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><CreditCard className="size-6" /></div>
             </div>
@@ -152,7 +148,6 @@ export default function DirectorDashboard() {
 
         <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
-            {/* ALERTES IMPORTANTES (AUTOMATIQUES) */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-red-50/30">
                 <div className="flex items-center gap-3">
@@ -174,41 +169,35 @@ export default function DirectorDashboard() {
                     </div>
                   )}
                   
-                  {(stats.totalStudents === 0 && !loadingStudents) && (
-                    <div className="p-12 text-center text-muted-foreground font-bold flex flex-col items-center gap-4">
-                      <Users className="size-10 opacity-20" />
-                      <div className="space-y-1">
-                        <p>Aucun élève dans la base de données.</p>
-                        <p className="text-xs font-medium opacity-60">Utilisez le menu "Identifiants" pour commencer l'enrôlement.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {(stats.totalStudents > 0 && stats.unusedIds === 0 && stats.pendingPaymentsCount === 0) && (
+                  {(!loadingStudents && stats.totalStudents === 0 && stats.unusedIds === 0) && (
                     <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
                        <CheckCircle2 className="size-10 opacity-30" />
                        <p className="text-sm">Tout est en ordre. Aucune alerte critique détectée.</p>
+                    </div>
+                  )}
+
+                  {loadingStudents && (
+                    <div className="p-12 text-center animate-pulse text-muted-foreground font-black uppercase text-xs">
+                      Analyse de la base de données...
                     </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* CLASSES EN DIFFICULTÉ (DYNAMIQUE) */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-2xl font-black flex items-center gap-3">
-                  <TrendingDown className="text-destructive" /> Radar Radar : Performance Classes
+                  <TrendingUp className="text-destructive" /> Performance des Classes
                 </h3>
               </div>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
-                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Aucune anomalie de niveau détectée pour le moment.</p>
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Radar d'anomalies en attente de données.</p>
               </div>
             </Card>
           </div>
 
           <div className="lg:col-span-4 space-y-8">
-            {/* DERNIÈRES ACTIVITÉS RÉELLES */}
             <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
                <div className="flex items-center justify-between mb-8">
                  <h4 className="text-xl font-black">Dernière activité</h4>
@@ -217,8 +206,8 @@ export default function DirectorDashboard() {
                <div className="space-y-8">
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
-                      <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl uppercase">
-                        {stats.lastStudent?.lastName?.charAt(0) || "?"}
+                      <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl uppercase shadow-sm">
+                        {(stats.lastStudent?.lastName || "?").charAt(0)}
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-black text-foreground">Nouvelle inscription</p>
@@ -234,7 +223,6 @@ export default function DirectorDashboard() {
                </div>
             </Card>
 
-            {/* TRÉSORERIE RÉSUMÉ */}
             <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl">
               <div className="flex items-center justify-between mb-6">
                 <h4 className="font-black text-lg">Trésorerie</h4>
@@ -251,7 +239,6 @@ export default function DirectorDashboard() {
               </div>
             </Card>
 
-            {/* ASSISTANT ACADEX */}
             <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
               <div className="flex items-center gap-3 mb-6">
                 <Sparkles className="size-6 text-primary animate-pulse" />
