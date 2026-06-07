@@ -79,6 +79,7 @@ export default function GradesPage() {
     fetchCoef()
   }, [selectedClass, userSubject, db])
 
+  // FILTRAGE ÉLÈVES : Uniquement ceux qui ont activé leur compte (Actif)
   const studentsQuery = useMemo(() => {
     if (!db || !selectedClass) return null
     return query(
