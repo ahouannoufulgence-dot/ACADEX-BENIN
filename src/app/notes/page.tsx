@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck } from "lucide-react"
@@ -14,18 +14,25 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import { useState, useMemo, useEffect, useCallback } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
+const trimestres = [
+  { id: "T1", label: "1er Trimestre" },
+  { id: "T2", label: "2ème Trimestre" },
+  { id: "T3", label: "3ème Trimestre" }
+]
+
 const evalTypes = [
-  { id: "interro", label: "Interrogation" },
-  { id: "devoir", label: "Devoir" },
-  { id: "composition", label: "Composition" },
-  { id: "examen", label: "Examen" }
+  { id: "int1", label: "Interrogation 1" },
+  { id: "int2", label: "Interrogation 2" },
+  { id: "int3", label: "Interrogation 3" },
+  { id: "dev1", label: "Devoir 1" },
+  { id: "dev2", label: "Devoir 2" }
 ]
 
 export default function GradesPage() {
@@ -36,8 +43,8 @@ export default function GradesPage() {
   const [userName, setUserName] = useState("")
   
   const [selectedClass, setSelectedClass] = useState("")
-  const [selectedEvalType, setSelectedEvalType] = useState("interro")
-  const [evalTitle, setEvalTitle] = useState("")
+  const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
+  const [selectedEvalType, setSelectedEvalType] = useState("int1")
   const [saving, setSaving] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
   const [classCoefficient, setClassCoefficient] = useState(1)
@@ -54,7 +61,6 @@ export default function GradesPage() {
     setUserName(name)
   }, [])
 
-  // Charger le coefficient configuré par le directeur pour cette classe/matière
   useEffect(() => {
     const fetchCoef = async () => {
       if (!selectedClass || !userSubject) return
@@ -64,7 +70,7 @@ export default function GradesPage() {
         if (snap.exists()) {
           setClassCoefficient(snap.data().coef || 1)
         } else {
-          setClassCoefficient(1) // Défaut si non configuré
+          setClassCoefficient(1)
         }
       } catch (e) {
         console.warn("Erreur chargement coef", e)
@@ -95,8 +101,8 @@ export default function GradesPage() {
   }
 
   const handleSaveGrades = async () => {
-    if (!selectedClass || !evalTitle) {
-      toast({ title: "Champs requis", description: "Veuillez choisir une classe et donner un titre à l'évaluation.", variant: "destructive" })
+    if (!selectedClass || !selectedTrimestre || !selectedEvalType) {
+      toast({ title: "Champs requis", description: "Veuillez remplir tous les critères.", variant: "destructive" })
       return
     }
 
@@ -106,30 +112,28 @@ export default function GradesPage() {
     try {
       students?.forEach((student: any) => {
         const gradeValue = parseFloat(gradesData[student.id] || "0")
-        const gradeId = `${student.id}_${userSubject}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
+        // ID unique par élève, matière, trimestre et type de note pour permettre l'écrasement/mise à jour
+        const gradeId = `${student.id}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
-        const data = {
+        batch.set(gradeRef, {
           studentId: student.id,
           studentName: `${student.lastName} ${student.firstName}`,
           classId: selectedClass,
           subject: userSubject,
+          term: selectedTrimestre,
           type: selectedEvalType,
-          title: evalTitle,
           value: gradeValue,
           coefficient: classCoefficient,
           weightedValue: gradeValue * classCoefficient,
           teacherName: userName,
           registeredAt: serverTimestamp()
-        }
-
-        batch.set(gradeRef, data)
+        }, { merge: true })
       })
 
       await batch.commit()
       setGradesData({})
-      setEvalTitle("")
-      toast({ title: "Notes scellées !", description: "Les cockpits élèves ont été mis à jour instantanément." })
+      toast({ title: "Notes scellées !", description: `Les notes du ${selectedTrimestre} (${selectedEvalType}) ont été publiées.` })
     } catch (e) {
       const error = new FirestorePermissionError({ path: 'grades', operation: 'write' })
       errorEmitter.emit('permission-error', error)
@@ -138,34 +142,43 @@ export default function GradesPage() {
     }
   }
 
-  const isTeacher = userRole === "Enseignant"
-
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Saisie des <span className="text-primary italic">Notes</span></h1>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">Gestion des <span className="text-primary italic">Notes</span></h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-primary" /> Espace Pédagogique Sécurisé - {userSubject}
+              <ShieldCheck className="size-4 text-primary" /> Architecture 3 Interros / 2 Devoirs - {userSubject}
             </p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
             {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <UserCheck className="mr-2 size-6 group-hover:scale-110 transition-transform" />} 
-            {saving ? "Scellage en cours..." : "Sceller & Publier"}
+            {saving ? "Validation..." : "Sceller & Publier"}
           </Button>
         </div>
 
         <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe Concernée</label>
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe</label>
               <Select onValueChange={setSelectedClass} value={selectedClass}>
                 <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                   <SelectValue placeholder="Choisir" />
                 </SelectTrigger>
                 <SelectContent>
                   {userClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Trimestre</label>
+              <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
+                <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -180,14 +193,10 @@ export default function GradesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Nom de l'évaluation</label>
-              <Input 
-                placeholder="Ex: Interrogation Chapitre 1" 
-                value={evalTitle}
-                onChange={(e) => setEvalTitle(e.target.value)}
-                className="h-14 rounded-2xl border-2 font-bold px-6" 
-              />
+            <div className="flex items-end pb-1">
+               <Badge className="h-12 w-full justify-center rounded-xl bg-muted text-muted-foreground font-bold border-none">
+                 Saisie Officielle ACADEX
+               </Badge>
             </div>
           </div>
         </Card>
@@ -198,10 +207,11 @@ export default function GradesPage() {
               <div className="flex items-center gap-4">
                  <h3 className="text-xl font-black">Registre : {selectedClass}</h3>
                  <Badge className="bg-primary text-white border-none font-black px-4 uppercase">{userSubject}</Badge>
+                 <Badge variant="outline" className="border-primary text-primary font-black uppercase">{selectedTrimestre}</Badge>
               </div>
               <div className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm border border-primary/10">
                  <Calculator className="size-4 text-primary" />
-                 <span className="text-xs font-black uppercase text-primary">Coef Automatique : {classCoefficient}</span>
+                 <span className="text-xs font-black uppercase text-primary">Coef : {classCoefficient}</span>
               </div>
             </div>
             
@@ -215,7 +225,7 @@ export default function GradesPage() {
                   <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-b">
                     <tr>
                       <th className="px-10 py-6 text-left">Élève</th>
-                      <th className="px-10 py-6 text-center">Note sur 20</th>
+                      <th className="px-10 py-6 text-center">Note / 20</th>
                       <th className="px-10 py-6 text-right bg-primary text-white">Impact Pondéré</th>
                     </tr>
                   </thead>
@@ -253,17 +263,6 @@ export default function GradesPage() {
                 </table>
               )}
             </CardContent>
-            
-            <div className="p-10 bg-muted/10 border-t flex justify-between items-center">
-               <div className="flex items-center gap-3 text-muted-foreground opacity-60">
-                 <Lock className="size-5" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Saisie protégée par ACADEX RBAC</span>
-               </div>
-               <div className="flex gap-4">
-                  <Button variant="ghost" className="rounded-xl font-black h-12 px-8" onClick={() => setGradesData({})}>Réinitialiser</Button>
-                  <Button onClick={handleSaveGrades} disabled={saving} className="rounded-xl font-black h-12 px-10 bg-foreground text-white">Publier le Registre</Button>
-               </div>
-            </div>
           </Card>
         )}
       </div>

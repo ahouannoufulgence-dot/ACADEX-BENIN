@@ -47,6 +47,7 @@ export default function DirectorDashboard() {
   }, [db])
 
   // REQUÊTES STRICTES POUR COMPTEURS RÉELS
+  // Un élève est "réel" s'il a un matricule et un nom (évite de compter les codes non activés)
   const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
@@ -60,17 +61,22 @@ export default function DirectorDashboard() {
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    const totalStudents = students?.length || 0
-    const totalTeachers = teachers?.length || 0
+    // Filtrage supplémentaire côté client pour être sûr du "Zéro Absolu"
+    const realStudents = students?.filter((s: any) => s.matricule && s.lastName) || []
+    const totalStudents = realStudents.length
+    
+    const realTeachers = teachers?.filter((t: any) => t.fullName) || []
+    const totalTeachers = realTeachers.length
+
     const idsCount = unusedIds?.length || 0
     const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
-    // Moyenne École Réelle
-    const avg = grades?.length 
-      ? (grades.reduce((acc, g: any) => acc + (g.value || 0), 0) / grades.length).toFixed(2)
+    const validGrades = grades?.filter((g: any) => g.value !== undefined) || []
+    const avg = validGrades.length 
+      ? (validGrades.reduce((acc, g: any) => acc + (Number(g.value) || 0), 0) / validGrades.length).toFixed(2)
       : "0.00"
 
-    const lastStudent = students?.length ? students[0] : null
+    const lastStudent = realStudents.length ? realStudents[0] : null
 
     return { totalStudents, totalTeachers, idsCount, revenue, avg, lastStudent }
   }, [students, teachers, unusedIds, payments, grades])
@@ -177,7 +183,7 @@ export default function DirectorDashboard() {
                 </h3>
               </div>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
-                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Les courbes de progression s'afficheront après les examens.</p>
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Les courbes de progression s'afficheront après le 1er trimestre.</p>
               </div>
             </Card>
           </div>
