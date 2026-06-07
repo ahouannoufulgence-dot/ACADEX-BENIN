@@ -17,11 +17,13 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, where, setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore"
+import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp } from "firebase/firestore"
+import { errorEmitter } from '@/firebase/error-emitter'
+import { FirestorePermissionError } from '@/firebase/errors'
 
 const terms = ["1er Trimestre", "2ème Trimestre", "3ème Trimestre"]
 const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
-const allSubjects = ["Maths", "Français", "Anglais", "PCT", "SVT", "H-G", "Philo", "Allemand", "Espagnol", "EPS"]
+const allSubjects = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie", "Philosophie", "Informatique", "EPS"]
 
 export default function GradesPage() {
   const db = useFirestore()
@@ -45,7 +47,7 @@ export default function GradesPage() {
     setUserClasses(classes)
     setUserSubject(subject)
 
-    // Si enseignant, on force sa matière
+    // Si enseignant, sa matière est imposée et verrouillée
     if (role === "Enseignant" && subject) {
       setSelectedSubject(subject)
     }
@@ -71,8 +73,10 @@ export default function GradesPage() {
   const calculateAverage = (studentId: string) => {
     const data = gradesData[studentId]
     if (!data) return "0.00"
-    const i = [(parseFloat(data.int1) || 0), (parseFloat(data.int2) || 0), (parseFloat(data.int3) || 0)]
-    const avgInt = i.reduce((a,b) => a+b, 0) / 3
+    const i1 = parseFloat(data.int1) || 0
+    const i2 = parseFloat(data.int2) || 0
+    const i3 = parseFloat(data.int3) || 0
+    const avgInt = (i1 + i2 + i3) / 3
     const d1 = parseFloat(data.dev1) || 0
     const d2 = parseFloat(data.dev2) || 0
     return ((avgInt + d1 + d2) / 3).toFixed(2)
@@ -83,31 +87,48 @@ export default function GradesPage() {
       toast({ title: "Champs manquants", description: "Veuillez sélectionner une classe et une matière.", variant: "destructive" })
       return
     }
+
     setSaving(true)
+    const batch = writeBatch(db)
+
     try {
-      for (const student of (students || [])) {
+      students?.forEach((student: any) => {
         const avg = calculateAverage(student.id)
-        const gradeId = `${student.id}_${selectedSubject}_${selectedTerm.replace(' ', '')}`
-        await setDoc(doc(db, "grades", gradeId), {
+        const gradeId = `${student.id}_${selectedSubject}_${selectedTerm.replace(/\s/g, '')}`
+        const gradeRef = doc(db, "grades", gradeId)
+        
+        const data = {
           studentId: student.id,
           studentName: `${student.lastName} ${student.firstName}`,
           classId: selectedClass,
           subject: selectedSubject,
           term: selectedTerm,
-          ...gradesData[student.id],
+          ...(gradesData[student.id] || {}),
           average: parseFloat(avg),
-          coefficient: coefficient,
-          weightedAverage: parseFloat(avg) * coefficient,
+          coefficient: Number(coefficient),
+          weightedAverage: parseFloat(avg) * Number(coefficient),
           updatedAt: serverTimestamp()
-        })
-      }
-      toast({ title: "Saisie enregistrée", description: `Les notes de ${selectedSubject} ont été validées.` })
+        }
+
+        batch.set(gradeRef, data, { merge: true })
+      })
+
+      await batch.commit()
+      toast({ title: "Notes validées !", description: `Le registre de ${selectedSubject} pour la classe ${selectedClass} a été scellé.` })
     } catch (e) {
-      toast({ title: "Erreur sauvegarde", variant: "destructive" })
+      console.error(e)
+      const error = new FirestorePermissionError({
+        path: 'grades',
+        operation: 'write',
+      })
+      errorEmitter.emit('permission-error', error)
+      toast({ title: "Erreur de sauvegarde", variant: "destructive" })
     } finally {
       setSaving(false)
     }
   }
+
+  const isTeacher = userRole === "Enseignant"
 
   return (
     <DashboardLayout>
@@ -118,7 +139,8 @@ export default function GradesPage() {
             <p className="text-muted-foreground font-medium italic">Saisie des évaluations avec application automatique des coefficients.</p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="bg-primary hover:bg-primary/90 shadow-xl h-14 px-10 rounded-2xl font-black">
-            {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} Valider & Sceller les Notes
+            {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} 
+            {saving ? "Scellage en cours..." : "Valider & Sceller les Notes"}
           </Button>
         </div>
 
@@ -129,7 +151,7 @@ export default function GradesPage() {
               <Select onValueChange={setSelectedClass} value={selectedClass}>
                 <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
                 <SelectContent>
-                  {(userRole === "Enseignant" ? userClasses : officialClasses).map(c => (
+                  {(isTeacher ? userClasses : officialClasses).map(c => (
                     <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
                   ))}
                 </SelectContent>
@@ -141,16 +163,16 @@ export default function GradesPage() {
                 <Select 
                   onValueChange={setSelectedSubject} 
                   value={selectedSubject} 
-                  disabled={userRole === "Enseignant"}
+                  disabled={isTeacher}
                 >
-                  <SelectTrigger className={`h-14 rounded-2xl border-2 font-black ${userRole === "Enseignant" ? 'bg-muted/50 cursor-not-allowed' : ''}`}>
+                  <SelectTrigger className={`h-14 rounded-2xl border-2 font-black ${isTeacher ? 'bg-muted/50 cursor-not-allowed' : ''}`}>
                     <SelectValue placeholder="Matière" />
                   </SelectTrigger>
                   <SelectContent>
                     {allSubjects.map(m => <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {userRole === "Enseignant" && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground opacity-50" />}
+                {isTeacher && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-primary opacity-50" />}
               </div>
             </div>
             <div className="space-y-2">
@@ -181,7 +203,7 @@ export default function GradesPage() {
               </div>
               <div className="flex items-center gap-3">
                  <Calculator className="size-4 text-muted-foreground" />
-                 <span className="text-xs font-black uppercase text-muted-foreground">Coefficient appliqué : {coefficient}</span>
+                 <span className="text-xs font-black uppercase text-muted-foreground">Poids appliqué : Coef {coefficient}</span>
               </div>
             </div>
             <CardContent className="p-0 overflow-x-auto">
@@ -192,14 +214,14 @@ export default function GradesPage() {
                     <th className="bg-muted/10">Int 1</th><th className="bg-muted/10">Int 2</th><th className="bg-muted/10">Int 3</th>
                     <th className="bg-primary/5 text-primary">Dev 1</th><th className="bg-primary/5 text-primary">Dev 2</th>
                     <th className="px-4 text-center">Moy/20</th>
-                    <th className="px-8 text-right bg-primary text-white">Moy Pondérée</th>
+                    <th className="px-8 text-right bg-primary text-white">Total Coéfficié</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-muted/30">
                   {loadingStudents ? (
                     <tr><td colSpan={8} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
                   ) : !students || students.length === 0 ? (
-                    <tr><td colSpan={8} className="p-20 text-center font-bold text-muted-foreground">Aucun élève inscrit dans cette classe.</td></tr>
+                    <tr><td colSpan={8} className="p-20 text-center font-bold text-muted-foreground italic">Aucun élève trouvé dans cette division.</td></tr>
                   ) : (
                     students?.map((student: any) => {
                       const avg = calculateAverage(student.id)
@@ -238,9 +260,11 @@ export default function GradesPage() {
             <div className="p-10 bg-muted/10 border-t flex justify-between items-center">
                <div className="flex items-center gap-3 text-muted-foreground">
                  <ShieldCheck className="size-6 text-emerald-500" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Calcul automatique certifié ACADEX</span>
+                 <span className="text-[10px] font-black uppercase tracking-widest">Calcul automatique et stockage haute performance</span>
                </div>
-               <Button onClick={handleSaveGrades} className="rounded-xl font-black h-12 px-10 bg-foreground">Valider le Registre</Button>
+               <Button onClick={handleSaveGrades} disabled={saving} className="rounded-xl font-black h-12 px-10 bg-foreground">
+                 {saving ? "Synchronisation..." : "Valider le Registre"}
+               </Button>
             </div>
           </Card>
         )}
