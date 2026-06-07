@@ -13,7 +13,8 @@ import {
   Loader2,
   Trophy,
   Target,
-  CheckCircle2
+  CheckCircle2,
+  Info
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -35,7 +36,7 @@ export default function StudentGradesPage() {
     if (parts.length >= 2) setStudentClass(parts[1])
   }, [])
 
-  // RÉCEPTION DES NOTES LIÉES PAR MATRICULE
+  // RÉCEPTION DES NOTES LIÉES PAR MATRICULE (Synchronisation Spontanée)
   const myGradesQuery = useMemo(() => {
     if (!db || !studentId) return null
     return query(collection(db, "grades"), where("studentId", "==", studentId))
@@ -45,9 +46,9 @@ export default function StudentGradesPage() {
 
   // LOGIQUE DE CALCUL "3+2" ET ANALYSE IA
   const subjectAnalyses = useMemo(() => {
-    const subjects: Record<string, any> = {}
     if (!myGrades) return []
-
+    
+    const subjects: Record<string, any> = {}
     const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
 
     termGrades.forEach((g: any) => {
@@ -88,32 +89,37 @@ export default function StudentGradesPage() {
       <div className="space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-foreground">Mon Carnet <span className="text-primary italic">Acadex</span></h1>
-            <p className="text-muted-foreground font-medium">Analyse temps réel de tes performances en {studentClass}.</p>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">Mon Carnet <span className="text-primary italic">Acadex</span></h1>
+            <p className="text-muted-foreground font-medium flex items-center gap-2">
+              <ShieldCheck className="size-4 text-primary" /> Synchronisation spontanée avec vos professeurs.
+            </p>
           </div>
-          <Badge className="bg-primary/10 text-primary border-none px-6 py-2 rounded-full font-black text-lg">
+          <Badge className="bg-primary text-white border-none px-8 py-3 rounded-2xl font-black text-xl shadow-xl shadow-primary/20">
             MOYENNE : {generalAverage}
           </Badge>
         </div>
 
         <Tabs value={activeTerm} onValueChange={setActiveTerm} className="space-y-8">
-          <TabsList className="bg-white border-2 rounded-[2rem] h-16 p-1.5 flex w-fit shadow-md">
+          <TabsList className="bg-white border-2 rounded-[2rem] h-20 p-2 flex w-fit shadow-md">
             {["T1", "T2", "T3"].map((t, i) => (
-              <TabsTrigger key={t} value={t} className="rounded-[1.5rem] font-black px-10 text-xs uppercase data-[state=active]:bg-primary data-[state=active]:text-white">
+              <TabsTrigger key={t} value={t} className="rounded-[1.5rem] font-black px-12 text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
                 Trimestre {i+1}
               </TabsTrigger>
             ))}
           </TabsList>
 
           <TabsContent value={activeTerm} className="space-y-10 animate-in slide-in-from-bottom-4">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {loadingMyGrades ? (
-                <div className="col-span-full py-20 text-center animate-pulse font-black text-muted-foreground">Synchronisation avec tes professeurs...</div>
+                <div className="col-span-full py-20 text-center animate-pulse font-black text-muted-foreground flex flex-col items-center gap-4">
+                  <Loader2 className="size-12 animate-spin text-primary" />
+                  Mise à jour du carnet...
+                </div>
               ) : subjectAnalyses.length === 0 ? (
                 <Card className="col-span-full p-24 text-center border-4 border-dashed rounded-[3rem] bg-muted/20 opacity-40">
                   <FileText className="size-20 mx-auto mb-6" />
-                  <h3 className="text-2xl font-black">Aucune note scellée</h3>
-                  <p className="font-medium">Tes résultats apparaîtront dès que tes professeurs auront publié les notes.</p>
+                  <h3 className="text-2xl font-black">Aucun point scellé</h3>
+                  <p className="font-medium text-muted-foreground">Tes résultats apparaîtront dès que tes professeurs auront publié les notes du {activeTerm}.</p>
                 </Card>
               ) : (
                 subjectAnalyses.map((subject: any, i) => (
@@ -121,42 +127,45 @@ export default function StudentGradesPage() {
                     <div className={cn("h-3 w-full", subject.myAverage >= 14 ? "bg-emerald-500" : subject.myAverage >= 10 ? "bg-primary" : "bg-destructive")} />
                     <CardContent className="p-8 space-y-6">
                       <div className="flex justify-between items-start">
-                        <div>
-                          <h4 className="text-2xl font-black text-foreground group-hover:text-primary transition-colors">{subject.name}</h4>
-                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Coefficient : {subject.coef}</p>
+                        <div className="space-y-1">
+                          <h4 className="text-2xl font-black text-foreground group-hover:text-primary transition-colors uppercase tracking-tight">{subject.name}</h4>
+                          <Badge variant="outline" className="text-[10px] font-black uppercase border-primary/20 text-primary">Coefficient : {subject.coef}</Badge>
                         </div>
-                        <Badge className={cn("h-12 w-16 justify-center rounded-2xl text-xl font-black", subject.myAverage >= 10 ? "bg-primary/5 text-primary" : "bg-red-50 text-red-600")}>
-                          {subject.myAverage.toFixed(1)}
-                        </Badge>
+                        <div className={cn("size-16 flex flex-col items-center justify-center rounded-2xl shadow-inner border-2", subject.myAverage >= 10 ? "bg-primary/5 border-primary/10 text-primary" : "bg-red-50 border-red-100 text-red-600")}>
+                           <p className="text-xs font-black uppercase opacity-40">Moy</p>
+                           <p className="text-2xl font-black">{subject.myAverage.toFixed(1)}</p>
+                        </div>
                       </div>
 
-                      <div className="space-y-4">
-                         <div className="flex items-center gap-2">
-                           <span className="text-[9px] font-black uppercase text-muted-foreground min-w-[70px]">Interros</span>
+                      <div className="space-y-6">
+                         <div className="space-y-2">
+                           <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-1">Interrogations (3)</p>
                            <div className="flex gap-2">
                               {[subject.i1, subject.i2, subject.i3].map((n, idx) => (
-                                <div key={idx} className={cn("size-9 rounded-xl flex items-center justify-center text-xs font-black border-2", n === null ? "border-dashed border-muted text-muted-foreground/30" : "bg-muted/30 border-transparent")}>
-                                  {n ?? '-'}
+                                <div key={idx} className={cn("flex-1 h-12 rounded-xl flex items-center justify-center text-sm font-black border-2 transition-all", n === null ? "border-dashed border-muted text-muted-foreground/20" : "bg-muted/30 border-transparent text-foreground")}>
+                                  {n !== null ? n.toFixed(1) : '-'}
                                 </div>
                               ))}
                            </div>
                          </div>
-                         <div className="flex items-center gap-2">
-                           <span className="text-[9px] font-black uppercase text-muted-foreground min-w-[70px]">Devoirs</span>
+                         <div className="space-y-2">
+                           <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest px-1">Devoirs (2)</p>
                            <div className="flex gap-2">
                               {[subject.d1, subject.d2].map((n, idx) => (
-                                <div key={idx} className={cn("h-9 w-14 rounded-xl flex items-center justify-center text-xs font-black border-2", n === null ? "border-dashed border-muted text-muted-foreground/30" : "bg-primary/10 border-primary/20 text-primary")}>
-                                  {n ?? '-'}
+                                <div key={idx} className={cn("flex-1 h-12 rounded-xl flex items-center justify-center text-sm font-black border-2 transition-all", n === null ? "border-dashed border-muted text-muted-foreground/20" : "bg-primary/5 border-primary/20 text-primary")}>
+                                  {n !== null ? n.toFixed(1) : '-'}
                                 </div>
                               ))}
                            </div>
                          </div>
                       </div>
 
-                      <div className="flex items-start gap-3 p-4 bg-muted/10 rounded-2xl border border-muted/20">
-                         <TrendingUp className="size-4 text-primary mt-0.5 shrink-0" />
-                         <p className="text-[10px] font-bold text-muted-foreground italic leading-tight">
-                           {subject.myAverage >= 15 ? "Excellent travail dans cette matière !" : subject.myAverage >= 10 ? "Performance stable, continue tes efforts." : "Matière fragile, demande conseil à ton professeur."}
+                      <div className="flex items-start gap-4 p-4 bg-muted/10 rounded-2xl border border-muted/20">
+                         <div className="size-8 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                           <TrendingUp className="size-4 text-primary" />
+                         </div>
+                         <p className="text-[11px] font-bold text-muted-foreground italic leading-tight">
+                           {subject.myAverage >= 15 ? "Excellente maîtrise. Tu domines cette discipline." : subject.myAverage >= 10 ? "Résultats satisfaisants. Travail régulier à maintenir." : "Zone de fragilité détectée. Rapproche-toi de ton professeur."}
                          </p>
                       </div>
                     </CardContent>
@@ -166,6 +175,21 @@ export default function StudentGradesPage() {
             </div>
           </TabsContent>
         </Tabs>
+        
+        <div className="p-8 bg-muted/20 rounded-[3rem] flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-dashed border-muted-foreground/10">
+           <div className="flex items-center gap-4">
+              <div className="size-14 bg-white rounded-2xl flex items-center justify-center shadow-md">
+                <Info className="text-primary size-7" />
+              </div>
+              <div>
+                <p className="font-black text-foreground uppercase tracking-widest text-xs">Note de Sincérité Acadex</p>
+                <p className="text-sm font-medium text-muted-foreground max-w-xl">
+                  Ces données sont scellées par vos professeurs. En cas de contestation, veuillez vous référer à la direction munis de vos copies physiques.
+                </p>
+              </div>
+           </div>
+           <Button className="rounded-2xl font-black bg-foreground text-white px-10 h-14 shadow-xl">Signaler une erreur</Button>
+        </div>
       </div>
     </DashboardLayout>
   )
