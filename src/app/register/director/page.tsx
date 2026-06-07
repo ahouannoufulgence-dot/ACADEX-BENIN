@@ -7,14 +7,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
+import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, Eye, EyeOff, School } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function RegisterDirectorPage() {
   const router = useRouter();
+  const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +27,7 @@ export default function RegisterDirectorPage() {
     phone: "",
     schoolName: "",
     city: "Cotonou",
+    address: "",
     schoolType: "col-lyc",
     password: "",
     confirmPassword: "",
@@ -42,17 +46,36 @@ export default function RegisterDirectorPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      // 1. Initialisation de la configuration école (Univers 2026-2027)
+      const configRef = doc(db, "school_settings", "main_config");
+      await setDoc(configRef, {
+        schoolName: form.schoolName,
+        motto: "Discipline - Travail - Excellence",
+        address: `${form.address}, ${form.city}`,
+        phone: form.phone,
+        academicYear: "2026-2027",
+        availableYears: ["2026-2027"],
+        levels: ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TERMINALE"],
+        createdAt: serverTimestamp(),
+        setupCompleted: true
+      });
+
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
       localStorage.setItem('acadex_user_role', 'Directeur');
       localStorage.setItem('acadex_user_id', 'DIR-001');
+      localStorage.setItem('acadex_active_year', '2026-2027');
+      
+      setLoading(false);
       nextStep();
       toast({
-        title: "Compte créé avec succès",
-        description: `Bienvenue Monsieur ${form.lastName} dans l'écosystème ACADEX.`
+        title: "Configuration Initialisée",
+        description: `Bienvenue en 2026-2027 au sein de ${form.schoolName}.`
       });
-    }, 2000);
+    } catch (e) {
+      toast({ title: "Erreur de configuration", variant: "destructive" });
+      setLoading(false);
+    }
   };
 
   const copyId = () => {
@@ -62,7 +85,6 @@ export default function RegisterDirectorPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* Background with Vibrant Green Overlay */}
       <div className="absolute inset-0 z-0">
         <Image 
           src={regImage?.imageUrl || "https://picsum.photos/seed/green/1920/1080"}
@@ -97,10 +119,10 @@ export default function RegisterDirectorPage() {
             <>
               <CardHeader className="p-10 text-center">
                 <div className="size-16 bg-primary/10 text-primary rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <UserCog className="size-8" />
+                  <School className="size-8" />
                 </div>
-                <CardTitle className="text-3xl font-black">Identité & École</CardTitle>
-                <CardDescription className="text-lg font-medium">Commençons par faire connaissance.</CardDescription>
+                <CardTitle className="text-3xl font-black">Assistant Configuration</CardTitle>
+                <CardDescription className="text-lg font-medium">Initialisons l'année 2026-2027.</CardDescription>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -114,7 +136,7 @@ export default function RegisterDirectorPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="font-bold">Téléphone</Label>
+                  <Label className="font-bold">Téléphone École</Label>
                   <Input placeholder="+229 ..." className="h-12 rounded-xl" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                 </div>
                 <div className="space-y-2">
@@ -155,11 +177,11 @@ export default function RegisterDirectorPage() {
                   <Lock className="size-8" />
                 </div>
                 <CardTitle className="text-3xl font-black">Sécurité du Cockpit</CardTitle>
-                <CardDescription className="text-lg font-medium">Protégez votre espace avec un mot de passe robuste.</CardDescription>
+                <CardDescription className="text-lg font-medium">Configurez vos accès directoriaux.</CardDescription>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="space-y-2">
-                  <Label className="font-bold">Mot de passe</Label>
+                  <Label className="font-bold">Mot de passe Directeur</Label>
                   <div className="relative">
                     <Input 
                       type={showPassword ? "text" : "password"} 
@@ -187,31 +209,16 @@ export default function RegisterDirectorPage() {
                     onChange={e => setForm({...form, confirmPassword: e.target.value})} 
                   />
                 </div>
-                <div className="space-y-4 pt-4 border-t border-dashed">
-                  <div className="space-y-2">
-                    <Label className="font-bold">Question Secrète</Label>
-                    <Select value={form.secretQuestion} onValueChange={v => setForm({...form, secretQuestion: v})}>
-                      <SelectTrigger className="h-12 rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mother">Nom de jeune fille de votre mère ?</SelectItem>
-                        <SelectItem value="teacher">Nom de votre premier enseignant ?</SelectItem>
-                        <SelectItem value="birth">Ville de votre naissance ?</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Réponse Secrète</Label>
-                    <Input placeholder="Votre réponse" className="h-12 rounded-xl" value={form.secretAnswer} onChange={e => setForm({...form, secretAnswer: e.target.value})} />
-                  </div>
+                <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                  <p className="text-[10px] font-black uppercase text-primary tracking-widest mb-1">Démarrage Officiel</p>
+                  <p className="text-sm font-bold text-foreground">Année scolaire : 2026-2027</p>
                 </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/30 flex justify-between">
                 <Button variant="ghost" onClick={prevStep} className="font-bold rounded-xl h-12">Retour</Button>
                 <Button onClick={handleRegister} disabled={loading} className="bg-primary rounded-xl font-black px-10 h-12 shadow-xl shadow-primary/20">
                   {loading ? <Loader2 className="size-5 animate-spin mr-2" /> : <ShieldCheck className="size-5 mr-2" />}
-                  Finaliser l'inscription
+                  Lancer ACADEX
                 </Button>
               </CardFooter>
             </>
@@ -223,11 +230,11 @@ export default function RegisterDirectorPage() {
                 <CheckCircle2 className="size-12" />
               </div>
               <div className="space-y-2">
-                <h2 className="text-3xl font-black">Félicitations !</h2>
-                <p className="text-muted-foreground font-medium text-lg">Votre espace Directeur a été créé avec succès.</p>
+                <h2 className="text-3xl font-black">Univers 2026-2027 Prêt !</h2>
+                <p className="text-muted-foreground font-medium text-lg">Le cockpit de pilotage est configuré.</p>
               </div>
               <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-primary/20 space-y-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Officiel</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Unique</p>
                 <p className="text-5xl font-black text-primary tracking-tighter">DIR-001</p>
                 <Button onClick={copyId} variant="outline" size="sm" className="rounded-full border-primary/20 text-primary font-bold h-10 px-6">
                   Copier l'identifiant
@@ -236,7 +243,7 @@ export default function RegisterDirectorPage() {
               <div className="pt-8">
                 <Button asChild className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20">
                   <Link href="/dashboard">
-                    Accéder au tableau de bord <ArrowRight className="ml-2 size-5" />
+                    Entrer dans le Dashboard <ArrowRight className="ml-2 size-5" />
                   </Link>
                 </Button>
               </div>

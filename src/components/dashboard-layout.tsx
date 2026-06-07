@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -105,8 +104,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
-  const [availableYears, setAvailableYears] = useState<string[]>(["2024-2025"])
-  const [activeYear, setActiveYear] = useState("2024-2025")
+  const [availableYears, setAvailableYears] = useState<string[]>(["2026-2027"])
+  const [activeYear, setActiveYear] = useState("2026-2027")
 
   const bgImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
 
@@ -124,10 +123,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserName(name || "Monsieur")
     setUserRole(role)
     setUserId(id || "INV-000")
-    if (savedYear) setActiveYear(savedYear)
+    
+    // Année par défaut : 2026-2027 si rien n'est sauvé
+    if (savedYear) {
+      setActiveYear(savedYear)
+    } else {
+      setActiveYear("2026-2027")
+      localStorage.setItem('acadex_active_year', "2026-2027")
+    }
+    
     setMounted(true)
 
-    // Charger la config école et les années disponibles
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
         const data = snap.data()
@@ -145,8 +151,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const handleYearChange = (year: string) => {
     setActiveYear(year)
     localStorage.setItem('acadex_active_year', year)
-    // On force un re-render complet ou on laisse le state couler
-    window.dispatchEvent(new Event('storage')) // Notifier les autres composants
+    window.dispatchEvent(new Event('storage')) 
     router.refresh()
   }
 
@@ -235,7 +240,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               
               <div className="h-10 w-px bg-border/40 hidden sm:block" />
               
-              {/* SÉLECTEUR D'ANNÉE GLOBAL ACADEX */}
               <div className="hidden sm:flex items-center gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -273,7 +277,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC] relative">
-            {/* Immersive background filigree */}
             <div className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none grayscale">
               <Image 
                 src={bgImage?.imageUrl || "https://picsum.photos/seed/acadex-bg/1920/1080"} 
