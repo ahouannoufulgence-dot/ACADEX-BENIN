@@ -17,14 +17,15 @@ import {
   UserCircle2,
   Phone,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, deleteDoc, doc, where } from "firebase/firestore"
+import { collection, query, deleteDoc, doc, where, onSnapshot } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -58,19 +59,29 @@ export default function StudentsPage() {
     setUserRole(localStorage.getItem('acadex_user_role'))
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     
-    const updateYear = (e?: any) => {
-      const year = e?.detail || localStorage.getItem('acadex_active_year') || "2026-2027"
-      setActiveYear(year)
+    // Initialisation depuis localStorage ou défaut
+    const savedYear = localStorage.getItem('acadex_active_year') || "2026-2027"
+    setActiveYear(savedYear)
+
+    // Écouter les changements d'année en temps réel
+    const updateYear = (e: any) => {
+      if (e.detail) setActiveYear(e.detail)
     }
     
-    updateYear()
     window.addEventListener('acadex_year_changed', updateYear as any)
-    window.addEventListener('storage', updateYear)
+    
+    // Synchronisation avec la config réelle de l'école pour plus de sécurité
+    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
+      if (snap.exists() && !localStorage.getItem('acadex_active_year')) {
+        setActiveYear(snap.data().academicYear || "2026-2027")
+      }
+    })
+
     return () => {
       window.removeEventListener('acadex_year_changed', updateYear as any)
-      window.removeEventListener('storage', updateYear)
+      unsub()
     }
-  }, [])
+  }, [db])
 
   // REQUÊTE SÉCURISÉE : Filtrée par ANNÉE SCOLAIRE ACTIVE
   const studentsQuery = useMemo(() => {
@@ -82,6 +93,7 @@ export default function StudentsPage() {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
     }
     
+    // Pour le Directeur, on affiche tous les élèves de l'année active
     return query(baseCol, where("academicYear", "==", activeYear))
   }, [db, userRole, userClasses, activeYear])
 
@@ -130,7 +142,7 @@ export default function StudentsPage() {
               {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
             </h1>
             <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
-              Univers scolaire de l'année <Badge className="bg-primary">{activeYear}</Badge>
+              <ShieldCheck className="size-4 text-emerald-500" /> Univers scolaire de l'année <Badge className="bg-primary">{activeYear}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -157,12 +169,24 @@ export default function StudentsPage() {
 
         <div className="grid gap-4">
           {loading ? (
-            <div className="flex items-center justify-center p-12"><Loader2 className="size-10 animate-spin text-primary" /></div>
+            <div className="flex flex-col items-center justify-center p-20 gap-4">
+              <Loader2 className="size-10 animate-spin text-primary" />
+              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Appel de la promotion {activeYear}...</p>
+            </div>
           ) : filteredStudents.length === 0 ? (
-            <Card className="p-16 text-center bg-white rounded-[3.5rem] border-none shadow-sm">
-              <Users className="size-16 text-muted-foreground mx-auto mb-6 opacity-20" />
-              <h3 className="text-xl font-black">Aucun élève en {activeYear}</h3>
-              <p className="text-muted-foreground font-medium">Les profils apparaîtront selon l'année sélectionnée dans le sélecteur global.</p>
+            <Card className="p-20 text-center bg-white rounded-[3.5rem] border-none shadow-sm flex flex-col items-center justify-center space-y-6">
+              <div className="size-20 bg-muted rounded-full flex items-center justify-center opacity-20">
+                <Users className="size-10" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black">Aucun élève trouvé</h3>
+                <p className="text-muted-foreground font-medium max-w-sm">
+                  Vérifiez que l'année scolaire <Badge variant="outline" className="border-primary/20 text-primary">{activeYear}</Badge> est la bonne.
+                </p>
+              </div>
+              <Button asChild variant="outline" className="rounded-xl border-2 font-bold">
+                <Link href="/eleves/identifiants">Gérer les inscriptions</Link>
+              </Button>
             </Card>
           ) : (
             <div className="grid gap-4">
@@ -171,10 +195,10 @@ export default function StudentsPage() {
                   <CardContent className="p-5 flex items-center justify-between">
                     <div className="flex items-center gap-6">
                       <Avatar className="size-16 border-4 border-muted group-hover:border-primary/20 transition-all">
-                        <AvatarFallback className="bg-primary text-white font-black text-xl">{student.lastName[0]}{student.firstName[0]}</AvatarFallback>
+                        <AvatarFallback className="bg-primary text-white font-black text-xl">{student.lastName?.[0]}{student.firstName?.[0]}</AvatarFallback>
                       </Avatar>
                       <div>
-                        <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors">{student.lastName.toUpperCase()} {student.firstName}</h3>
+                        <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors">{student.lastName?.toUpperCase()} {student.firstName}</h3>
                         <div className="flex flex-wrap items-center gap-4 mt-1">
                           <Badge className="bg-primary/10 text-primary border-none font-black text-[10px] px-3">{student.classId}</Badge>
                           <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{student.matricule}</span>
@@ -184,8 +208,8 @@ export default function StudentsPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <div className="text-right hidden sm:block">
-                        <p className="text-[9px] font-black text-muted-foreground uppercase">Année</p>
-                        <p className="text-xs font-bold">{student.academicYear}</p>
+                        <p className="text-[9px] font-black text-muted-foreground uppercase">Statut</p>
+                        <Badge variant="outline" className="text-[10px] font-black uppercase border-emerald-200 text-emerald-600 bg-emerald-50">{student.status}</Badge>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

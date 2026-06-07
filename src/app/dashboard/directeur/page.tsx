@@ -49,18 +49,22 @@ export default function DirectorDashboard() {
     
     updateYear()
     window.addEventListener('acadex_year_changed', updateYear as any)
-    window.addEventListener('storage', updateYear)
 
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
         const d = snap.data()
-        setSchoolInfo({ name: d.schoolName || "ACADEX ELITE", year: d.academicYear || "2026-2027" })
+        setSchoolInfo({ 
+          name: d.schoolName || "ACADEX ELITE", 
+          year: d.academicYear || "2026-2027" 
+        })
+        if (!localStorage.getItem('acadex_active_year')) {
+          setActiveYear(d.academicYear || "2026-2027")
+        }
       }
     })
     return () => {
       unsub()
       window.removeEventListener('acadex_year_changed', updateYear as any)
-      window.removeEventListener('storage', updateYear)
     }
   }, [db])
 
