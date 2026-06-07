@@ -59,7 +59,7 @@ export default function DirectorDashboard() {
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
   const { data: unusedIds } = useCollection(regIdsQuery)
-  const { data: payments } = useCollection(paymentsCol)
+  const { data: payments } = useCollection(paymentsQuery)
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {

@@ -47,7 +47,7 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { useMemo, useState, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -55,8 +55,6 @@ import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-const COLORS = ['#14532d', '#fbbf24', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899']
 
 export default function StatisticsPage() {
   const db = useFirestore()
@@ -79,8 +77,8 @@ export default function StatisticsPage() {
   const gradesCol = useMemo(() => query(collection(db, "grades")), [db])
   const absencesCol = useMemo(() => query(collection(db, "absences")), [db])
 
-  const { data: students, loading: loadingStudents } = useCollection(studentsCol)
-  const { data: teachers, loading: loadingTeachers } = useCollection(teachersCol)
+  const { data: students } = useCollection(studentsCol)
+  const { data: teachers } = useCollection(teachersCol)
   const { data: payments } = useCollection(paymentsCol)
   const { data: grades } = useCollection(gradesCol)
   const { data: absences } = useCollection(absencesCol)
@@ -92,7 +90,7 @@ export default function StatisticsPage() {
     const activeClasses = Array.from(new Set((students || []).map((s: any) => s.classId))).length
     
     const revenue = (payments || []).reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0)
-    const expectedRevenue = totalStudents * 150000 // Exemple: 150k par élève
+    const expectedRevenue = totalStudents * 150000 
     const recoveryRate = expectedRevenue > 0 ? (revenue / expectedRevenue * 100).toFixed(1) : "0.0"
 
     const validGrades = (grades || []).map((g: any) => Number(g.value)).filter(v => !isNaN(v) && v >= 0)
