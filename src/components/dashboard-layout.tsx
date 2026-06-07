@@ -26,7 +26,8 @@ import {
   Zap,
   BarChart3,
   ChevronDown,
-  History
+  History,
+  ClipboardList
 } from "lucide-react"
 import {
   Sidebar,
@@ -65,6 +66,7 @@ const navigationConfig = {
   Directeur: [
     { name: "Dashboard", href: "/dashboard/directeur", icon: LayoutDashboard },
     { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
+    { name: "Vie de l’Élève", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Gestion des Élèves", href: "/eleves", icon: Users },
     { name: "Identifiants Élèves", href: "/eleves/identifiants", icon: Zap },
     { name: "Corps Enseignant", href: "/enseignants", icon: UserSquare2 },
@@ -78,6 +80,7 @@ const navigationConfig = {
   ],
   Enseignant: [
     { name: "Tableau de Bord", href: "/dashboard/enseignant", icon: LayoutDashboard },
+    { name: "Vie de l’Élève", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Mes Classes", href: "/eleves", icon: Users },
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
     { name: "Mon Programme", href: "/disponibilites", icon: Calendar },
@@ -86,9 +89,9 @@ const navigationConfig = {
   ],
   Élève: [
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
+    { name: "Cahier de Vie", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Mes Notes", href: "/dashboard/eleve/notes", icon: PenTool },
     { name: "Ma Progression", href: "/dashboard/eleve/progression", icon: TrendingUp },
-    { name: "Mes Absences", href: "/dashboard/eleve/absences", icon: Clock },
     { name: "Mon Emploi du Temps", href: "/dashboard/eleve/agenda", icon: Calendar },
     { name: "Mes Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
@@ -147,7 +150,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const handleYearChange = (year: string) => {
     setActiveYear(year)
     localStorage.setItem('acadex_active_year', year)
-    // Dispatch d'un événement personnalisé pour notifier toutes les pages
     window.dispatchEvent(new CustomEvent('acadex_year_changed', { detail: year }))
     router.refresh()
   }
