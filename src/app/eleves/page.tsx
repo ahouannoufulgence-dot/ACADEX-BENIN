@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, deleteDoc, doc } from "firebase/firestore"
+import { collection, query, orderBy, deleteDoc, doc, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -48,10 +48,30 @@ import {
 export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [studentToDelete, setStudentToDelete] = useState<any>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [userClasses, setUserClasses] = useState<string[]>([])
   
   const db = useFirestore()
 
-  const studentsQuery = useMemo(() => query(collection(db, "students"), orderBy("registeredAt", "desc")), [db])
+  useEffect(() => {
+    setUserRole(localStorage.getItem('acadex_user_role'))
+    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
+  }, [])
+
+  // REQUÊTE SÉCURISÉE : Si enseignant, on filtre par ses classes
+  const studentsQuery = useMemo(() => {
+    if (!db || !userRole) return null
+    
+    const baseCol = collection(db, "students")
+    
+    if (userRole === "Enseignant" && userClasses.length > 0) {
+      // Restriction aux classes de l'enseignant
+      return query(baseCol, where("classId", "in", userClasses), orderBy("registeredAt", "desc"))
+    }
+    
+    return query(baseCol, orderBy("registeredAt", "desc"))
+  }, [db, userRole, userClasses])
+
   const { data: students, loading } = useCollection(studentsQuery)
 
   const filteredStudents = useMemo(() => {
@@ -77,7 +97,7 @@ export default function StudentsPage() {
     docPdf.rect(0, 0, 210, 30, 'F')
     docPdf.setTextColor(255, 255, 255)
     docPdf.setFontSize(16)
-    docPdf.text(`ACADEX - RÉPERTOIRE OFFICIEL DES ÉLÈVES INSCRITS`, 105, 20, { align: "center" })
+    docPdf.text(`ACADEX - RÉPERTOIRE DES ÉLÈVES (${userRole})`, 105, 20, { align: "center" })
 
     autoTable(docPdf, {
       startY: 40,
@@ -93,16 +113,24 @@ export default function StudentsPage() {
       <div className="space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Gestion des <span className="text-primary italic">Élèves</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Répertoire centralisé des profils auto-inscrits.</p>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">
+              {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
+            </h1>
+            <p className="text-muted-foreground mt-2 font-medium">
+              {userRole === "Enseignant" 
+                ? `Liste des élèves de vos ${userClasses.length} classes attribuées.`
+                : "Répertoire centralisé des profils auto-inscrits."}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
               <FileDown className="mr-2 size-5" /> Exporter Liste PDF
             </Button>
-            <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl rounded-2xl h-12 px-8 font-black">
-              <Link href="/eleves/identifiants">Gérer Identifiants</Link>
-            </Button>
+            {userRole === "Directeur" && (
+              <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl rounded-2xl h-12 px-8 font-black">
+                <Link href="/eleves/identifiants">Gérer Identifiants</Link>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -122,8 +150,8 @@ export default function StudentsPage() {
           ) : filteredStudents.length === 0 ? (
             <Card className="p-16 text-center bg-white rounded-[3.5rem] border-none shadow-sm">
               <Users className="size-16 text-muted-foreground mx-auto mb-6 opacity-20" />
-              <h3 className="text-xl font-black">Aucun élève inscrit pour le moment</h3>
-              <p className="text-muted-foreground font-medium">Les profils apparaîtront automatiquement après l'auto-inscription des élèves.</p>
+              <h3 className="text-xl font-black">Aucun élève trouvé</h3>
+              <p className="text-muted-foreground font-medium">Les profils apparaîtront selon vos droits d'accès et les inscriptions réelles.</p>
             </Card>
           ) : (
             <div className="grid gap-4">
@@ -146,7 +174,7 @@ export default function StudentsPage() {
                     <div className="flex items-center gap-4">
                       <div className="text-right hidden sm:block">
                         <p className="text-[9px] font-black text-muted-foreground uppercase">Inscrit le</p>
-                        <p className="text-xs font-bold">{new Date(student.registeredAt).toLocaleDateString()}</p>
+                        <p className="text-xs font-bold">{student.registeredAt ? new Date(student.registeredAt).toLocaleDateString() : '---'}</p>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -158,12 +186,14 @@ export default function StudentsPage() {
                               <UserCircle2 className="size-4" /> Voir Profil
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer"
-                            onSelect={() => setStudentToDelete(student)}
-                          >
-                            <Trash2 className="size-4" /> Supprimer
-                          </DropdownMenuItem>
+                          {userRole === "Directeur" && (
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer"
+                              onSelect={() => setStudentToDelete(student)}
+                            >
+                              <Trash2 className="size-4" /> Supprimer
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

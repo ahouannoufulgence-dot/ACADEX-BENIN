@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, Zap, Info, ShieldCheck, Calculator } from "lucide-react"
+import { Save, Loader2, Zap, Info, ShieldCheck, Calculator, Lock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
   Select, 
@@ -19,18 +19,37 @@ import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, orderBy, where, setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore"
 
-// Nomenclature Unifiée ACADEX
-const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
 const terms = ["1er Trimestre", "2ème Trimestre", "3ème Trimestre"]
+const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
+const allSubjects = ["Maths", "Français", "Anglais", "PCT", "SVT", "H-G", "Philo", "Allemand", "Espagnol", "EPS"]
 
 export default function GradesPage() {
   const db = useFirestore()
+  const [userRole, setUserRole] = useState<string | null>(null)
+  const [userClasses, setUserClasses] = useState<string[]>([])
+  const [userSubject, setUserSubject] = useState("")
+  
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedSubject, setSelectedSubject] = useState("")
   const [selectedTerm, setSelectedTerm] = useState(terms[0])
   const [saving, setSaving] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, any>>({})
   const [coefficient, setCoefficient] = useState(2)
+
+  useEffect(() => {
+    const role = localStorage.getItem('acadex_user_role')
+    const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
+    const subject = localStorage.getItem('acadex_user_subject') || ""
+    
+    setUserRole(role)
+    setUserClasses(classes)
+    setUserSubject(subject)
+
+    // Si enseignant, on force sa matière
+    if (role === "Enseignant" && subject) {
+      setSelectedSubject(subject)
+    }
+  }, [])
 
   // Récupérer les élèves réels de la classe sélectionnée
   const studentsQuery = useMemo(() => {
@@ -71,6 +90,7 @@ export default function GradesPage() {
         const gradeId = `${student.id}_${selectedSubject}_${selectedTerm.replace(' ', '')}`
         await setDoc(doc(db, "grades", gradeId), {
           studentId: student.id,
+          studentName: `${student.lastName} ${student.firstName}`,
           classId: selectedClass,
           subject: selectedSubject,
           term: selectedTerm,
@@ -95,7 +115,7 @@ export default function GradesPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des <span className="text-primary italic">Notes</span></h1>
-            <p className="text-muted-foreground font-medium italic">Saisie des évaluations avec prise en compte des coefficients.</p>
+            <p className="text-muted-foreground font-medium italic">Saisie des évaluations avec application automatique des coefficients.</p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="bg-primary hover:bg-primary/90 shadow-xl h-14 px-10 rounded-2xl font-black">
             {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} Valider & Sceller les Notes
@@ -106,17 +126,32 @@ export default function GradesPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe</label>
-              <Select onValueChange={setSelectedClass}>
+              <Select onValueChange={setSelectedClass} value={selectedClass}>
                 <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {(userRole === "Enseignant" ? userClasses : officialClasses).map(c => (
+                    <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Discipline</label>
-              <Select onValueChange={setSelectedSubject}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Matière" /></SelectTrigger>
-                <SelectContent>{["Maths", "Français", "Anglais", "PCT", "SVT", "H-G", "Philo", "Allemand"].map(m => <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="relative">
+                <Select 
+                  onValueChange={setSelectedSubject} 
+                  value={selectedSubject} 
+                  disabled={userRole === "Enseignant"}
+                >
+                  <SelectTrigger className={`h-14 rounded-2xl border-2 font-black ${userRole === "Enseignant" ? 'bg-muted/50 cursor-not-allowed' : ''}`}>
+                    <SelectValue placeholder="Matière" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allSubjects.map(m => <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {userRole === "Enseignant" && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground opacity-50" />}
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Trimestre</label>
