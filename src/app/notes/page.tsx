@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck } from "lucide-react"
@@ -61,7 +61,7 @@ export default function GradesPage() {
     setUserName(name)
   }, [])
 
-  // Récupérer le coefficient de la matière pour cette classe (configuré par le Directeur)
+  // Récupérer le coefficient de la matière pour cette classe
   useEffect(() => {
     const fetchCoef = async () => {
       if (!selectedClass || !userSubject) return
@@ -71,7 +71,7 @@ export default function GradesPage() {
         if (snap.exists()) {
           setClassCoefficient(snap.data().coef || 1)
         } else {
-          setClassCoefficient(1) // Par défaut si non configuré
+          setClassCoefficient(1)
         }
       } catch (e) {
         console.warn("Erreur chargement coef", e)
@@ -85,8 +85,7 @@ export default function GradesPage() {
     return query(
       collection(db, 'students'), 
       where("classId", "==", selectedClass),
-      where("status", "==", "Actif"),
-      orderBy("lastName", "asc")
+      where("status", "==", "Actif")
     )
   }, [db, selectedClass])
 
@@ -113,7 +112,6 @@ export default function GradesPage() {
     try {
       students?.forEach((student: any) => {
         const gradeValue = parseFloat(gradesData[student.id] || "0")
-        // ID unique par élève, matière, trimestre et type de note pour permettre l'écrasement/mise à jour
         const gradeId = `${student.id}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
@@ -126,7 +124,6 @@ export default function GradesPage() {
           type: selectedEvalType,
           value: gradeValue,
           coefficient: classCoefficient,
-          weightedValue: gradeValue * classCoefficient,
           teacherName: userName,
           registeredAt: serverTimestamp()
         }, { merge: true })
@@ -134,7 +131,7 @@ export default function GradesPage() {
 
       await batch.commit()
       setGradesData({})
-      toast({ title: "Notes scellées !", description: `Les notes du ${selectedTrimestre} (${selectedEvalType}) ont été publiées.` })
+      toast({ title: "Notes scellées !", description: `Les notes du ${selectedTrimestre} ont été publiées.` })
     } catch (e) {
       const error = new FirestorePermissionError({ path: 'grades', operation: 'write' })
       errorEmitter.emit('permission-error', error)
@@ -150,7 +147,7 @@ export default function GradesPage() {
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Gestion des <span className="text-primary italic">Notes</span></h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-primary" /> Architecture 3 Interros / 2 Devoirs - {userSubject}
+              <ShieldCheck className="size-4 text-primary" /> Modèle 3 Interros / 2 Devoirs - {userSubject}
             </p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
@@ -184,7 +181,7 @@ export default function GradesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Type d'Évaluation</label>
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Évaluation</label>
               <Select value={selectedEvalType} onValueChange={setSelectedEvalType}>
                 <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
                   <SelectValue />
@@ -196,7 +193,7 @@ export default function GradesPage() {
             </div>
             <div className="flex items-end pb-1">
                <Badge className="h-12 w-full justify-center rounded-xl bg-muted text-muted-foreground font-bold border-none">
-                 Saisie Officielle ACADEX
+                 Saisie Officielle Coefficiée
                </Badge>
             </div>
           </div>
@@ -212,22 +209,22 @@ export default function GradesPage() {
               </div>
               <div className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm border border-primary/10">
                  <Calculator className="size-4 text-primary" />
-                 <span className="text-xs font-black uppercase text-primary">Coef : {classCoefficient}</span>
+                 <span className="text-xs font-black uppercase text-primary">Coefficient : {classCoefficient}</span>
               </div>
             </div>
             
             <CardContent className="p-0">
               {loadingStudents ? (
-                <div className="p-20 text-center animate-pulse font-black text-muted-foreground">Chargement des élèves...</div>
+                <div className="p-20 text-center animate-pulse font-black text-muted-foreground">Synchronisation de la classe...</div>
               ) : !students || students.length === 0 ? (
-                <div className="p-20 text-center italic text-muted-foreground font-medium">Aucun élève actif trouvé dans cette classe.</div>
+                <div className="p-20 text-center italic text-muted-foreground font-medium">Aucun élève actif trouvé.</div>
               ) : (
                 <table className="w-full">
                   <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-b">
                     <tr>
                       <th className="px-10 py-6 text-left">Élève</th>
                       <th className="px-10 py-6 text-center">Note / 20</th>
-                      <th className="px-10 py-6 text-right bg-primary text-white">Impact Pondéré</th>
+                      <th className="px-10 py-6 text-right bg-primary text-white">Impact Coefficié</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-muted/30">

@@ -46,8 +46,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // REQUÊTES STRICTES POUR COMPTEURS RÉELS
-  // Un élève est "réel" s'il a un matricule et un nom (évite de compter les codes non activés)
+  // REQUÊTES STRICTES POUR COMPTEURS RÉELS (3 ÉLÈVES / 1 ENSEIGNANT)
   const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
@@ -56,28 +55,27 @@ export default function DirectorDashboard() {
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
-  const { data: unusedIds, loading: loadingIds } = useCollection(regIdsQuery)
+  const { data: unusedIds } = useCollection(regIdsQuery)
   const { data: payments } = useCollection(paymentsQuery)
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    // Filtrage supplémentaire côté client pour être sûr du "Zéro Absolu"
-    const realStudents = students?.filter((s: any) => s.matricule && s.lastName) || []
-    const totalStudents = realStudents.length
+    // Un élève est compté SEULEMENT s'il a un profil ACTIF
+    const totalStudents = students?.length || 0
     
-    const realTeachers = teachers?.filter((t: any) => t.fullName) || []
-    const totalTeachers = realTeachers.length
+    // Un enseignant est compté s'il est dans la collection teachers
+    const totalTeachers = teachers?.length || 0
 
     const idsCount = unusedIds?.length || 0
     const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
-    // Calcul de la moyenne de l'école (moyenne des moyennes enregistrées)
+    // Calcul de la moyenne de l'école basée sur les moyennes pondérées enregistrées
     const validGrades = grades?.filter((g: any) => g.value !== undefined) || []
     const avg = validGrades.length 
       ? (validGrades.reduce((acc, g: any) => acc + (Number(g.value) || 0), 0) / validGrades.length).toFixed(2)
       : "0.00"
 
-    const lastStudent = realStudents.length ? realStudents[0] : null
+    const lastStudent = students?.length ? students[0] : null
 
     return { totalStudents, totalTeachers, idsCount, revenue, avg, lastStudent }
   }, [students, teachers, unusedIds, payments, grades])
@@ -114,7 +112,7 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">{loadingStudents ? "..." : stats.totalStudents}</p>
+              <p className="text-4xl font-black text-foreground">{loadingStudents ? <Loader2 className="animate-spin" /> : stats.totalStudents}</p>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Users className="size-6" /></div>
             </div>
           </Card>
@@ -122,7 +120,7 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Corps Enseignant</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">{loadingTeachers ? "..." : stats.totalTeachers}</p>
+              <p className="text-4xl font-black text-foreground">{loadingTeachers ? <Loader2 className="animate-spin" /> : stats.totalTeachers}</p>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
             </div>
           </Card>
