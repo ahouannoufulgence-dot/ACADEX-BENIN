@@ -21,16 +21,20 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import Image from "next/image"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, doc, onSnapshot, query, where } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import placeholderData from "@/app/lib/placeholder-images.json"
 
 export default function DirectorDashboard() {
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2024-2025" })
   const [directorFullName, setDirectorFullName] = useState("le Directeur")
+
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
 
   useEffect(() => {
     setMounted(true)
@@ -46,7 +50,6 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // REQUÊTES FILTRÉES : Sincérité totale des données
   const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
@@ -56,18 +59,15 @@ export default function DirectorDashboard() {
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
   const { data: unusedIds } = useCollection(regIdsQuery)
-  const { data: payments } = useCollection(paymentsQuery)
+  const { data: payments } = useCollection(paymentsCol)
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    // Stricte comptabilité des élèves ACTIFS
     const totalStudents = students?.length || 0
-    // Comptabilité des enseignants RÉELS
     const totalTeachers = teachers?.length || 0
     const idsCount = unusedIds?.length || 0
     const revenue = (payments || []).reduce((acc, p: any) => acc + (parseFloat(p.amountPaid) || 0), 0)
     
-    // Moyenne Sincère de l'Établissement
     const validValues = (grades || []).map((g: any) => parseFloat(g.value)).filter(v => !isNaN(v) && v >= 0)
     const avg = validValues.length > 0 
       ? (validValues.reduce((acc, v) => acc + v, 0) / validValues.length).toFixed(2)
@@ -83,18 +83,36 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-8 animate-in">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
-          <div className="space-y-2 relative z-10">
-            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
-              Bonjour Monsieur le Directeur <span className="text-primary italic">{directorFullName}</span>,
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 py-1 uppercase">{schoolInfo.name}</Badge>
-              <div className="flex items-center gap-2 font-bold text-sm bg-muted/50 px-4 py-1 rounded-full"><Calendar className="size-4 text-primary" /> {today}</div>
-              <div className="flex items-center gap-2 font-bold text-sm bg-muted/50 px-4 py-1 rounded-full"><ShieldCheck className="size-4 text-emerald-500" /> Cockpit Sécurisé</div>
+        {/* Immersive Header Banner */}
+        <div className="relative min-h-[320px] rounded-[3.5rem] overflow-hidden shadow-2xl group">
+          <Image 
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-director/1920/1080"}
+            alt="Director Cockpit Background"
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-1000"
+            priority
+            data-ai-hint={heroImage?.imageHint || "smiling students"}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/70 to-transparent" />
+          
+          <div className="absolute inset-0 p-12 flex flex-col justify-center gap-6">
+            <div className="space-y-4 max-w-2xl">
+              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
+                Bonjour Monsieur <span className="text-emerald-400 italic">le Directeur {directorFullName}</span>,
+              </h1>
+              <div className="flex flex-wrap items-center gap-4">
+                <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black px-6 py-2 uppercase tracking-widest text-xs">
+                  {schoolInfo.name}
+                </Badge>
+                <div className="flex items-center gap-2 font-bold text-sm bg-white/10 backdrop-blur-md text-white/90 px-6 py-2 rounded-full border border-white/10">
+                  <Calendar className="size-4 text-emerald-400" /> {today}
+                </div>
+                <div className="flex items-center gap-2 font-bold text-sm bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
+                  <ShieldCheck className="size-4" /> Cockpit Certifié
+                </div>
+              </div>
             </div>
           </div>
-          <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none hidden md:block" />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -154,12 +172,6 @@ export default function DirectorDashboard() {
                       </Button>
                     </div>
                   )}
-                  {stats.totalStudents === 0 && !loadingStudents && (
-                    <div className="p-12 text-center text-muted-foreground font-bold flex flex-col items-center gap-2">
-                       <CheckCircle2 className="size-10 opacity-10" />
-                       <p className="text-sm italic">Aucun élève n'a encore activé son compte matricule.</p>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -184,10 +196,6 @@ export default function DirectorDashboard() {
                     <span className="text-muted-foreground">Moteur IA</span>
                     <Badge className="bg-primary">PRÊT</Badge>
                   </div>
-                  <div className="flex justify-between items-center text-sm font-bold">
-                    <span className="text-muted-foreground">Base de données</span>
-                    <Badge className="bg-primary">OPTIMALE</Badge>
-                  </div>
                </div>
             </Card>
 
@@ -196,7 +204,7 @@ export default function DirectorDashboard() {
                 <Sparkles className="size-6 text-primary animate-pulse" />
                 <h4 className="font-black text-lg">Cerveau ACADEX</h4>
               </div>
-              <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">"Utilisez l'assistant pour analyser les disparités de notes entre vos {stats.totalTeachers} enseignants."</p>
+              <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">"Analysez les disparités de notes entre vos {stats.totalTeachers} enseignants."</p>
               <Button asChild className="w-full bg-white text-primary hover:bg-white/90 rounded-xl font-black h-11 border border-primary/10">
                 <Link href="/assistant">Ouvrir l'Assistant</Link>
               </Button>

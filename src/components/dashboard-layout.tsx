@@ -43,6 +43,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
@@ -50,6 +51,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { doc, onSnapshot } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
+import placeholderData from "@/app/lib/placeholder-images.json"
 
 const navigationConfig = {
   Directeur: [
@@ -94,6 +96,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
+
+  const bgImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
@@ -207,8 +211,20 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Avatar>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC]">
-            {children}
+          <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC] relative">
+            {/* Immersive background filigree */}
+            <div className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none grayscale">
+              <Image 
+                src={bgImage?.imageUrl || "https://picsum.photos/seed/acadex-bg/1920/1080"} 
+                alt="ACADEX Background Filigree" 
+                fill 
+                className="object-cover"
+                data-ai-hint={bgImage?.imageHint || "smiling students"}
+              />
+            </div>
+            <div className="relative z-10">
+              {children}
+            </div>
           </main>
         </SidebarInset>
       </div>

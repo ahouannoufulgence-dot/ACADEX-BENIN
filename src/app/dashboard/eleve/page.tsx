@@ -12,22 +12,29 @@ import {
   Sparkles,
   ArrowRight,
   FileText,
-  Loader2
+  Loader2,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
+import Image from "next/image"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
+import placeholderData from "@/app/lib/placeholder-images.json"
 
 export default function StudentDashboard() {
   const db = useFirestore()
   const [studentId, setStudentId] = useState("")
+  const [studentName, setStudentName] = useState("Élève")
   const [mounted, setMounted] = useState(false)
+
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
 
   useEffect(() => {
     setStudentId(localStorage.getItem('acadex_user_id') || "")
+    setStudentName(localStorage.getItem('acadex_user_name') || "Élève")
     setMounted(true)
   }, [])
 
@@ -38,7 +45,6 @@ export default function StudentDashboard() {
 
   const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
 
-  // CALCUL DE LA MOYENNE SYNCHRONE (Sécurisé contre NaN)
   const stats = useMemo(() => {
     if (!mounted || !grades) return [
       { title: "Ma Moyenne", value: "0.00", label: "Moyenne Générale", icon: GraduationCap, color: "text-primary", href: "/dashboard/eleve/notes" },
@@ -87,16 +93,40 @@ export default function StudentDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-10 animate-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Mon Cockpit</h1>
-            <p className="text-muted-foreground font-medium">Synchronisation temps réel avec vos professeurs.</p>
+        
+        {/* Immersive Student Banner */}
+        <div className="relative min-h-[300px] rounded-[3.5rem] overflow-hidden shadow-2xl group">
+          <Image 
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-student/1920/1080"}
+            alt="Student Cockpit Background"
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-1000"
+            priority
+            data-ai-hint={heroImage?.imageHint || "smiling students"}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/60 to-transparent" />
+          
+          <div className="absolute inset-0 p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="space-y-4 max-w-xl">
+              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
+                Bienvenue sur ton <span className="text-emerald-400 italic">Cockpit</span>,
+              </h1>
+              <p className="text-2xl font-bold text-white/90">{studentName}</p>
+              <div className="flex flex-wrap items-center gap-4">
+                <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black px-6 py-2 uppercase tracking-widest text-xs">
+                  {studentId}
+                </Badge>
+                <div className="flex items-center gap-2 font-bold text-sm bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
+                  <ShieldCheck className="size-4" /> Certification Acadex Live
+                </div>
+              </div>
+            </div>
+            <Button asChild className="bg-white text-primary hover:bg-white/90 shadow-2xl rounded-2xl h-16 px-10 font-black text-lg transition-all active:scale-95">
+               <Link href="/assistant">
+                 <Sparkles className="mr-3 size-6 fill-primary/20" /> Assistant IA
+               </Link>
+            </Button>
           </div>
-          <Button asChild className="bg-primary shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black text-lg">
-             <Link href="/assistant">
-               <Sparkles className="mr-2 size-5 fill-white" /> Assistant IA
-             </Link>
-          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -180,7 +210,7 @@ export default function StudentDashboard() {
                  <h4 className="font-black text-lg">Conseil IA</h4>
                </div>
                <p className="text-sm font-medium text-muted-foreground italic leading-relaxed">
-                 {grades?.length ? "L'IA analyse vos résultats récents pour optimiser vos révisions." : "En attente de vos premières notes pour vous coacher."}
+                 {grades?.length ? "L'IA analyse tes résultats pour optimiser tes révisions." : "En attente de tes premières notes pour te coacher."}
                </p>
             </Card>
           </div>
