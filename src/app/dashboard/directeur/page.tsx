@@ -17,7 +17,8 @@ import {
   ArrowRight,
   TrendingUp,
   CheckCircle2,
-  Activity
+  Activity,
+  UserCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -46,8 +47,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // REQUÊTES STRICTES POUR COMPTEURS RÉELS
-  // On ne compte QUE les élèves ACTIFS (3 dans votre cas)
+  // REQUÊTES STRICTES POUR COMPTEURS RÉELS (Sincérité Totale)
   const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
@@ -66,8 +66,8 @@ export default function DirectorDashboard() {
     const idsCount = unusedIds?.length || 0
     const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
-    // Calcul de la moyenne de l'école basée sur toutes les notes scellées
-    const validGrades = grades?.filter((g: any) => g.value !== undefined) || []
+    // Calcul de la moyenne de l'école (Sécurisé)
+    const validGrades = grades?.filter((g: any) => g.value !== undefined && !isNaN(Number(g.value))) || []
     const avg = validGrades.length 
       ? (validGrades.reduce((acc, g: any) => acc + (Number(g.value) || 0), 0) / validGrades.length).toFixed(2)
       : "0.00"
@@ -179,7 +179,7 @@ export default function DirectorDashboard() {
                 </h3>
               </div>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
-                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Les courbes de progression s'afficheront après le 1er trimestre.</p>
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Les courbes de progression s'afficheront après le premier trimestre scellé.</p>
               </div>
             </Card>
           </div>

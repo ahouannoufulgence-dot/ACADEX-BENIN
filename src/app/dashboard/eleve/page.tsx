@@ -37,31 +37,36 @@ export default function StudentDashboard() {
 
   const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
 
-  // CALCUL DE LA MOYENNE SYNCHRONE
+  // CALCUL DE LA MOYENNE SYNCHRONE (Sécurisé contre NaN)
   const stats = useMemo(() => {
-    if (!mounted) return []
+    if (!mounted || !grades) return [
+      { title: "Ma Moyenne", value: "0.00", label: "Moyenne Générale", icon: GraduationCap, color: "text-primary", href: "/dashboard/eleve/notes" },
+      { title: "Mon Rang", value: "---", label: "Non calculé", icon: Trophy, color: "text-amber-500", href: "/dashboard/eleve/progression" },
+      { title: "Absences", value: "0", label: "Heures enregistrées", icon: Clock, color: "text-red-500", href: "/dashboard/eleve/absences" },
+      { title: "Scolarité", value: "0", label: "FCFA payés", icon: CreditCard, color: "text-emerald-600", href: "/dashboard/eleve/paiements" },
+    ]
     
-    // Groupement par matière pour respecter la formule officielle
+    // Groupement par matière pour respecter la formule officielle 3+2
     const subjects: Record<string, any> = {}
-    grades?.forEach((g: any) => {
+    grades.forEach((g: any) => {
       const sub = g.subject
-      if (!subjects[sub]) subjects[sub] = { sumInt: 0, countInt: 0, d1: 0, d2: 0, coef: g.coefficient || 1 }
+      const val = Number(g.value)
+      if (isNaN(val)) return
+
+      if (!subjects[sub]) subjects[sub] = { i1: 0, i2: 0, i3: 0, d1: 0, d2: 0, coef: g.coefficient || 1 }
       
-      if (g.type.startsWith('int')) {
-        subjects[sub].sumInt += Number(g.value)
-        subjects[sub].countInt++
-      } else if (g.type === 'dev1') {
-        subjects[sub].d1 = Number(g.value)
-      } else if (g.type === 'dev2') {
-        subjects[sub].d2 = Number(g.value)
-      }
+      if (g.type === 'int1') subjects[sub].i1 = val
+      if (g.type === 'int2') subjects[sub].i2 = val
+      if (g.type === 'int3') subjects[sub].i3 = val
+      if (g.type === 'dev1') subjects[sub].d1 = val
+      if (g.type === 'dev2') subjects[sub].d2 = val
     })
 
     let totalWeighted = 0
     let totalCoef = 0
     
     Object.values(subjects).forEach((s: any) => {
-      const avgInt = s.sumInt / 3 // Toujours /3 selon le modèle
+      const avgInt = (s.i1 + s.i2 + s.i3) / 3
       const avgSub = (avgInt + s.d1 + s.d2) / 3
       totalWeighted += avgSub * s.coef
       totalCoef += s.coef
@@ -139,7 +144,7 @@ export default function StudentDashboard() {
                      <div key={i} className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                        <div className="flex items-center gap-4">
                          <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black">
-                           {grade.subject[0]}
+                           {(grade.subject || "?")[0]}
                          </div>
                          <div>
                             <p className="font-black text-foreground">{grade.subject}</p>
@@ -162,7 +167,7 @@ export default function StudentDashboard() {
                 <Calendar className="text-primary" /> Prochain Cours
               </h3>
               <div className="p-12 text-center text-white/40 italic text-xs">
-                Emploi du temps non disponible.
+                Emploi du temps en cours de synchronisation.
               </div>
               <Button asChild variant="secondary" className="w-full mt-6 rounded-xl font-black h-12">
                 <Link href="/dashboard/eleve/agenda">Voir planning complet</Link>
