@@ -16,6 +16,7 @@ import {
   Zap,
   Sparkles,
   ArrowRight,
+  TrendingUp,
   TrendingDown,
   CheckCircle2,
   Search,
@@ -48,7 +49,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes stabilisées avec useMemo
+  // Requêtes stabilisées avec useMemo pour éviter les boucles infinies
   const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids")), [db])
