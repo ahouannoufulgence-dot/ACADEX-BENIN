@@ -17,7 +17,7 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc, setDoc } from "firebase/firestore"
+import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
@@ -61,17 +61,16 @@ export default function GradesPage() {
     setUserName(name)
   }, [])
 
-  // Récupérer le coefficient de la matière pour cette classe
+  // Récupérer le coefficient actuel pour cette matière/classe
   useEffect(() => {
     const fetchCoef = async () => {
       if (!selectedClass || !userSubject) return
       try {
-        const configRef = doc(db, "subject_configs", `${selectedClass}_${userSubject}`)
+        const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
+        const configRef = doc(db, "subject_configs", configId)
         const snap = await getDoc(configRef)
         if (snap.exists()) {
           setClassCoefficient(Number(snap.data().coef) || 1)
-        } else {
-          setClassCoefficient(1)
         }
       } catch (e) {
         console.warn("Erreur chargement coef", e)
@@ -102,7 +101,7 @@ export default function GradesPage() {
 
   const handleSaveGrades = async () => {
     if (!selectedClass || !selectedTrimestre || !selectedEvalType) {
-      toast({ title: "Champs requis", description: "Veuillez remplir tous les critères.", variant: "destructive" })
+      toast({ title: "Champs requis", variant: "destructive" })
       return
     }
 
@@ -110,7 +109,7 @@ export default function GradesPage() {
     const batch = writeBatch(db)
 
     try {
-      // 1. Mettre à jour (ou créer) le coefficient pour cette classe/matière
+      // 1. Sauvegarder le coefficient pour cette classe/matière
       const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
       const configRef = doc(db, "subject_configs", configId)
       batch.set(configRef, { 
@@ -119,14 +118,15 @@ export default function GradesPage() {
         coef: Number(classCoefficient) || 1 
       }, { merge: true })
 
-      // 2. Enregistrer les notes
+      // 2. Sauvegarder les notes (LIAISON PAR MATRICULE)
       students?.forEach((student: any) => {
         const gradeValue = parseFloat(gradesData[student.id] || "0")
-        const gradeId = `${student.id}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
+        // ID unique : matricule + matière + trimestre + type
+        const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
         batch.set(gradeRef, {
-          studentId: student.id,
+          studentId: student.matricule, // CRITIQUE : Liaison par matricule
           studentName: `${student.lastName} ${student.firstName}`,
           classId: selectedClass,
           subject: userSubject,
@@ -140,8 +140,8 @@ export default function GradesPage() {
       })
 
       await batch.commit()
+      toast({ title: "Notes scellées !", description: `Validation réussie pour ${selectedClass}.` })
       setGradesData({})
-      toast({ title: "Notes scellées !", description: `Notes du ${selectedTrimestre} publiées avec coefficient ${classCoefficient}.` })
     } catch (e) {
       const error = new FirestorePermissionError({ path: 'grades', operation: 'write' })
       errorEmitter.emit('permission-error', error)
@@ -157,7 +157,7 @@ export default function GradesPage() {
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Gestion des <span className="text-primary italic">Notes</span></h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-primary" /> Modèle Officiel 3 Interros / 2 Devoirs
+              <ShieldCheck className="size-4 text-primary" /> Architecture 3 Interros / 2 Devoirs
             </p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
@@ -202,14 +202,14 @@ export default function GradesPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Coefficient de la matière</label>
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Coefficient</label>
               <Input 
                 type="number" 
                 min="1"
                 max="10"
                 value={classCoefficient}
                 onChange={(e) => setClassCoefficient(Number(e.target.value))}
-                className="h-14 rounded-2xl border-2 font-black text-center text-xl focus-visible:ring-primary"
+                className="h-14 rounded-2xl border-2 font-black text-center text-xl"
               />
             </div>
           </div>
@@ -223,15 +223,11 @@ export default function GradesPage() {
                  <Badge className="bg-primary text-white border-none font-black px-4 uppercase">{userSubject}</Badge>
                  <Badge variant="outline" className="border-primary text-primary font-black uppercase">{selectedTrimestre}</Badge>
               </div>
-              <div className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm border border-primary/10">
-                 <Calculator className="size-4 text-primary" />
-                 <span className="text-xs font-black uppercase text-primary">Coef. appliqué : {classCoefficient}</span>
-              </div>
             </div>
             
             <CardContent className="p-0">
               {loadingStudents ? (
-                <div className="p-20 text-center animate-pulse font-black text-muted-foreground">Synchronisation de la classe...</div>
+                <div className="p-20 text-center animate-pulse font-bold text-muted-foreground">Synchronisation de la classe...</div>
               ) : !students || students.length === 0 ? (
                 <div className="p-20 text-center italic text-muted-foreground font-medium">Aucun élève actif trouvé pour cette classe.</div>
               ) : (
@@ -251,7 +247,7 @@ export default function GradesPage() {
                         <tr key={student.id} className="hover:bg-muted/5 transition-colors group">
                           <td className="px-10 py-6">
                             <div className="flex flex-col">
-                              <span className="font-black text-lg text-foreground group-hover:text-primary transition-colors">{student.lastName} {student.firstName}</span>
+                              <span className="font-black text-lg text-foreground">{student.lastName} {student.firstName}</span>
                               <span className="text-[10px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
                             </div>
                           </td>
@@ -262,7 +258,7 @@ export default function GradesPage() {
                               placeholder="0.00"
                               value={gradesData[student.id] || ""}
                               onChange={(e) => handleGradeChange(student.id, e.target.value)}
-                              className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2 focus-visible:ring-primary shadow-inner"
+                              className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2"
                             />
                           </td>
                           <td className="px-10 py-6 text-right">
