@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -180,9 +179,9 @@ export default function StudentsPage() {
               </div>
               <div className="space-y-2">
                 <h3 className="text-2xl font-black">Aucun élève trouvé</h3>
-                <p className="text-muted-foreground font-medium max-w-sm">
+                <div className="text-muted-foreground font-medium max-w-sm flex items-center justify-center gap-2">
                   Vérifiez que l'année scolaire <Badge variant="outline" className="border-primary/20 text-primary">{activeYear}</Badge> est la bonne.
-                </p>
+                </div>
               </div>
               <Button asChild variant="outline" className="rounded-xl border-2 font-bold">
                 <Link href="/eleves/identifiants">Gérer les inscriptions</Link>
