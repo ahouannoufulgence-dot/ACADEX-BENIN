@@ -11,14 +11,12 @@ import {
   Clock, 
   Calendar, 
   Wallet, 
-  UserCheck, 
   Loader2, 
   Zap,
   Sparkles,
   ArrowRight,
   TrendingUp,
   CheckCircle2,
-  Search,
   Activity
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -48,50 +46,34 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes stabilisées avec filtres stricts pour éviter les mauvais comptages
-  const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
+  // REQUÊTES STRICTES POUR COMPTEURS RÉELS
+  const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
-  const regIdsQuery = useMemo(() => query(collection(db, "registration_ids")), [db])
+  const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
   const paymentsQuery = useMemo(() => query(collection(db, "payments")), [db])
   const gradesQuery = useMemo(() => query(collection(db, "grades")), [db])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
-  const { data: registrationIds, loading: loadingIds } = useCollection(regIdsQuery)
-  const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
+  const { data: unusedIds, loading: loadingIds } = useCollection(regIdsQuery)
+  const { data: payments } = useCollection(paymentsQuery)
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    // FILTRAGE ULTRA-STRICT : Uniquement les élèves avec profil activé
-    const validStudents = students?.filter((s: any) => s.matricule && s.lastName && s.status === 'Actif') || []
-    const totalStudents = validStudents.length
-    
-    // Uniquement les enseignants officiellement inscrits
+    const totalStudents = students?.length || 0
     const totalTeachers = teachers?.length || 0
+    const idsCount = unusedIds?.length || 0
+    const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
-    // Identifiants non encore utilisés
-    const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
-    
-    // Trésorerie réelle
-    const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    
-    // Moyenne École Réelle (basée sur les notes scellées)
-    const validGrades = grades?.filter((g: any) => g.average !== undefined) || []
-    const avgSchool = validGrades.length > 0 
-      ? (validGrades.reduce((acc, g: any) => acc + (Number(g.average) || 0), 0) / validGrades.length).toFixed(2)
+    // Moyenne École Réelle
+    const avg = grades?.length 
+      ? (grades.reduce((acc, g: any) => acc + (g.value || 0), 0) / grades.length).toFixed(2)
       : "0.00"
 
-    const lastStudent = validStudents.length > 0 ? validStudents[0] : null
+    const lastStudent = students?.length ? students[0] : null
 
-    return {
-      totalStudents,
-      totalTeachers,
-      unusedIds,
-      totalRevenue,
-      avgSchool,
-      lastStudent
-    }
-  }, [students, teachers, registrationIds, payments, grades])
+    return { totalStudents, totalTeachers, idsCount, revenue, avg, lastStudent }
+  }, [students, teachers, unusedIds, payments, grades])
 
   if (!mounted) return null
 
@@ -110,7 +92,7 @@ export default function DirectorDashboard() {
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black px-4 py-1 text-sm uppercase">
                 {schoolInfo.name}
               </Badge>
-              <div className="flex items-center gap-2 font-bold text-sm bg-muted/50 px-4 py-1 rounded-full capitalize">
+              <div className="flex items-center gap-2 font-bold text-sm bg-muted/50 px-4 py-1 rounded-full">
                 <Calendar className="size-4 text-primary" /> {today}
               </div>
               <div className="flex items-center gap-2 font-bold text-sm bg-muted/50 px-4 py-1 rounded-full">
@@ -125,9 +107,7 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">
-                {loadingStudents ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.totalStudents}
-              </p>
+              <p className="text-4xl font-black text-foreground">{loadingStudents ? "..." : stats.totalStudents}</p>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Users className="size-6" /></div>
             </div>
           </Card>
@@ -135,9 +115,7 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Corps Enseignant</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">
-                {loadingTeachers ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.totalTeachers}
-              </p>
+              <p className="text-4xl font-black text-foreground">{loadingTeachers ? "..." : stats.totalTeachers}</p>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
             </div>
           </Card>
@@ -145,7 +123,7 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Moyenne École</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">{stats.avgSchool}</p>
+              <p className="text-4xl font-black text-foreground">{stats.avg}</p>
               <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Zap className="size-6" /></div>
             </div>
           </Card>
@@ -153,9 +131,7 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Recouvrement</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl font-black text-foreground">
-                {loadingPayments ? <Loader2 className="size-4 animate-spin" /> : stats.totalRevenue.toLocaleString()} <span className="text-xs">FCFA</span>
-              </p>
+              <p className="text-2xl font-black text-foreground">{stats.revenue.toLocaleString()} <span className="text-xs">FCFA</span></p>
               <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><CreditCard className="size-6" /></div>
             </div>
           </Card>
@@ -164,30 +140,30 @@ export default function DirectorDashboard() {
         <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
             <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
-              <CardHeader className="p-8 border-b bg-red-50/30">
+              <CardHeader className="p-8 border-b bg-red-50/30 flex flex-row items-center justify-between">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="size-6 text-destructive" />
                   <CardTitle className="text-2xl font-black tracking-tight">Alertes Systèmes</CardTitle>
                 </div>
+                {stats.idsCount > 0 && <Badge className="bg-destructive text-white font-black">{stats.idsCount} EN ATTENTE</Badge>}
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-muted/30">
-                  {stats.unusedIds > 0 && (
+                  {stats.idsCount > 0 && (
                     <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
-                        <div className="size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.unusedIds}</div>
-                        <p className="font-bold text-sm text-foreground/80">Identifiants en attente d'activation.</p>
+                        <div className="size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.idsCount}</div>
+                        <p className="font-bold text-sm text-foreground/80">Identifiants élèves non encore activés.</p>
                       </div>
-                      <Button asChild variant="ghost" className="rounded-xl font-bold text-amber-700">
+                      <Button asChild variant="ghost" className="rounded-xl font-bold text-primary">
                         <Link href="/eleves/identifiants">Gérer <ArrowRight className="ml-2 size-4" /></Link>
                       </Button>
                     </div>
                   )}
-                  
-                  {(!loadingStudents && stats.totalStudents === 0 && stats.unusedIds === 0) && (
-                    <div className="p-12 text-center text-emerald-600 font-bold flex flex-col items-center gap-2">
-                       <CheckCircle2 className="size-10 opacity-30" />
-                       <p className="text-sm">Tout est en ordre. Aucune alerte critique détectée.</p>
+                  {stats.totalStudents === 0 && !loadingStudents && (
+                    <div className="p-12 text-center text-muted-foreground font-bold flex flex-col items-center gap-2">
+                       <CheckCircle2 className="size-10 opacity-10" />
+                       <p className="text-sm italic">Aucun élève n'a encore activé son compte Cockpit.</p>
                     </div>
                   )}
                 </div>
@@ -197,21 +173,18 @@ export default function DirectorDashboard() {
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-2xl font-black flex items-center gap-3">
-                  <TrendingUp className="text-destructive" /> Performance des Classes
+                  <TrendingUp className="text-primary" /> Performance Académique
                 </h3>
               </div>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
-                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Radar d'anomalies en attente de données.</p>
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Les courbes de progression s'afficheront après les examens.</p>
               </div>
             </Card>
           </div>
 
           <div className="lg:col-span-4 space-y-8">
             <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
-               <div className="flex items-center justify-between mb-8">
-                 <h4 className="text-xl font-black">Dernière activité</h4>
-                 <Activity className="size-5 text-primary opacity-20" />
-               </div>
+               <h4 className="text-xl font-black mb-8">Dernière activité</h4>
                <div className="space-y-8">
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
@@ -225,27 +198,9 @@ export default function DirectorDashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-10 opacity-30">
-                       <p className="text-[10px] font-black uppercase tracking-widest">Aucun mouvement récent.</p>
-                    </div>
+                    <div className="text-center py-10 opacity-30 italic font-medium">Aucun mouvement récent.</div>
                   )}
                </div>
-            </Card>
-
-            <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                <h4 className="font-black text-lg">Trésorerie</h4>
-                <Wallet className="size-5 text-primary" />
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase text-white/40 mb-1">Total Recouvré</p>
-                  <p className="text-3xl font-black text-primary">{stats.totalRevenue.toLocaleString()} FCFA</p>
-                </div>
-                <Button asChild className="w-full bg-white/10 hover:bg-white/20 border-none rounded-xl font-black h-11 text-xs">
-                  <Link href="/paiements">Détails Financiers</Link>
-                </Button>
-              </div>
             </Card>
 
             <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
@@ -254,11 +209,9 @@ export default function DirectorDashboard() {
                 <h4 className="font-black text-lg">Cerveau ACADEX</h4>
               </div>
               <div className="space-y-3">
-                {["Qui est absent ?", "Bilan financier", "Classes faibles"].map((q) => (
+                {["Points sur les notes", "Bilan financier", "Classes à suivre"].map((q) => (
                   <Button key={q} asChild variant="ghost" className="w-full justify-between bg-white rounded-xl h-10 px-4 text-[10px] font-black uppercase text-primary border border-primary/5 hover:border-primary/20">
-                    <Link href="/assistant">
-                      {q} <Search className="size-3 opacity-30" />
-                    </Link>
+                    <Link href="/assistant">{q} <ArrowRight className="size-3 opacity-30" /></Link>
                   </Button>
                 ))}
               </div>

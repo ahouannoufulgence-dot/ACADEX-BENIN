@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, Zap, Info, ShieldCheck, Calculator, Lock } from "lucide-react"
+import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
   Select, 
@@ -17,75 +17,86 @@ import {
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp } from "firebase/firestore"
+import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
-const terms = ["1er Trimestre", "2ème Trimestre", "3ème Trimestre"]
-const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
-const allSubjects = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie", "Philosophie", "Informatique", "EPS"]
+const evalTypes = [
+  { id: "interro", label: "Interrogation" },
+  { id: "devoir", label: "Devoir" },
+  { id: "composition", label: "Composition" },
+  { id: "examen", label: "Examen" }
+]
 
 export default function GradesPage() {
   const db = useFirestore()
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClasses, setUserClasses] = useState<string[]>([])
   const [userSubject, setUserSubject] = useState("")
+  const [userName, setUserName] = useState("")
   
   const [selectedClass, setSelectedClass] = useState("")
-  const [selectedSubject, setSelectedSubject] = useState("")
-  const [selectedTerm, setSelectedTerm] = useState(terms[0])
+  const [selectedEvalType, setSelectedEvalType] = useState("interro")
+  const [evalTitle, setEvalTitle] = useState("")
   const [saving, setSaving] = useState(false)
-  const [gradesData, setGradesData] = useState<Record<string, any>>({})
-  const [coefficient, setCoefficient] = useState(2)
+  const [gradesData, setGradesData] = useState<Record<string, string>>({})
+  const [classCoefficient, setClassCoefficient] = useState(1)
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
     const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
     const subject = localStorage.getItem('acadex_user_subject') || ""
+    const name = localStorage.getItem('acadex_user_name') || ""
     
     setUserRole(role)
     setUserClasses(classes)
     setUserSubject(subject)
-
-    if (role === "Enseignant" && subject) {
-      setSelectedSubject(subject)
-    }
+    setUserName(name)
   }, [])
+
+  // Charger le coefficient configuré par le directeur pour cette classe/matière
+  useEffect(() => {
+    const fetchCoef = async () => {
+      if (!selectedClass || !userSubject) return
+      try {
+        const configRef = doc(db, "subject_configs", `${selectedClass}_${userSubject}`)
+        const snap = await getDoc(configRef)
+        if (snap.exists()) {
+          setClassCoefficient(snap.data().coef || 1)
+        } else {
+          setClassCoefficient(1) // Défaut si non configuré
+        }
+      } catch (e) {
+        console.warn("Erreur chargement coef", e)
+      }
+    }
+    fetchCoef()
+  }, [selectedClass, userSubject, db])
 
   const studentsQuery = useMemo(() => {
     if (!db || !selectedClass) return null
-    return query(collection(db, 'students'), where("classId", "==", selectedClass), orderBy("matricule", "asc"))
+    return query(
+      collection(db, 'students'), 
+      where("classId", "==", selectedClass),
+      where("status", "==", "Actif"),
+      orderBy("lastName", "asc")
+    )
   }, [db, selectedClass])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
-  const handleGradeChange = useCallback((studentId: string, field: string, value: string) => {
+  const handleGradeChange = (studentId: string, value: string) => {
     const num = parseFloat(value)
     if (num > 20) {
-      toast({ title: "Valeur invalide", description: "La note maximale est 20/20", variant: "destructive" })
+      toast({ title: "Note invalide", description: "Le maximum est 20/20", variant: "destructive" })
       return
     }
-    setGradesData(prev => ({ 
-      ...prev, 
-      [studentId]: { ...prev[studentId], [field]: value } 
-    }))
-  }, [])
-
-  const calculateAverage = useCallback((studentId: string) => {
-    const data = gradesData[studentId]
-    if (!data) return "0.00"
-    const i1 = parseFloat(data.int1) || 0
-    const i2 = parseFloat(data.int2) || 0
-    const i3 = parseFloat(data.int3) || 0
-    const avgInt = (i1 + i2 + i3) / 3
-    const d1 = parseFloat(data.dev1) || 0
-    const d2 = parseFloat(data.dev2) || 0
-    return ((avgInt + d1 + d2) / 3).toFixed(2)
-  }, [gradesData])
+    setGradesData(prev => ({ ...prev, [studentId]: value }))
+  }
 
   const handleSaveGrades = async () => {
-    if (!selectedClass || !selectedSubject) {
-      toast({ title: "Champs manquants", description: "Veuillez sélectionner une classe et une matière.", variant: "destructive" })
+    if (!selectedClass || !evalTitle) {
+      toast({ title: "Champs requis", description: "Veuillez choisir une classe et donner un titre à l'évaluation.", variant: "destructive" })
       return
     }
 
@@ -94,33 +105,33 @@ export default function GradesPage() {
 
     try {
       students?.forEach((student: any) => {
-        const avg = calculateAverage(student.id)
-        const gradeId = `${student.id}_${selectedSubject}_${selectedTerm.replace(/\s/g, '')}`
+        const gradeValue = parseFloat(gradesData[student.id] || "0")
+        const gradeId = `${student.id}_${userSubject}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
         const gradeRef = doc(db, "grades", gradeId)
         
         const data = {
           studentId: student.id,
           studentName: `${student.lastName} ${student.firstName}`,
           classId: selectedClass,
-          subject: selectedSubject,
-          term: selectedTerm,
-          ...(gradesData[student.id] || {}),
-          average: parseFloat(avg),
-          coefficient: Number(coefficient),
-          weightedAverage: parseFloat(avg) * Number(coefficient),
-          updatedAt: serverTimestamp()
+          subject: userSubject,
+          type: selectedEvalType,
+          title: evalTitle,
+          value: gradeValue,
+          coefficient: classCoefficient,
+          weightedValue: gradeValue * classCoefficient,
+          teacherName: userName,
+          registeredAt: serverTimestamp()
         }
 
-        batch.set(gradeRef, data, { merge: true })
+        batch.set(gradeRef, data)
       })
 
       await batch.commit()
-      toast({ title: "Notes scellées !", description: "Le registre a été synchronisé avec le cockpit des élèves." })
+      setGradesData({})
+      setEvalTitle("")
+      toast({ title: "Notes scellées !", description: "Les cockpits élèves ont été mis à jour instantanément." })
     } catch (e) {
-      const error = new FirestorePermissionError({
-        path: 'grades',
-        operation: 'write',
-      })
+      const error = new FirestorePermissionError({ path: 'grades', operation: 'write' })
       errorEmitter.emit('permission-error', error)
     } finally {
       setSaving(false)
@@ -132,150 +143,126 @@ export default function GradesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">Gestion des <span className="text-primary italic">Notes</span></h1>
-            <p className="text-muted-foreground font-medium italic">Saisie haute performance synchronisée avec le Directeur et les Élèves.</p>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">Saisie des <span className="text-primary italic">Notes</span></h1>
+            <p className="text-muted-foreground font-medium flex items-center gap-2">
+              <ShieldCheck className="size-4 text-primary" /> Espace Pédagogique Sécurisé - {userSubject}
+            </p>
           </div>
-          <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="bg-primary hover:bg-primary/90 shadow-xl h-14 px-10 rounded-2xl font-black">
-            {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Save className="mr-2 size-6" />} 
-            {saving ? "Synchronisation..." : "Valider & Sceller"}
+          <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
+            {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <UserCheck className="mr-2 size-6 group-hover:scale-110 transition-transform" />} 
+            {saving ? "Scellage en cours..." : "Sceller & Publier"}
           </Button>
         </div>
 
         <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe</label>
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe Concernée</label>
               <Select onValueChange={setSelectedClass} value={selectedClass}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
+                <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                  <SelectValue placeholder="Choisir" />
+                </SelectTrigger>
                 <SelectContent>
-                  {(isTeacher ? userClasses : officialClasses).map(c => (
-                    <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
-                  ))}
+                  {userClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Discipline</label>
-              <div className="relative">
-                <Select 
-                  onValueChange={setSelectedSubject} 
-                  value={selectedSubject} 
-                  disabled={isTeacher}
-                >
-                  <SelectTrigger className={`h-14 rounded-2xl border-2 font-black ${isTeacher ? 'bg-muted/50 cursor-not-allowed' : ''}`}>
-                    <SelectValue placeholder="Matière" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allSubjects.map(m => <SelectItem key={m} value={m} className="font-bold">{m}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {isTeacher && <Lock className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-primary opacity-50" />}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Trimestre</label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
-                <SelectContent>{terms.map(t => <SelectItem key={t} value={t} className="font-bold">{t}</SelectItem>)}</SelectContent>
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Type d'Évaluation</label>
+              <Select value={selectedEvalType} onValueChange={setSelectedEvalType}>
+                <SelectTrigger className="h-14 rounded-2xl border-2 font-black">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {evalTypes.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Coefficient</label>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Nom de l'évaluation</label>
               <Input 
-                type="number" 
-                value={coefficient} 
-                onChange={(e) => setCoefficient(Number(e.target.value))} 
-                className="h-14 rounded-2xl border-2 font-black text-center text-xl text-primary"
+                placeholder="Ex: Interrogation Chapitre 1" 
+                value={evalTitle}
+                onChange={(e) => setEvalTitle(e.target.value)}
+                className="h-14 rounded-2xl border-2 font-bold px-6" 
               />
             </div>
           </div>
         </Card>
 
-        {selectedClass && selectedSubject && (
+        {selectedClass && (
           <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
-            <div className="p-8 border-b bg-muted/20 flex items-center justify-between">
+            <div className="p-8 border-b bg-muted/10 flex items-center justify-between">
               <div className="flex items-center gap-4">
                  <h3 className="text-xl font-black">Registre : {selectedClass}</h3>
-                 <Badge className="bg-primary/10 text-primary border-none font-bold uppercase">{selectedSubject}</Badge>
+                 <Badge className="bg-primary text-white border-none font-black px-4 uppercase">{userSubject}</Badge>
               </div>
-              <div className="flex items-center gap-3">
-                 <Calculator className="size-4 text-muted-foreground" />
-                 <span className="text-xs font-black uppercase text-muted-foreground">Poids appliqué : Coef {coefficient}</span>
+              <div className="flex items-center gap-2 px-6 py-2 bg-white rounded-full shadow-sm border border-primary/10">
+                 <Calculator className="size-4 text-primary" />
+                 <span className="text-xs font-black uppercase text-primary">Coef Automatique : {classCoefficient}</span>
               </div>
             </div>
-            <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full min-w-[1000px]">
-                <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-b">
-                  <tr className="text-center">
-                    <th className="px-8 py-6 text-left">Élève</th>
-                    <th className="bg-muted/10">Int 1</th><th className="bg-muted/10">Int 2</th><th className="bg-muted/10">Int 3</th>
-                    <th className="bg-primary/5 text-primary">Dev 1</th><th className="bg-primary/5 text-primary">Dev 2</th>
-                    <th className="px-4 text-center">Moy/20</th>
-                    <th className="px-8 text-right bg-primary text-white">Total Coéfficié</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-muted/30">
-                  {loadingStudents ? (
-                    <tr><td colSpan={8} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
-                  ) : !students || students.length === 0 ? (
-                    <tr><td colSpan={8} className="p-20 text-center font-bold text-muted-foreground italic">Aucun élève trouvé dans cette division.</td></tr>
-                  ) : (
-                    students?.map((student: any) => {
-                      const avg = calculateAverage(student.id)
-                      const weighted = (parseFloat(avg) * coefficient).toFixed(2)
+            
+            <CardContent className="p-0">
+              {loadingStudents ? (
+                <div className="p-20 text-center animate-pulse font-black text-muted-foreground">Chargement des élèves...</div>
+              ) : !students || students.length === 0 ? (
+                <div className="p-20 text-center italic text-muted-foreground font-medium">Aucun élève actif trouvé dans cette classe.</div>
+              ) : (
+                <table className="w-full">
+                  <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-b">
+                    <tr>
+                      <th className="px-10 py-6 text-left">Élève</th>
+                      <th className="px-10 py-6 text-center">Note sur 20</th>
+                      <th className="px-10 py-6 text-right bg-primary text-white">Impact Pondéré</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-muted/30">
+                    {students.map((student: any) => {
+                      const val = parseFloat(gradesData[student.id] || "0")
+                      const impact = (val * classCoefficient).toFixed(2)
                       return (
-                        <tr key={student.id} className="hover:bg-muted/5 transition-colors group text-center">
-                          <td className="px-8 py-5 text-left">
+                        <tr key={student.id} className="hover:bg-muted/5 transition-colors group">
+                          <td className="px-10 py-6">
                             <div className="flex flex-col">
-                              <span className="font-black text-foreground group-hover:text-primary transition-colors">{student.lastName} {student.firstName}</span>
-                              <span className="text-[9px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
+                              <span className="font-black text-lg text-foreground group-hover:text-primary transition-colors">{student.lastName} {student.firstName}</span>
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
                             </div>
                           </td>
-                          {['int1', 'int2', 'int3'].map((f) => (
-                            <td key={f} className="py-4 bg-muted/5">
-                              <Input 
-                                type="number" 
-                                step="0.25" 
-                                className="w-16 mx-auto h-11 rounded-xl text-center font-black border-2" 
-                                value={gradesData[student.id]?.[f] || ""} 
-                                onChange={(e) => handleGradeChange(student.id, f, e.target.value)} 
-                              />
-                            </td>
-                          ))}
-                          {['dev1', 'dev2'].map((f) => (
-                            <td key={f} className="py-4 bg-primary/5">
-                              <Input 
-                                type="number" 
-                                step="0.25" 
-                                className="w-16 mx-auto h-11 rounded-xl text-center font-black border-2 border-primary/20" 
-                                value={gradesData[student.id]?.[f] || ""} 
-                                onChange={(e) => handleGradeChange(student.id, f, e.target.value)} 
-                              />
-                            </td>
-                          ))}
-                          <td className="px-4 py-5 text-center font-black text-foreground">{avg}</td>
-                          <td className="px-8 py-5 text-right">
-                             <Badge className="bg-primary text-white h-12 w-28 justify-center rounded-2xl text-lg font-black shadow-lg">
-                               {weighted}
+                          <td className="px-10 py-6 text-center">
+                            <Input 
+                              type="number" 
+                              step="0.25"
+                              placeholder="0.00"
+                              value={gradesData[student.id] || ""}
+                              onChange={(e) => handleGradeChange(student.id, e.target.value)}
+                              className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2 focus-visible:ring-primary shadow-inner"
+                            />
+                          </td>
+                          <td className="px-10 py-6 text-right">
+                             <Badge className="h-12 w-32 justify-center rounded-2xl bg-primary text-white text-xl font-black shadow-lg">
+                               {impact}
                              </Badge>
                           </td>
                         </tr>
                       )
-                    })
-                  )}
-                </tbody>
-              </table>
+                    })}
+                  </tbody>
+                </table>
+              )}
             </CardContent>
+            
             <div className="p-10 bg-muted/10 border-t flex justify-between items-center">
-               <div className="flex items-center gap-3 text-muted-foreground">
-                 <ShieldCheck className="size-6 text-emerald-500" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Liaison Élève/Parent Active</span>
+               <div className="flex items-center gap-3 text-muted-foreground opacity-60">
+                 <Lock className="size-5" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Saisie protégée par ACADEX RBAC</span>
                </div>
-               <Button onClick={handleSaveGrades} disabled={saving} className="rounded-xl font-black h-12 px-10 bg-foreground">
-                 {saving ? "Mise à jour..." : "Sceller le Registre"}
-               </Button>
+               <div className="flex gap-4">
+                  <Button variant="ghost" className="rounded-xl font-black h-12 px-8" onClick={() => setGradesData({})}>Réinitialiser</Button>
+                  <Button onClick={handleSaveGrades} disabled={saving} className="rounded-xl font-black h-12 px-10 bg-foreground text-white">Publier le Registre</Button>
+               </div>
             </div>
           </Card>
         )}
