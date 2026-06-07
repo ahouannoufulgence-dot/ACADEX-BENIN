@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -23,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, doc, onSnapshot } from "firebase/firestore"
+import { collection, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -47,8 +48,8 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes Firestore mémorisées pour éviter les boucles de chargement
-  const studentsQuery = useMemo(() => collection(db, "students"), [db])
+  // Requêtes Firestore mémorisées pour éviter les boucles de chargement infinies
+  const studentsQuery = useMemo(() => query(collection(db, "students"), orderBy("registeredAt", "desc")), [db])
   const teachersQuery = useMemo(() => collection(db, "teachers"), [db])
   const regIdsQuery = useMemo(() => collection(db, "registration_ids"), [db])
   const paymentsQuery = useMemo(() => collection(db, "payments"), [db])
@@ -60,14 +61,14 @@ export default function DirectorDashboard() {
 
   // Statistiques calculées STRICTEMENT sur les données Firestore
   const stats = useMemo(() => {
-    const totalStudents = Array.isArray(students) ? students.length : 0
-    const activeTeachers = Array.isArray(teachers) ? teachers.filter((t: any) => t.status === "Actif").length : 0
-    const unusedIds = Array.isArray(registrationIds) ? registrationIds.filter((id: any) => id.status === "non utilisé").length : 0
-    const totalRevenue = Array.isArray(payments) ? payments.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) : 0
-    const pendingPaymentsCount = Array.isArray(payments) ? payments.filter((p: any) => p.status === 'En attente').length : 0
+    const totalStudents = students?.length || 0
+    const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
+    const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
+    const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const pendingPaymentsCount = payments?.filter((p: any) => p.status === 'En attente').length || 0
     
-    // Dernier élève inscrit
-    const lastStudent = Array.isArray(students) && students.length > 0 ? students[0] : null
+    // Dernier élève inscrit (utilisé avec protection optionnelle)
+    const lastStudent = (students && students.length > 0) ? students[0] : null
 
     return {
       totalStudents,
@@ -193,11 +194,11 @@ export default function DirectorDashboard() {
               </CardContent>
             </Card>
 
-            {/* CLASSES EN DIFFICULTÉ */}
+            {/* CLASSES EN DIFFICULTÉ (DYNAMIQUE) */}
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
               <div className="flex items-center justify-between mb-8 px-2">
                 <h3 className="text-2xl font-black flex items-center gap-3">
-                  <TrendingDown className="text-destructive" /> Analyse Radar : Classes Faibles
+                  <TrendingDown className="text-destructive" /> Radar Radar : Performance Classes
                 </h3>
               </div>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
@@ -217,7 +218,7 @@ export default function DirectorDashboard() {
                   {stats.lastStudent ? (
                     <div className="flex gap-4 group">
                       <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl uppercase">
-                        {stats.lastStudent?.lastName?.[0] || "?"}
+                        {stats.lastStudent?.lastName?.charAt(0) || "?"}
                       </div>
                       <div className="space-y-1">
                         <p className="text-sm font-black text-foreground">Nouvelle inscription</p>

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -69,7 +70,6 @@ export default function GenIdentifiersPage() {
       const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
       
       for (let i = 1; i <= batchSize; i++) {
-        // Unicité renforcée par timestamp + random
         const num = Math.floor(10000 + Math.random() * 90000).toString()
         const matricule = `ELV-${classTag}-${num}`
         const newDocRef = doc(collection(db, "registration_ids"))
@@ -100,7 +100,11 @@ export default function GenIdentifiersPage() {
   const handleDelete = (id: string) => {
     const idRef = doc(db, "registration_ids", id)
     deleteDoc(idRef)
-    toast({ title: "Identifiant supprimé" })
+      .then(() => toast({ title: "Identifiant supprimé" }))
+      .catch(async () => {
+        const error = new FirestorePermissionError({ path: idRef.path, operation: 'delete' })
+        errorEmitter.emit('permission-error', error)
+      })
   }
 
   const copyToClipboard = (text: string) => {

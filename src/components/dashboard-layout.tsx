@@ -89,7 +89,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const db = useFirestore()
-  const [userName, setUserName] = useState("Utilisateur")
+  const [userName, setUserName] = useState("Directeur")
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
@@ -105,7 +105,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return
     }
 
-    setUserName(name || "Utilisateur")
+    setUserName(name || "Monsieur")
     setUserRole(role)
     setUserId(id || "INV-000")
     setMounted(true)
