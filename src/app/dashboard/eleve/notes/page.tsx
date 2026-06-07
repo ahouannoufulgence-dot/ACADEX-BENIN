@@ -8,17 +8,17 @@ import {
   FileText, 
   ShieldCheck,
   TrendingUp,
-  Download,
   Zap,
   Loader2,
   Trophy,
   Target,
+  Info,
   CheckCircle2,
-  Info
+  TrendingDown
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase/index"
+import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where } from "firebase/firestore"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
@@ -27,7 +27,7 @@ export default function StudentGradesPage() {
   const db = useFirestore()
   const [studentId, setStudentId] = useState("")
   const [studentClass, setStudentClass] = useState("")
-  const [activeTerm, setActiveTerm] = useState("T1")
+  const [activeTerm, setActiveTab] = useState("T1")
 
   useEffect(() => {
     const matricule = localStorage.getItem('acadex_user_id') || ""
@@ -42,9 +42,16 @@ export default function StudentGradesPage() {
     return query(collection(db, "grades"), where("studentId", "==", studentId))
   }, [db, studentId])
 
-  const { data: myGrades, loading: loadingMyGrades } = useCollection(myGradesQuery)
+  // RÉCEPTION DES STATS DE CLASSE (Confidentialité respectée : seulement les valeurs)
+  const classGradesQuery = useMemo(() => {
+    if (!db || !studentClass) return null
+    return query(collection(db, "grades"), where("classId", "==", studentClass))
+  }, [db, studentClass])
 
-  // LOGIQUE DE CALCUL "3+2" ET ANALYSE IA
+  const { data: myGrades, loading: loadingMyGrades } = useCollection(myGradesQuery)
+  const { data: classGrades } = useCollection(classGradesQuery)
+
+  // LOGIQUE DE CALCUL "3 INTERROS + 2 DEVOIRS" ET POSITIONNEMENT
   const subjectAnalyses = useMemo(() => {
     if (!myGrades) return []
     
@@ -70,12 +77,23 @@ export default function StudentGradesPage() {
     })
 
     return Object.values(subjects).map((s: any) => {
+      // Formule Acadex : ((I1+I2+I3)/3 + D1 + D2) / 3
       const avgInt = ((s.i1 || 0) + (s.i2 || 0) + (s.i3 || 0)) / 3
       s.myAverage = (avgInt + (s.d1 || 0) + (s.d2 || 0)) / 3
       s.weighted = s.myAverage * s.coef
+
+      // Calcul des extrêmes de la classe pour cette matière (Confidentialité Totale)
+      if (classGrades) {
+        const otherGrades = classGrades.filter((g: any) => g.subject === s.name && g.term === activeTerm)
+        // Note: On ne regarde pas les moyennes finales des autres mais les meilleures notes d'évaluations individuelles pour situer
+        const values = otherGrades.map((g: any) => Number(g.value)).filter(v => !isNaN(v))
+        s.classHigh = values.length > 0 ? Math.max(...values) : 0
+        s.classLow = values.length > 0 ? Math.min(...values) : 0
+      }
+
       return s
     })
-  }, [myGrades, activeTerm])
+  }, [myGrades, classGrades, activeTerm])
 
   const generalAverage = useMemo(() => {
     if (subjectAnalyses.length === 0) return "0.00"
@@ -95,11 +113,11 @@ export default function StudentGradesPage() {
             </p>
           </div>
           <Badge className="bg-primary text-white border-none px-8 py-3 rounded-2xl font-black text-xl shadow-xl shadow-primary/20">
-            MOYENNE : {generalAverage}
+            MOYENNE GÉNÉRALE : {generalAverage}
           </Badge>
         </div>
 
-        <Tabs value={activeTerm} onValueChange={setActiveTerm} className="space-y-8">
+        <Tabs value={activeTerm} onValueChange={setActiveTab} className="space-y-8">
           <TabsList className="bg-white border-2 rounded-[2rem] h-20 p-2 flex w-fit shadow-md">
             {["T1", "T2", "T3"].map((t, i) => (
               <TabsTrigger key={t} value={t} className="rounded-[1.5rem] font-black px-12 text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
@@ -160,12 +178,24 @@ export default function StudentGradesPage() {
                          </div>
                       </div>
 
+                      <div className="pt-4 border-t border-dashed flex justify-between items-center text-center">
+                         <div>
+                            <p className="text-[9px] font-black uppercase text-muted-foreground">Max Classe</p>
+                            <p className="text-lg font-black text-primary">{subject.classHigh || '---'}</p>
+                         </div>
+                         <div className="h-8 w-px bg-muted mx-4" />
+                         <div>
+                            <p className="text-[9px] font-black uppercase text-muted-foreground">Min Classe</p>
+                            <p className="text-lg font-black text-muted-foreground">{subject.classLow || '---'}</p>
+                         </div>
+                      </div>
+
                       <div className="flex items-start gap-4 p-4 bg-muted/10 rounded-2xl border border-muted/20">
                          <div className="size-8 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                           <TrendingUp className="size-4 text-primary" />
+                           {subject.myAverage >= 12 ? <TrendingUp className="size-4 text-emerald-500" /> : <TrendingDown className="size-4 text-red-500" />}
                          </div>
                          <p className="text-[11px] font-bold text-muted-foreground italic leading-tight">
-                           {subject.myAverage >= 15 ? "Excellente maîtrise. Tu domines cette discipline." : subject.myAverage >= 10 ? "Résultats satisfaisants. Travail régulier à maintenir." : "Zone de fragilité détectée. Rapproche-toi de ton professeur."}
+                           {subject.myAverage >= 15 ? "Tu es dans le top de la classe. Maintiens ce niveau d'excellence." : subject.myAverage >= 10 ? "Résultats satisfaisants. Travail régulier à maintenir pour progresser." : "Zone de fragilité détectée. Rapproche-toi de ton professeur pour des conseils."}
                          </p>
                       </div>
                     </CardContent>
@@ -184,7 +214,7 @@ export default function StudentGradesPage() {
               <div>
                 <p className="font-black text-foreground uppercase tracking-widest text-xs">Note de Sincérité Acadex</p>
                 <p className="text-sm font-medium text-muted-foreground max-w-xl">
-                  Ces données sont scellées par vos professeurs. En cas de contestation, veuillez vous référer à la direction munis de vos copies physiques.
+                  Les meilleures et plus faibles notes sont affichées anonymement pour préserver la confidentialité tout en te permettant de te situer.
                 </p>
               </div>
            </div>

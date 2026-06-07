@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/select"
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, orderBy, where, doc, writeBatch, serverTimestamp, getDoc, getDocs } from "firebase/firestore"
+import { useFirestore, useCollection } from "@/firebase"
+import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
@@ -51,32 +51,25 @@ export default function GradesPage() {
   const [classCoefficient, setClassCoefficient] = useState<number>(1)
 
   useEffect(() => {
-    const role = localStorage.getItem('acadex_user_role')
-    const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
-    const subject = localStorage.getItem('acadex_user_subject') || ""
-    const name = localStorage.getItem('acadex_user_name') || ""
-    
-    setUserRole(role)
-    setUserClasses(classes)
-    setUserSubject(subject)
-    setUserName(name)
+    setUserRole(localStorage.getItem('acadex_user_role'))
+    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
+    setUserSubject(localStorage.getItem('acadex_user_subject') || "")
+    setUserName(localStorage.getItem('acadex_user_name') || "")
   }, [])
 
-  // RÉCUPÉRATION SPONTANNÉE : Coef + Notes existantes dès changement de filtres
+  // RÉCUPÉRATION SPONTANNÉE : Coef + Notes existantes
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass || !userSubject) return
       
       setLoadingExisting(true)
       try {
-        // 1. Charger le Coef
         const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
         const configSnap = await getDoc(doc(db, "subject_configs", configId))
         if (configSnap.exists()) {
           setClassCoefficient(Number(configSnap.data().coef) || 1)
         }
 
-        // 2. Charger les notes existantes pour ce créneau
         const q = query(
           collection(db, "grades"),
           where("classId", "==", selectedClass),
@@ -88,7 +81,6 @@ export default function GradesPage() {
         const existing: Record<string, string> = {}
         notesSnap.docs.forEach(d => {
           const data = d.data()
-          // On lie par matricule pour retrouver l'input de l'élève
           existing[data.studentId] = data.value.toString()
         })
         setGradesData(existing)
@@ -101,7 +93,6 @@ export default function GradesPage() {
     fetchData()
   }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db])
 
-  // Filtrage STRICT des élèves ACTIFS pour cette classe
   const studentsQuery = useMemo(() => {
     if (!db || !selectedClass) return null
     return query(
@@ -126,7 +117,6 @@ export default function GradesPage() {
     const batch = writeBatch(db)
 
     try {
-      // 1. Sauvegarder le coefficient
       const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
       const configRef = doc(db, "subject_configs", configId)
       batch.set(configRef, { 
@@ -135,14 +125,13 @@ export default function GradesPage() {
         coef: Number(classCoefficient) || 1 
       }, { merge: true })
 
-      // 2. Sauvegarder les notes (Liaison par MATRICULE)
       students?.forEach((student: any) => {
         const val = parseFloat(gradesData[student.matricule] || "0")
         const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
         batch.set(gradeRef, {
-          studentId: student.matricule, // Pivot de liaison Cockpit Élève
+          studentId: student.matricule, 
           studentName: `${student.lastName} ${student.firstName}`,
           classId: selectedClass,
           subject: userSubject,

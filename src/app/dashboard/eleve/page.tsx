@@ -15,9 +15,10 @@ import {
   Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, limit } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 
 export default function StudentDashboard() {
@@ -46,7 +47,6 @@ export default function StudentDashboard() {
       { title: "Scolarité", value: "0", label: "FCFA payés", icon: CreditCard, color: "text-emerald-600", href: "/dashboard/eleve/paiements" },
     ]
     
-    // Groupement par matière pour respecter la formule officielle 3+2
     const subjects: Record<string, any> = {}
     grades.forEach((g: any) => {
       const sub = g.subject
