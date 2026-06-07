@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, Lock, CheckCircle2, Search, ArrowLeft, ArrowRight, Loader2, HelpCircle } from "lucide-react";
+import { ShieldCheck, Lock, CheckCircle2, Search, ArrowLeft, ArrowRight, Loader2, HelpCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 
@@ -15,6 +15,7 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [id, setId] = useState("");
   const [question, setQuestion] = useState("");
 
@@ -64,7 +65,7 @@ export default function ForgotPasswordPage() {
                   <Label className="font-bold">Identifiant (DIR/ENS/ELV-...)</Label>
                   <Input 
                     placeholder="Ex: DIR-001" 
-                    className="h-12 rounded-xl text-center font-black tracking-widest text-lg" 
+                    className="h-12 rounded-xl text-center font-black tracking-widest text-lg uppercase" 
                     value={id} 
                     onChange={e => setId(e.target.value.toUpperCase())}
                   />
@@ -119,11 +120,28 @@ export default function ForgotPasswordPage() {
               <CardContent className="p-10 pt-0 space-y-4">
                 <div className="space-y-2">
                   <Label className="font-bold">Nouveau mot de passe</Label>
-                  <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" />
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="••••••••" 
+                      className="h-12 rounded-xl pr-12" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold">Confirmer</Label>
-                  <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" />
+                  <Input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    className="h-12 rounded-xl" 
+                  />
                 </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/30">

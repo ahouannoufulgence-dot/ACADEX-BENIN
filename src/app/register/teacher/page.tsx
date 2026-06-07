@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, BookOpen } from "lucide-react";
+import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, BookOpen, Eye, EyeOff } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +22,7 @@ export default function RegisterTeacherPage() {
   const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [generatedId, setGeneratedId] = useState("");
   const [form, setForm] = useState({
     lastName: "",
@@ -211,11 +212,32 @@ export default function RegisterTeacherPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="font-bold">Mot de passe</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                    <div className="relative">
+                      <Input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="••••••••" 
+                        className="h-12 rounded-xl pr-12" 
+                        value={form.password} 
+                        onChange={e => setForm({...form, password: e.target.value})} 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      >
+                        {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold">Confirmer</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.confirmPassword} onChange={e => setForm({...form, confirmPassword: e.target.value})} />
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="••••••••" 
+                      className="h-12 rounded-xl" 
+                      value={form.confirmPassword} 
+                      onChange={e => setForm({...form, confirmPassword: e.target.value})} 
+                    />
                   </div>
                 </div>
               </CardContent>

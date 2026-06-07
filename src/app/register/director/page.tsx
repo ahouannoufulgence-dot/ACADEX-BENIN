@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, Eye, EyeOff } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
@@ -16,6 +16,7 @@ export default function RegisterDirectorPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({
     lastName: "",
     firstName: "",
@@ -33,6 +34,10 @@ export default function RegisterDirectorPage() {
   const prevStep = () => setStep(s => s - 1);
 
   const handleRegister = async () => {
+    if (form.password !== form.confirmPassword) {
+      toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
@@ -122,7 +127,7 @@ export default function RegisterDirectorPage() {
                 </div>
               </CardContent>
               <CardFooter className="p-10 bg-muted/30 flex justify-between">
-                <Button variant="ghost" onClick={() => router.push("/register")} className="font-bold rounded-xl h-12">Annuler</Button>
+                <Button variant="ghost" onClick={() => router.push("/")} className="font-bold rounded-xl h-12">Annuler</Button>
                 <Button onClick={nextStep} className="bg-primary rounded-xl font-black px-10 h-12">Continuer <ArrowRight className="ml-2 size-4" /></Button>
               </CardFooter>
             </>
@@ -140,11 +145,32 @@ export default function RegisterDirectorPage() {
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="space-y-2">
                   <Label className="font-bold">Mot de passe</Label>
-                  <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? "text" : "password"} 
+                      placeholder="••••••••" 
+                      className="h-12 rounded-xl pr-12" 
+                      value={form.password} 
+                      onChange={e => setForm({...form, password: e.target.value})} 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                    >
+                      {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold">Confirmer mot de passe</Label>
-                  <Input type="password" placeholder="••••••••" className="h-12 rounded-xl" value={form.confirmPassword} onChange={e => setForm({...form, confirmPassword: e.target.value})} />
+                  <Input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    className="h-12 rounded-xl" 
+                    value={form.confirmPassword} 
+                    onChange={e => setForm({...form, confirmPassword: e.target.value})} 
+                  />
                 </div>
                 <div className="space-y-4 pt-4 border-t border-dashed">
                   <div className="space-y-2">

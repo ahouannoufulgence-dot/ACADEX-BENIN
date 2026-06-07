@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Loader2, Sparkles } from 'lucide-react';
+import { ShieldCheck, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const router = useRouter();
   const db = useFirestore()
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [id, setId] = useState("");
   const [schoolName, setSchoolName] = useState("ACADEX")
   const [schoolLogo, setSchoolLogo] = useState("")
@@ -116,11 +117,26 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="id" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Identifiant Unique</Label>
-                <Input id="id" placeholder="Ex: ENS-MAT-123" className="h-16 rounded-2xl bg-muted/30 border-none font-black tracking-widest text-xl text-center focus-visible:ring-primary shadow-inner" value={id} onChange={e => setId(e.target.value)} required />
+                <Input id="id" placeholder="Ex: ENS-MAT-123" className="h-16 rounded-2xl bg-muted/30 border-none font-black tracking-widest text-xl text-center focus-visible:ring-primary shadow-inner uppercase" value={id} onChange={e => setId(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pass" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Mot de passe</Label>
-                <Input id="pass" type="password" placeholder="••••••••" className="h-16 rounded-2xl bg-muted/30 border-none font-bold text-center tracking-widest shadow-inner" required />
+                <div className="relative">
+                  <Input 
+                    id="pass" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="••••••••" 
+                    className="h-16 rounded-2xl bg-muted/30 border-none font-bold text-center tracking-widest shadow-inner pr-14" 
+                    required 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-xl hover:bg-white/50 text-muted-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                  </button>
+                </div>
               </div>
               <Button type="submit" className="w-full h-16 bg-primary hover:bg-primary/90 rounded-2xl font-black text-xl shadow-xl shadow-primary/20 gap-3 active:scale-95 transition-all" disabled={loading}>
                 {loading ? <Loader2 className="size-6 animate-spin" /> : <ShieldCheck className="size-6" />}
@@ -129,7 +145,7 @@ export default function LoginPage() {
             </form>
           </CardContent>
           <CardFooter className="bg-muted/30 p-6 flex flex-col gap-4 text-center rounded-b-[2rem]">
-            <Link href="/register" className="text-xs font-black text-primary hover:underline uppercase tracking-widest">Nouveau sur {schoolName} ?</Link>
+            <Link href="/register/student" className="text-xs font-black text-primary hover:underline uppercase tracking-widest">Nouveau sur {schoolName} ?</Link>
           </CardFooter>
         </Card>
       </div>

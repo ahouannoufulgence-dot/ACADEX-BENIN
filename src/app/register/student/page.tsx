@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { GraduationCap, CheckCircle2, Search, ArrowRight, Loader2, Heart } from "lucide-react";
+import { GraduationCap, CheckCircle2, Search, ArrowRight, Loader2, Heart, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ export default function RegisterStudentPage() {
   const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const [matricule, setMatricule] = useState("");
   const [regDoc, setRegDoc] = useState<any>(null);
@@ -216,7 +218,22 @@ export default function RegisterStudentPage() {
                 <div className="pt-6 border-t border-dashed">
                   <div className="space-y-2">
                     <Label className="font-bold">Définir un Mot de Passe sécurisé</Label>
-                    <Input type="password" placeholder="••••••••" className="h-12 rounded-xl font-bold" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+                    <div className="relative">
+                      <Input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="••••••••" 
+                        className="h-12 rounded-xl font-bold pr-12" 
+                        value={form.password} 
+                        onChange={e => setForm({...form, password: e.target.value})} 
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                      >
+                        {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
