@@ -9,7 +9,6 @@ import {
   CreditCard, 
   GraduationCap, 
   FileDown,
-  PieChart as PieChartIcon,
   Sparkles,
   Activity,
   Loader2,
@@ -18,6 +17,12 @@ import {
   AlertTriangle,
   ArrowUpRight,
   ShieldCheck,
+  Wallet,
+  CheckCircle2,
+  Target,
+  PieChart as PieChartIcon
+} from "lucide-react"
+import {
   CartesianGrid,
   XAxis,
   YAxis,
@@ -30,11 +35,8 @@ import {
   Cell,
   Legend,
   AreaChart,
-  Area,
-  Wallet,
-  CheckCircle2,
-  Target
-} from "lucide-react"
+  Area
+} from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where } from "firebase/firestore"
@@ -43,7 +45,6 @@ import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 
 export default function StatisticsPage() {
   const db = useFirestore()
@@ -125,6 +126,7 @@ export default function StatisticsPage() {
     doc.setFillColor(20, 83, 45)
     doc.rect(0, 0, 210, 40, 'F')
     doc.setTextColor(255, 255, 255)
+    doc.setFontSize(18)
     doc.text("ACADEX - RAPPORT STATISTIQUE OFFICIEL", 105, 25, { align: "center" })
     autoTable(doc, {
       startY: 50,
@@ -192,7 +194,7 @@ export default function StatisticsPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="n" axisLine={false} tickLine={false} tick={{fontSize:12, fontWeight:'bold'}} />
                       <YAxis hide />
-                      <Tooltip />
+                      <Tooltip cursor={{ fill: 'transparent' }} />
                       <Area type="monotone" dataKey="v" stroke="#14532d" strokeWidth={4} fill="#14532d" fillOpacity={0.1} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -206,7 +208,7 @@ export default function StatisticsPage() {
                     <Pie data={demographicData.length ? demographicData : [{name:'?', value:1}]} innerRadius={60} outerRadius={80} dataKey="value">
                       {demographicData.map((e,i) => <Cell key={i} fill={COLORS[i%4]} />)}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip cursor={{ fill: 'transparent' }} />
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>

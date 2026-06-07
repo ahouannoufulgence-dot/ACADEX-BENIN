@@ -53,7 +53,7 @@ export default function StudentDashboard() {
       const val = Number(g.value)
       if (isNaN(val)) return
 
-      if (!subjects[sub]) subjects[sub] = { i1: 0, i2: 0, i3: 0, d1: 0, d2: 0, coef: g.coefficient || 1 }
+      if (!subjects[sub]) subjects[sub] = { i1: 0, i2: 0, i3: 0, d1: 0, d2: 0, coef: Number(g.coefficient) || 1 }
       
       if (g.type === 'int1') subjects[sub].i1 = val
       if (g.type === 'int2') subjects[sub].i2 = val
