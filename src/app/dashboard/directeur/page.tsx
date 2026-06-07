@@ -17,7 +17,6 @@ import {
   Sparkles,
   ArrowRight,
   TrendingUp,
-  TrendingDown,
   CheckCircle2,
   Search,
   Activity
@@ -25,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, doc, onSnapshot, query } from "firebase/firestore"
+import { collection, doc, onSnapshot, query, where } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -49,25 +48,37 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes stabilisées avec useMemo pour éviter les boucles infinies
+  // Requêtes stabilisées avec filtres de validité pour éviter les chiffres fantômes
   const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids")), [db])
   const paymentsQuery = useMemo(() => query(collection(db, "payments")), [db])
+  const gradesQuery = useMemo(() => query(collection(db, "grades")), [db])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
   const { data: registrationIds, loading: loadingIds } = useCollection(regIdsQuery)
   const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
+  const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    const totalStudents = students?.length || 0
+    // Filtrage strict : on ne compte que les documents qui ont un matricule/ID réel
+    const validStudents = students?.filter((s: any) => s.matricule) || []
+    const totalStudents = validStudents.length
+    
     const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
     const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
+    
     const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     const pendingPaymentsCount = payments?.filter((p: any) => p.status === 'En attente').length || 0
     
-    const lastStudent = (students && students.length > 0) ? students[0] : null
+    // Calcul de la moyenne générale de l'école (Pondérée)
+    const validGrades = grades?.filter((g: any) => g.average !== undefined) || []
+    const avgSchool = validGrades.length > 0 
+      ? (validGrades.reduce((acc, g: any) => acc + (Number(g.average) || 0), 0) / validGrades.length).toFixed(2)
+      : "0.00"
+
+    const lastStudent = validStudents.length > 0 ? validStudents[0] : null
 
     return {
       totalStudents,
@@ -75,9 +86,10 @@ export default function DirectorDashboard() {
       unusedIds,
       totalRevenue,
       pendingPaymentsCount,
+      avgSchool,
       lastStudent
     }
-  }, [students, teachers, registrationIds, payments])
+  }, [students, teachers, registrationIds, payments, grades])
 
   if (!mounted) return null
 
@@ -112,7 +124,7 @@ export default function DirectorDashboard() {
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Élèves</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingStudents ? "..." : stats.totalStudents}
+                {loadingStudents ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.totalStudents}
               </p>
               <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Users className="size-6" /></div>
             </div>
@@ -122,17 +134,17 @@ export default function DirectorDashboard() {
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Enseignants Actifs</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingTeachers ? "..." : stats.activeTeachers}
+                {loadingTeachers ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.activeTeachers}
               </p>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
             </div>
           </Card>
 
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Présents ce jour</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Moyenne École</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">0</p>
-              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><UserCheck className="size-6" /></div>
+              <p className="text-4xl font-black text-foreground">{stats.avgSchool}</p>
+              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Zap className="size-6" /></div>
             </div>
           </Card>
 
@@ -140,7 +152,7 @@ export default function DirectorDashboard() {
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Paiements en attente</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingPayments ? "..." : stats.pendingPaymentsCount}
+                {loadingPayments ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.pendingPaymentsCount}
               </p>
               <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><CreditCard className="size-6" /></div>
             </div>

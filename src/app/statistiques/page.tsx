@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -11,7 +12,8 @@ import {
   PieChart as PieChartIcon,
   Sparkles,
   Activity,
-  BookOpen
+  BookOpen,
+  Loader2
 } from "lucide-react"
 import { 
   ResponsiveContainer, 
@@ -22,7 +24,7 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection } from "firebase/firestore"
+import { collection, query } from "firebase/firestore"
 import { useMemo, useState } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -32,24 +34,31 @@ export default function StatisticsPage() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("generale")
 
-  // Mémorisation des collections pour éviter les boucles infinies de useCollection
-  const studentsCol = useMemo(() => collection(db, "students"), [db])
-  const teachersCol = useMemo(() => collection(db, "teachers"), [db])
-  const paymentsCol = useMemo(() => collection(db, "payments"), [db])
-  const gradesCol = useMemo(() => collection(db, "grades"), [db])
+  // Mémorisation des requêtes pour éviter les boucles infinies
+  const studentsCol = useMemo(() => query(collection(db, "students")), [db])
+  const teachersCol = useMemo(() => query(collection(db, "teachers")), [db])
+  const paymentsCol = useMemo(() => query(collection(db, "payments")), [db])
+  const gradesCol = useMemo(() => query(collection(db, "grades")), [db])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsCol)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersCol)
   const { data: payments, loading: loadingPayments } = useCollection(paymentsCol)
   const { data: grades } = useCollection(gradesCol)
 
-  // CALCUL DES INDICATEURS GLOBAUX RÉELS
+  // CALCUL DES INDICATEURS GLOBAUX RÉELS ET FILTRÉS
   const kpis = useMemo(() => {
-    const totalStudents = Array.isArray(students) ? students.length : 0
-    const totalTeachers = Array.isArray(teachers) ? teachers.length : 0
+    // On ne compte que les enregistrements valides (ayant des données minimales)
+    const validStudents = students?.filter((s: any) => s.matricule) || []
+    const totalStudents = validStudents.length
+    
+    const validTeachers = teachers?.filter((t: any) => t.fullName) || []
+    const totalTeachers = validTeachers.length
+    
     const totalRevenue = Array.isArray(payments) ? payments.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) : 0
-    const avgSchool = Array.isArray(grades) && grades.length > 0 
-      ? (grades.reduce((acc, g: any) => acc + (g.average || 0), 0) / grades.length).toFixed(2)
+    
+    const validGrades = grades?.filter((g: any) => g.average !== undefined) || []
+    const avgSchool = validGrades.length > 0 
+      ? (validGrades.reduce((acc, g: any) => acc + (Number(g.average) || 0), 0) / validGrades.length).toFixed(2)
       : "0.00"
     
     return { totalStudents, totalTeachers, totalRevenue, avgSchool }
@@ -57,9 +66,10 @@ export default function StatisticsPage() {
 
   // RÉPARTITION PAR GENRE RÉELLE
   const genderStats = useMemo(() => {
-    if (!students || students.length === 0) return []
-    const m = students.filter((s: any) => s.gender === 'Masculin').length
-    const f = students.filter((s: any) => s.gender === 'Féminin').length
+    const validStudents = students?.filter((s: any) => s.matricule) || []
+    if (validStudents.length === 0) return []
+    const m = validStudents.filter((s: any) => s.gender === 'Masculin').length
+    const f = validStudents.filter((s: any) => s.gender === 'Féminin').length
     if (m === 0 && f === 0) return []
     return [
       { name: 'Garçons', value: m },
@@ -115,10 +125,10 @@ export default function StatisticsPage() {
         {/* INDICATEURS RÉELS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: "Effectif Global", value: kpis.totalStudents, icon: Users, color: "text-blue-600" },
-            { label: "Moyenne École", value: kpis.avgSchool, icon: GraduationCap, color: "text-primary" },
-            { label: "Corps Enseignant", value: kpis.totalTeachers, icon: BookOpen, color: "text-emerald-600" },
-            { label: "Trésorerie", value: kpis.totalRevenue.toLocaleString() + " FCFA", icon: CreditCard, color: "text-amber-600" },
+            { label: "Effectif Global", value: kpis.totalStudents, icon: Users, color: "text-blue-600", loading: loadingStudents },
+            { label: "Moyenne École", value: kpis.avgSchool, icon: GraduationCap, color: "text-primary", loading: false },
+            { label: "Corps Enseignant", value: kpis.totalTeachers, icon: BookOpen, color: "text-emerald-600", loading: loadingTeachers },
+            { label: "Trésorerie", value: kpis.totalRevenue.toLocaleString() + " FCFA", icon: CreditCard, color: "text-amber-600", loading: loadingPayments },
           ].map((kpi, i) => (
             <Card key={i} className="border-none shadow-sm rounded-[2.5rem] bg-white group hover:shadow-xl transition-all duration-300">
               <CardContent className="p-8">
@@ -128,7 +138,9 @@ export default function StatisticsPage() {
                   </div>
                 </div>
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{kpi.label}</p>
-                <h3 className="text-3xl font-black text-foreground">{kpi.value}</h3>
+                <h3 className="text-3xl font-black text-foreground">
+                  {kpi.loading ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : kpi.value}
+                </h3>
               </CardContent>
             </Card>
           ))}
