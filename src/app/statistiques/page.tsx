@@ -34,7 +34,7 @@ export default function StatisticsPage() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("generale")
 
-  // Mémorisation des requêtes pour éviter les boucles infinies
+  // Mémorisation des requêtes
   const studentsCol = useMemo(() => query(collection(db, "students")), [db])
   const teachersCol = useMemo(() => query(collection(db, "teachers")), [db])
   const paymentsCol = useMemo(() => query(collection(db, "payments")), [db])
@@ -45,14 +45,14 @@ export default function StatisticsPage() {
   const { data: payments, loading: loadingPayments } = useCollection(paymentsCol)
   const { data: grades } = useCollection(gradesCol)
 
-  // CALCUL DES INDICATEURS GLOBAUX RÉELS ET FILTRÉS
+  // CALCUL DES INDICATEURS RÉELS
   const kpis = useMemo(() => {
-    // On ne compte que les enregistrements valides (ayant des données minimales)
-    const validStudents = students?.filter((s: any) => s.matricule) || []
+    // Filtrage strict : que les inscrits avec profil complet
+    const validStudents = students?.filter((s: any) => s.matricule && s.lastName) || []
     const totalStudents = validStudents.length
     
-    const validTeachers = teachers?.filter((t: any) => t.fullName) || []
-    const totalTeachers = validTeachers.length
+    // Tous les enseignants enregistrés
+    const totalTeachers = teachers?.length || 0
     
     const totalRevenue = Array.isArray(payments) ? payments.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) : 0
     
@@ -64,9 +64,9 @@ export default function StatisticsPage() {
     return { totalStudents, totalTeachers, totalRevenue, avgSchool }
   }, [students, teachers, payments, grades])
 
-  // RÉPARTITION PAR GENRE RÉELLE
+  // RÉPARTITION PAR GENRE
   const genderStats = useMemo(() => {
-    const validStudents = students?.filter((s: any) => s.matricule) || []
+    const validStudents = students?.filter((s: any) => s.matricule && s.lastName) || []
     if (validStudents.length === 0) return []
     const m = validStudents.filter((s: any) => s.gender === 'Masculin').length
     const f = validStudents.filter((s: any) => s.gender === 'Féminin').length
@@ -93,7 +93,7 @@ export default function StatisticsPage() {
         head: [['Indicateur Périodique', 'Valeur Réelle']],
         body: [
           ['Effectif Global Élèves', kpis.totalStudents],
-          ['Corps Enseignant Actif', kpis.totalTeachers],
+          ['Corps Enseignant Enregistré', kpis.totalTeachers],
           ['Moyenne Générale École', `${kpis.avgSchool} / 20`],
           ['Total Recouvrement Trésorerie', `${kpis.totalRevenue.toLocaleString()} FCFA`],
         ],
@@ -113,7 +113,7 @@ export default function StatisticsPage() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
-            <h1 className="text-5xl font-black text-foreground tracking-tight">Intelligence <span className="text-primary italic">Scolaire</span></h1>
+            <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tight">Intelligence <span className="text-primary italic">Scolaire</span></h1>
             <p className="text-muted-foreground font-medium">Analyse certifiée basée sur les données vivantes de l'école.</p>
           </div>
           <Button onClick={handleExportPDF} className="bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/30 rounded-2xl h-14 px-10 font-black text-lg relative z-10">
@@ -122,10 +122,9 @@ export default function StatisticsPage() {
           <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
         </div>
 
-        {/* INDICATEURS RÉELS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: "Effectif Global", value: kpis.totalStudents, icon: Users, color: "text-blue-600", loading: loadingStudents },
+            { label: "Effectif Élèves", value: kpis.totalStudents, icon: Users, color: "text-blue-600", loading: loadingStudents },
             { label: "Moyenne École", value: kpis.avgSchool, icon: GraduationCap, color: "text-primary", loading: false },
             { label: "Corps Enseignant", value: kpis.totalTeachers, icon: BookOpen, color: "text-emerald-600", loading: loadingTeachers },
             { label: "Trésorerie", value: kpis.totalRevenue.toLocaleString() + " FCFA", icon: CreditCard, color: "text-amber-600", loading: loadingPayments },
@@ -147,7 +146,7 @@ export default function StatisticsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="bg-white border-2 rounded-[2.5rem] h-20 p-2 flex w-fit shadow-sm overflow-x-auto no-scrollbar">
+          <TabsList className="bg-white border-2 rounded-[2.5rem] h-20 p-2 flex w-fit shadow-sm">
             <TabsTrigger value="generale" className="rounded-2xl font-black px-10 text-xs uppercase tracking-widest">Vue Générale</TabsTrigger>
             <TabsTrigger value="ia" className="rounded-2xl font-black px-10 text-xs uppercase tracking-widest flex gap-2">
               <Sparkles className="size-4" /> Prédictions IA

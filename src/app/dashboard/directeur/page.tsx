@@ -24,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, doc, onSnapshot, query, where } from "firebase/firestore"
+import { collection, doc, onSnapshot, query } from "firebase/firestore"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 
@@ -48,7 +48,7 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // Requêtes stabilisées avec filtres de validité pour éviter les chiffres fantômes
+  // Requêtes stabilisées
   const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids")), [db])
@@ -62,17 +62,22 @@ export default function DirectorDashboard() {
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    // Filtrage strict : on ne compte que les documents qui ont un matricule/ID réel
-    const validStudents = students?.filter((s: any) => s.matricule) || []
+    // FILTRAGE STRICT : On ne compte que les profils RÉELLEMENT inscrits
+    // On vérifie lastName pour s'assurer que c'est un profil complété
+    const validStudents = students?.filter((s: any) => s.matricule && s.lastName) || []
     const totalStudents = validStudents.length
     
-    const activeTeachers = teachers?.filter((t: any) => t.status === "Actif").length || 0
+    // Pour les enseignants, on compte tout le monde (y compris en attente)
+    const totalTeachers = teachers?.length || 0
+    
+    // Identifiants inutilisés
     const unusedIds = registrationIds?.filter((id: any) => id.status === "non utilisé").length || 0
     
+    // Finances
     const totalRevenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     const pendingPaymentsCount = payments?.filter((p: any) => p.status === 'En attente').length || 0
     
-    // Calcul de la moyenne générale de l'école (Pondérée)
+    // Moyenne École
     const validGrades = grades?.filter((g: any) => g.average !== undefined) || []
     const avgSchool = validGrades.length > 0 
       ? (validGrades.reduce((acc, g: any) => acc + (Number(g.average) || 0), 0) / validGrades.length).toFixed(2)
@@ -82,7 +87,7 @@ export default function DirectorDashboard() {
 
     return {
       totalStudents,
-      activeTeachers,
+      totalTeachers,
       unusedIds,
       totalRevenue,
       pendingPaymentsCount,
@@ -101,7 +106,7 @@ export default function DirectorDashboard() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-muted/20 relative overflow-hidden">
           <div className="space-y-2 relative z-10">
-            <h1 className="text-4xl font-black text-foreground tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
               Bonjour Monsieur le Directeur <span className="text-primary italic">{directorFullName}</span>,
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
@@ -121,7 +126,7 @@ export default function DirectorDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Élèves</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Inscrits</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
                 {loadingStudents ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.totalStudents}
@@ -131,10 +136,10 @@ export default function DirectorDashboard() {
           </Card>
 
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Enseignants Actifs</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Corps Enseignant</p>
             <div className="flex items-center justify-between">
               <p className="text-4xl font-black text-foreground">
-                {loadingTeachers ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.activeTeachers}
+                {loadingTeachers ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.totalTeachers}
               </p>
               <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
             </div>
@@ -149,10 +154,10 @@ export default function DirectorDashboard() {
           </Card>
 
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Paiements en attente</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Recouvrement</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">
-                {loadingPayments ? <Loader2 className="size-6 animate-spin text-muted-foreground" /> : stats.pendingPaymentsCount}
+              <p className="text-2xl font-black text-foreground">
+                {loadingPayments ? <Loader2 className="size-4 animate-spin" /> : stats.totalRevenue.toLocaleString()} <span className="text-xs">FCFA</span>
               </p>
               <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><CreditCard className="size-6" /></div>
             </div>
