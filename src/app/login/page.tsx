@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -8,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ShieldCheck, Loader2, Sparkles } from 'lucide-react';
 import Link from 'next/link';
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
+import { toast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const router = useRouter();
@@ -40,27 +42,52 @@ export default function LoginPage() {
     if (!id.trim()) return;
     setLoading(true);
     
-    // Simulation authentification et détection rôle
-    setTimeout(() => {
-      setLoading(false);
-      const upperId = id.toUpperCase();
-      localStorage.setItem('acadex_user_id', upperId);
-
+    const upperId = id.toUpperCase();
+    
+    try {
+      // 1. Check Directeur (Simulé ou config)
       if (upperId.startsWith('DIR')) {
+        localStorage.setItem('acadex_user_id', upperId);
         localStorage.setItem('acadex_user_role', 'Directeur');
-        localStorage.setItem('acadex_user_name', 'Directeur ' + schoolName);
+        localStorage.setItem('acadex_user_name', 'le Directeur');
         router.push('/dashboard/directeur');
-      } else if (upperId.startsWith('ENS')) {
-        localStorage.setItem('acadex_user_role', 'Enseignant');
-        localStorage.setItem('acadex_user_name', 'Professeur Marc');
-        localStorage.setItem('acadex_user_classes', JSON.stringify(['3D1', 'Terminale D1']));
-        router.push('/dashboard/enseignant');
-      } else {
-        localStorage.setItem('acadex_user_role', 'Élève');
-        localStorage.setItem('acadex_user_name', 'Élève ' + (upperId || "Béninois"));
-        router.push('/dashboard/eleve');
+        return;
       }
-    }, 1200);
+
+      // 2. Check Teachers Collection
+      const teacherQuery = query(collection(db, "teachers"), where("officialId", "==", upperId));
+      const teacherSnap = await getDocs(teacherQuery);
+      
+      if (!teacherSnap.empty) {
+        const teacherData = teacherSnap.docs[0].data();
+        localStorage.setItem('acadex_user_id', upperId);
+        localStorage.setItem('acadex_user_role', 'Enseignant');
+        localStorage.setItem('acadex_user_name', teacherData.fullName || 'Professeur');
+        localStorage.setItem('acadex_user_classes', JSON.stringify(teacherData.classes || []));
+        localStorage.setItem('acadex_user_subject', teacherData.subject || "");
+        router.push('/dashboard/enseignant');
+        return;
+      }
+
+      // 3. Check Students Collection
+      const studentQuery = query(collection(db, "students"), where("matricule", "==", upperId));
+      const studentSnap = await getDocs(studentQuery);
+
+      if (!studentSnap.empty) {
+        const studentData = studentSnap.docs[0].data();
+        localStorage.setItem('acadex_user_id', upperId);
+        localStorage.setItem('acadex_user_role', 'Élève');
+        localStorage.setItem('acadex_user_name', `${studentData.firstName} ${studentData.lastName}`);
+        router.push('/dashboard/eleve');
+        return;
+      }
+
+      toast({ title: "Identifiant inconnu", description: "Veuillez vérifier votre code ou contacter la direction.", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Erreur de connexion", description: "Impossible de joindre le serveur.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,7 +116,7 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="id" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Identifiant Unique</Label>
-                <Input id="id" placeholder="Ex: DIR-001" className="h-16 rounded-2xl bg-muted/30 border-none font-black tracking-widest text-xl text-center focus-visible:ring-primary shadow-inner" value={id} onChange={e => setId(e.target.value)} required />
+                <Input id="id" placeholder="Ex: ENS-MAT-123" className="h-16 rounded-2xl bg-muted/30 border-none font-black tracking-widest text-xl text-center focus-visible:ring-primary shadow-inner" value={id} onChange={e => setId(e.target.value)} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="pass" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Mot de passe</Label>
