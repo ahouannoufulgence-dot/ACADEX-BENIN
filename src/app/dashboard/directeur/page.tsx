@@ -30,8 +30,9 @@ import placeholderData from "@/app/lib/placeholder-images.json"
 export default function DirectorDashboard() {
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
-  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2024-2025" })
+  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2026-2027" })
   const [directorFullName, setDirectorFullName] = useState("le Directeur")
+  const [activeYear, setActiveYear] = useState("2026-2027")
 
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
 
@@ -40,20 +41,31 @@ export default function DirectorDashboard() {
     const name = localStorage.getItem('acadex_user_name')
     if (name) setDirectorFullName(name)
 
+    const updateYear = () => {
+      const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+      setActiveYear(year)
+    }
+    updateYear()
+    window.addEventListener('storage', updateYear)
+
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
         const d = snap.data()
-        setSchoolInfo({ name: d.schoolName || "ACADEX ELITE", year: d.academicYear || "2024-2025" })
+        setSchoolInfo({ name: d.schoolName || "ACADEX ELITE", year: d.academicYear || "2026-2027" })
       }
     })
-    return () => unsub()
+    return () => {
+      unsub()
+      window.removeEventListener('storage', updateYear)
+    }
   }, [db])
 
-  const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
+  // REQUÊTES FILTRÉES PAR ANNÉE ACTIVE
+  const studentsQuery = useMemo(() => query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
-  const paymentsQuery = useMemo(() => query(collection(db, "payments")), [db])
-  const gradesQuery = useMemo(() => query(collection(db, "grades")), [db])
+  const paymentsQuery = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
+  const gradesQuery = useMemo(() => query(collection(db, "grades"), where("academicYear", "==", activeYear)), [db, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
@@ -81,8 +93,6 @@ export default function DirectorDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in">
-        
-        {/* Immersive Header Banner */}
         <div className="relative min-h-[320px] rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
             src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-director/1920/1080"}
@@ -107,7 +117,7 @@ export default function DirectorDashboard() {
                   <Calendar className="size-4 text-emerald-400" /> {today}
                 </div>
                 <div className="flex items-center gap-2 font-bold text-sm bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
-                  <ShieldCheck className="size-4" /> Cockpit Certifié
+                  <ShieldCheck className="size-4" /> Cockpit {activeYear}
                 </div>
               </div>
             </div>
@@ -116,7 +126,7 @@ export default function DirectorDashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs</p>
+            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs ({activeYear})</p>
             <div className="flex items-center justify-between">
               <div className="text-4xl font-black text-foreground">
                 {loadingStudents ? <Loader2 className="animate-spin size-6" /> : stats.totalStudents}
@@ -180,9 +190,9 @@ export default function DirectorDashboard() {
             </Card>
 
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
-              <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><TrendingUp className="text-primary" /> Performance Académique</h3>
+              <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><TrendingUp className="text-primary" /> Performance Académique ({activeYear})</h3>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
-                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Comparatif des classes en temps réel.</p>
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Analyse en temps réel de l'année scolaire active.</p>
               </div>
             </Card>
           </div>
@@ -207,7 +217,7 @@ export default function DirectorDashboard() {
                 <Sparkles className="size-6 text-primary animate-pulse" />
                 <h4 className="font-black text-lg">Cerveau ACADEX</h4>
               </div>
-              <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">"Analysez les disparités de notes entre vos {stats.totalTeachers} enseignants."</p>
+              <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">"Analysez les disparités de notes entre vos {stats.totalTeachers} enseignants pour l'année {activeYear}."</p>
               <Button asChild className="w-full bg-white text-primary hover:bg-white/90 rounded-xl font-black h-11 border border-primary/10">
                 <Link href="/assistant">Ouvrir l'Assistant</Link>
               </Button>

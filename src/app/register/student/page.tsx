@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, getDocs, updateDoc, doc, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, updateDoc, doc, addDoc, getDoc } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import placeholderData from "@/app/lib/placeholder-images.json";
@@ -27,6 +27,7 @@ export default function RegisterStudentPage() {
   
   const [matricule, setMatricule] = useState("");
   const [regDoc, setRegDoc] = useState<any>(null);
+  const [activeYear, setActiveYear] = useState("2026-2027");
 
   const regImage = placeholderData.placeholderImages.find(img => img.id === "registration-green");
 
@@ -41,6 +42,20 @@ export default function RegisterStudentPage() {
     parentFirstName: "",
     password: ""
   });
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const docSnap = await getDoc(doc(db, "school_settings", "main_config"));
+        if (docSnap.exists()) {
+          setActiveYear(docSnap.data().academicYear || "2026-2027");
+        }
+      } catch (e) {
+        console.warn("Config non trouvée");
+      }
+    };
+    fetchConfig();
+  }, [db]);
 
   const verifyIdentifier = async () => {
     const formatted = matricule.trim().toUpperCase();
@@ -88,42 +103,34 @@ export default function RegisterStudentPage() {
       matricule: regDoc.matricule,
       classId: regDoc.classId,
       status: "Actif",
-      academicYear: "2024-2025",
+      academicYear: activeYear,
       registeredAt: new Date().toISOString()
     };
 
     const studentRef = collection(db, "students");
     const regIdRef = doc(db, "registration_ids", regDoc.id);
 
-    addDoc(studentRef, studentData).catch(async () => {
+    addDoc(studentRef, studentData).then(() => {
+      updateDoc(regIdRef, { status: "utilisé" });
+      localStorage.setItem('acadex_user_id', regDoc.matricule);
+      localStorage.setItem('acadex_user_role', 'Élève');
+      localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
+      localStorage.setItem('acadex_active_year', activeYear);
+      setStep(3);
+    }).catch(async () => {
       const error = new FirestorePermissionError({
         path: 'students',
         operation: 'create',
         requestResourceData: studentData,
       });
       errorEmitter.emit('permission-error', error);
+    }).finally(() => {
+      setLoading(false);
     });
-
-    updateDoc(regIdRef, { status: "utilisé" }).catch(async () => {
-      const error = new FirestorePermissionError({
-        path: regIdRef.path,
-        operation: 'update',
-        requestResourceData: { status: "utilisé" },
-      });
-      errorEmitter.emit('permission-error', error);
-    });
-
-    localStorage.setItem('acadex_user_id', regDoc.matricule);
-    localStorage.setItem('acadex_user_role', 'Élève');
-    localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
-
-    setStep(3);
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* Background with Vibrant Green Overlay */}
       <div className="absolute inset-0 z-0">
         <Image 
           src={regImage?.imageUrl || "https://picsum.photos/seed/green/1920/1080"}
@@ -137,7 +144,6 @@ export default function RegisterStudentPage() {
       </div>
 
       <div className="relative z-10 w-full max-w-2xl space-y-8 animate-in fade-in duration-700">
-        
         <Card className="border-none shadow-2xl rounded-[3rem] bg-white/95 backdrop-blur-xl overflow-hidden">
           <div className="h-2 bg-primary w-full" />
           
@@ -148,7 +154,7 @@ export default function RegisterStudentPage() {
                   <GraduationCap className="size-10" />
                 </div>
                 <CardTitle className="text-4xl font-black text-foreground">Activer mon espace</CardTitle>
-                <CardDescription className="text-lg font-medium mt-2">Saisissez l'identifiant reçu lors de votre inscription.</CardDescription>
+                <CardDescription className="text-lg font-medium mt-2">Bienvenue pour l'année scolaire {activeYear}.</CardDescription>
               </CardHeader>
               <CardContent className="p-12 pt-0 space-y-8">
                 <div className="space-y-4">
@@ -267,7 +273,7 @@ export default function RegisterStudentPage() {
               <div className="space-y-4">
                 <h2 className="text-4xl font-black">Inscription Réussie !</h2>
                 <p className="text-muted-foreground font-medium text-xl leading-relaxed">
-                  Félicitations {form.firstName}, votre profil est maintenant actif en classe de <span className="text-primary font-black">{regDoc.classId}</span>.
+                  Félicitations {form.firstName}, votre profil est maintenant actif en classe de <span className="text-primary font-black">{regDoc.classId}</span> pour l'année {activeYear}.
                 </p>
               </div>
               <Button asChild className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xl shadow-xl shadow-primary/20">

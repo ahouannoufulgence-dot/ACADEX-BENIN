@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -50,7 +49,7 @@ export default function StudentsPage() {
   const [studentToDelete, setStudentToDelete] = useState<any>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClasses, setUserClasses] = useState<string[]>([])
-  const [activeYear, setActiveYear] = useState("2024-2025")
+  const [activeYear, setActiveYear] = useState("2026-2027")
   
   const db = useFirestore()
 
@@ -59,7 +58,8 @@ export default function StudentsPage() {
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     
     const updateYear = () => {
-      setActiveYear(localStorage.getItem('acadex_active_year') || "2024-2025")
+      const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+      setActiveYear(year)
     }
     updateYear()
     window.addEventListener('storage', updateYear)
@@ -72,13 +72,11 @@ export default function StudentsPage() {
     
     const baseCol = collection(db, "students")
     
-    let q = query(baseCol, where("academicYear", "==", activeYear))
-    
     if (userRole === "Enseignant" && userClasses.length > 0) {
-      q = query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
+      return query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
     }
     
-    return q
+    return query(baseCol, where("academicYear", "==", activeYear))
   }, [db, userRole, userClasses, activeYear])
 
   const { data: students, loading } = useCollection(studentsQuery)
@@ -125,7 +123,6 @@ export default function StudentsPage() {
             <h1 className="text-4xl font-black text-foreground tracking-tight">
               {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
             </h1>
-            {/* Correction de l'erreur d'hydratation : Remplacement de <p> par <div> pour contenir le <Badge> */}
             <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
               Univers scolaire de l'année <Badge className="bg-primary">{activeYear}</Badge>
             </div>
