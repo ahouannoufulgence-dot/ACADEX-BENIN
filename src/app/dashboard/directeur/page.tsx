@@ -46,7 +46,8 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  // REQUÊTES STRICTES POUR COMPTEURS RÉELS (3 ÉLÈVES / 1 ENSEIGNANT)
+  // REQUÊTES STRICTES POUR COMPTEURS RÉELS
+  // On ne compte QUE les élèves ACTIFS (3 dans votre cas)
   const studentsQuery = useMemo(() => query(collection(db, "students"), where("status", "==", "Actif")), [db])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
@@ -60,16 +61,12 @@ export default function DirectorDashboard() {
   const { data: grades } = useCollection(gradesQuery)
 
   const stats = useMemo(() => {
-    // Un élève est compté SEULEMENT s'il a un profil ACTIF
     const totalStudents = students?.length || 0
-    
-    // Un enseignant est compté s'il est dans la collection teachers
     const totalTeachers = teachers?.length || 0
-
     const idsCount = unusedIds?.length || 0
     const revenue = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
     
-    // Calcul de la moyenne de l'école basée sur les moyennes pondérées enregistrées
+    // Calcul de la moyenne de l'école basée sur toutes les notes scellées
     const validGrades = grades?.filter((g: any) => g.value !== undefined) || []
     const avg = validGrades.length 
       ? (validGrades.reduce((acc, g: any) => acc + (Number(g.value) || 0), 0) / validGrades.length).toFixed(2)

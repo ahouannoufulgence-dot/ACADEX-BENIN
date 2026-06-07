@@ -61,7 +61,7 @@ export default function GradesPage() {
     setUserName(name)
   }, [])
 
-  // Récupérer le coefficient de la matière pour cette classe
+  // Récupérer le coefficient de la matière pour cette classe configurée par le directeur
   useEffect(() => {
     const fetchCoef = async () => {
       if (!selectedClass || !userSubject) return
@@ -112,6 +112,7 @@ export default function GradesPage() {
     try {
       students?.forEach((student: any) => {
         const gradeValue = parseFloat(gradesData[student.id] || "0")
+        // ID déterministe pour synchronisation parfaite
         const gradeId = `${student.id}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
@@ -131,7 +132,7 @@ export default function GradesPage() {
 
       await batch.commit()
       setGradesData({})
-      toast({ title: "Notes scellées !", description: `Les notes du ${selectedTrimestre} ont été publiées.` })
+      toast({ title: "Notes scellées !", description: `Les notes du ${selectedTrimestre} ont été publiées et synchronisées.` })
     } catch (e) {
       const error = new FirestorePermissionError({ path: 'grades', operation: 'write' })
       errorEmitter.emit('permission-error', error)
@@ -147,12 +148,12 @@ export default function GradesPage() {
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Gestion des <span className="text-primary italic">Notes</span></h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-primary" /> Modèle 3 Interros / 2 Devoirs - {userSubject}
+              <ShieldCheck className="size-4 text-primary" /> Modèle Officiel 3 Interros / 2 Devoirs
             </p>
           </div>
           <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
             {saving ? <Loader2 className="mr-2 size-6 animate-spin" /> : <UserCheck className="mr-2 size-6 group-hover:scale-110 transition-transform" />} 
-            {saving ? "Validation..." : "Sceller & Publier"}
+            {saving ? "Synchronisation..." : "Sceller & Publier"}
           </Button>
         </div>
 
@@ -193,7 +194,7 @@ export default function GradesPage() {
             </div>
             <div className="flex items-end pb-1">
                <Badge className="h-12 w-full justify-center rounded-xl bg-muted text-muted-foreground font-bold border-none">
-                 Saisie Officielle Coefficiée
+                 Pondération Automatique Active
                </Badge>
             </div>
           </div>
