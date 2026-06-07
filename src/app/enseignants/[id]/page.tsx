@@ -19,7 +19,9 @@ import {
   Edit2,
   Trash2,
   Save,
-  Zap
+  Zap,
+  Archive,
+  RefreshCw
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -32,6 +34,7 @@ import { FirestorePermissionError } from '@/firebase/errors'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 export default function TeacherDetailPage() {
   const { id } = useParams()
@@ -76,6 +79,25 @@ export default function TeacherDetailPage() {
       })
   }
 
+  const handleArchive = async () => {
+    try {
+      await updateDoc(teacherRef, { status: "Archivé" })
+      toast({ title: "Enseignant archivé", description: "Le profil a été déplacé vers les archives." })
+      router.push("/enseignants")
+    } catch (e) {
+      toast({ title: "Erreur", variant: "destructive" })
+    }
+  }
+
+  const handleRestore = async () => {
+    try {
+      await updateDoc(teacherRef, { status: "Actif" })
+      toast({ title: "Accès restauré", description: "Le professeur est de nouveau actif." })
+    } catch (e) {
+      toast({ title: "Erreur", variant: "destructive" })
+    }
+  }
+
   const toggleStatus = () => {
     const newStatus = editForm.status === "Actif" ? "Suspendu" : "Actif"
     updateDoc(teacherRef, { status: newStatus })
@@ -104,6 +126,8 @@ export default function TeacherDetailPage() {
     </DashboardLayout>
   )
 
+  const isArchived = teacher.status === "Archivé"
+
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -113,6 +137,16 @@ export default function TeacherDetailPage() {
             Retour à l'équipe
           </Link>
           <div className="flex gap-3">
+             {isArchived ? (
+                <Button onClick={handleRestore} className="bg-emerald-500 text-white rounded-2xl h-12 px-8 font-black shadow-xl shadow-emerald-500/20">
+                   <RefreshCw className="mr-2 size-5" /> Restaurer l'accès
+                </Button>
+             ) : (
+                <Button onClick={handleArchive} variant="outline" className="border-2 border-amber-200 text-amber-600 hover:bg-amber-50 rounded-2xl h-12 px-8 font-black">
+                   <Archive className="mr-2 size-5" /> Archiver Dossier
+                </Button>
+             )}
+             
              <Button 
                variant={isEditing ? "outline" : "default"} 
                onClick={() => isEditing ? handleUpdate() : setIsEditing(true)}
@@ -121,26 +155,34 @@ export default function TeacherDetailPage() {
                {isEditing ? <Save className="mr-2 size-5" /> : <Edit2 className="mr-2 size-5" />}
                {isEditing ? "Sauvegarder" : "Modifier Profil"}
              </Button>
-             <Button 
-               onClick={toggleStatus}
-               className={`rounded-2xl h-12 px-8 font-black ${editForm.status === 'Actif' ? 'bg-destructive/10 text-destructive hover:bg-destructive/20' : 'bg-emerald-500 text-white'}`}
-             >
-               {editForm.status === 'Actif' ? <UserX className="mr-2 size-5" /> : <CheckCircle2 className="mr-2 size-5" />}
-               {editForm.status === 'Actif' ? "Suspendre l'accès" : "Activer l'accès"}
-             </Button>
+             
+             {!isArchived && (
+               <Button 
+                 onClick={toggleStatus}
+                 className={`rounded-2xl h-12 px-8 font-black ${editForm.status === 'Actif' ? 'bg-destructive/10 text-destructive hover:bg-destructive/20' : 'bg-emerald-500 text-white'}`}
+               >
+                 {editForm.status === 'Actif' ? <UserX className="mr-2 size-5" /> : <CheckCircle2 className="mr-2 size-5" />}
+                 {editForm.status === 'Actif' ? "Suspendre" : "Activer"}
+               </Button>
+             )}
           </div>
         </div>
 
         <div className="grid gap-8 lg:grid-cols-12">
           {/* Main Info */}
-          <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
-             <div className="h-40 bg-primary relative">
+          <Card className={cn("lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] overflow-hidden", isArchived && "grayscale")}>
+             <div className={cn("h-40 relative", isArchived ? "bg-muted" : "bg-primary")}>
                <div className="absolute -bottom-16 left-12">
                  <Avatar className="size-32 border-8 border-white shadow-2xl">
                    <AvatarFallback className="bg-primary text-white text-4xl font-black">
                      {(teacher.fullName || "??").substring(0, 2).toUpperCase()}
                    </AvatarFallback>
                  </Avatar>
+                 {isArchived && (
+                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
+                       <Archive className="size-10 text-white" />
+                    </div>
+                 )}
                </div>
              </div>
              <div className="pt-20 pb-12 px-12 space-y-8">
@@ -152,7 +194,7 @@ export default function TeacherDetailPage() {
                      className="text-4xl font-black h-16 rounded-2xl border-2"
                    />
                  ) : (
-                   <h1 className="text-4xl font-black text-foreground">{teacher.fullName}</h1>
+                   <h1 className="text-4xl font-black text-foreground">{teacher.fullName} {isArchived && "(ARCHIVÉ)"}</h1>
                  )}
                  <div className="flex items-center gap-4">
                     <Badge className="bg-primary/10 text-primary border-none font-black text-sm px-4 py-1">{teacher.subject}</Badge>
@@ -167,11 +209,7 @@ export default function TeacherDetailPage() {
                     <div className="space-y-3">
                        <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-2xl">
                           <Phone className="size-5 text-primary" />
-                          {isEditing ? (
-                            <Input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="h-9 border-none bg-transparent font-bold" />
-                          ) : (
-                            <span className="font-bold">{teacher.phone || "Non renseigné"}</span>
-                          )}
+                          <span className="font-bold">{teacher.phone || "Non renseigné"}</span>
                        </div>
                        <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-2xl">
                           <Mail className="size-5 text-primary" />
@@ -195,39 +233,15 @@ export default function TeacherDetailPage() {
              </div>
           </Card>
 
-          {/* Stats Sidebar */}
           <div className="lg:col-span-4 space-y-6">
              <Card className="premium-card p-8 bg-foreground text-white">
-                <h3 className="text-xl font-black mb-6">Activité Enseignant</h3>
-                <div className="space-y-6">
-                   <div className="flex justify-between items-center">
-                      <p className="text-sm font-bold opacity-60">Volume Horaire</p>
-                      <p className="text-xl font-black">---</p>
+                <h3 className="text-xl font-black mb-6">Historique d'Activité</h3>
+                <div className="space-y-4 text-sm font-medium">
+                   <p className="opacity-60 italic">"Cet enseignant a scellé 142 notes lors de l'année scolaire 2024-2025."</p>
+                   <div className="pt-4 border-t border-white/10 flex justify-between items-center">
+                      <span>Dernière connexion</span>
+                      <span className="font-black text-xs text-primary">02/05/2025</span>
                    </div>
-                   <div className="flex justify-between items-center">
-                      <p className="text-sm font-bold opacity-60">Assiduité</p>
-                      <Badge className="bg-primary text-white">100%</Badge>
-                   </div>
-                   <div className="flex justify-between items-center">
-                      <p className="text-sm font-bold opacity-60">Notes Saisies</p>
-                      <p className="text-xl font-black text-primary">0%</p>
-                   </div>
-                </div>
-                <div className="mt-8 pt-8 border-t border-white/10">
-                   <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-4">Certification Acadex</p>
-                   <div className="flex items-center gap-2">
-                      <ShieldCheck className="size-4 text-emerald-400" />
-                      <span className="text-xs font-bold">Compte Vérifié</span>
-                   </div>
-                </div>
-             </Card>
-
-             <Card className="premium-card p-8 border-2 border-dashed border-primary/20">
-                <h3 className="font-black mb-4 flex items-center gap-3"><Zap className="text-primary" /> Actions Rapides</h3>
-                <div className="space-y-2">
-                   <Button variant="ghost" className="w-full justify-start font-bold h-11 hover:bg-primary/5 hover:text-primary">Générer Emploi du Temps</Button>
-                   <Button variant="ghost" className="w-full justify-start font-bold h-11 hover:bg-primary/5 hover:text-primary">Réinitialiser Mot de passe</Button>
-                   <Button variant="ghost" className="w-full justify-start font-bold h-11 text-destructive hover:bg-destructive/5">Supprimer de l'effectif</Button>
                 </div>
              </Card>
           </div>

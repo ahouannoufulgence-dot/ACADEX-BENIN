@@ -64,6 +64,7 @@ const navigationConfig = {
     { name: "Gestion des Notes", href: "/notes", icon: PenTool },
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
+    { name: "Archives", href: "/archives", icon: Archive },
     { name: "Assistant Brain", href: "/assistant", icon: Sparkles, isIA: true },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
