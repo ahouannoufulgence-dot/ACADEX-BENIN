@@ -19,7 +19,7 @@ import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
-import { doc, getDoc } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 
 interface Message {
@@ -44,13 +44,13 @@ export default function AssistantPage() {
     
     const initialMsg: Message = {
       role: 'assistant',
-      content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Comment puis-je vous aider aujourd'hui ?`,
+      content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Je connais vos résultats scellés en temps réel. Comment puis-je vous aider ?`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
-        ? ["Bilan des inscriptions ?", "Point sur la trésorerie", "Profs en attente"]
+        ? ["Analyse des moyennes par classe", "Point sur la trésorerie", "Quels sont les élèves en difficulté ?"]
         : role === "Enseignant"
-        ? ["Moyennes de ma classe ?", "Liste de mes élèves", "Saisie des notes"]
-        : ["Quelle est ma moyenne ?", "Mes dernières notes", "Conseils pour progresser"]
+        ? ["Moyennes de ma matière", "Évolution de mes classes", "Saisie des notes"]
+        : ["Analyse ma moyenne générale", "Dans quelle matière dois-je progresser ?", "Conseils pour le 1er trimestre"]
     }
     setMessages([initialMsg])
 
@@ -82,7 +82,8 @@ export default function AssistantPage() {
     const text = overrideText || input
     if (!text.trim() || loading || !userRole) return
 
-    const userId = localStorage.getItem('acadex_user_id') || "USER-001"
+    const userId = localStorage.getItem('acadex_user_id') || ""
+    const userClasses = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
 
     const newMessage: Message = { role: 'user', content: text, timestamp: new Date() }
     setMessages(prev => [...prev, newMessage])
@@ -90,7 +91,23 @@ export default function AssistantPage() {
     setLoading(true)
 
     try {
-      // On prépare un contexte filtré côté client avant l'envoi à l'IA
+      // RÉCUPÉRATION DES DONNÉES RÉELLES POUR L'IA (Notes & Moyennes)
+      let contextGrades: any[] = []
+      
+      if (userRole === "Élève") {
+        const q = query(collection(db, "grades"), where("studentId", "==", userId))
+        const snap = await getDocs(q)
+        contextGrades = snap.docs.map(d => d.data())
+      } else if (userRole === "Enseignant") {
+        const q = query(collection(db, "grades"), where("classId", "in", userClasses))
+        const snap = await getDocs(q)
+        contextGrades = snap.docs.map(d => d.data())
+      } else if (userRole === "Directeur") {
+        const q = query(collection(db, "grades"))
+        const snap = await getDocs(q)
+        contextGrades = snap.docs.map(d => d.data())
+      }
+
       const result = await askAcadexBrain({
         question: text,
         userRole: userRole as any,
@@ -99,8 +116,7 @@ export default function AssistantPage() {
           schoolName: schoolInfo.name,
           motto: schoolInfo.motto,
           year: schoolInfo.year,
-          // Ici on pourrait ajouter des données spécifiques déjà chargées en RAM
-          // mais l'IA se basera surtout sur ses instructions de rôle
+          grades: contextGrades, // L'IA a maintenant accès aux vraies notes
         }
       })
 
@@ -183,7 +199,7 @@ export default function AssistantPage() {
                     <Loader2 className="size-5 text-muted-foreground animate-spin" />
                   </div>
                   <div className="p-5 bg-muted/50 rounded-3xl rounded-tl-none border border-muted/50">
-                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Filtrage des données...</p>
+                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Analyse des données réelles...</p>
                   </div>
                 </div>
               </div>
@@ -196,7 +212,7 @@ export default function AssistantPage() {
               className="flex items-center gap-4 bg-muted/30 p-2 pl-6 rounded-[2rem] border-2 border-transparent focus-within:border-primary/20 transition-all shadow-inner"
             >
               <Input 
-                placeholder={`Posez une question sur votre espace ${userRole}...`} 
+                placeholder={`Demandez à l'IA d'analyser vos notes...`} 
                 className="flex-1 bg-transparent border-none shadow-none h-12 font-bold placeholder:text-muted-foreground/50 focus-visible:ring-0"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -214,7 +230,7 @@ export default function AssistantPage() {
         </Card>
 
         <div className="flex items-center justify-center gap-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] opacity-40">
-           <ShieldCheck className="size-3" /> Protection des données ACADEX Active
+           <ShieldCheck className="size-3" /> Analyse basée sur vos notes réelles
         </div>
       </div>
     </DashboardLayout>
