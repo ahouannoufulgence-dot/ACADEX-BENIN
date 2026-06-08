@@ -202,7 +202,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           }`}
                         >
                           <Link href={item.href}>
-                            <item.icon className={cn("size-5", pathname === item.href ? "text-white" : "text-white/50")} />
+                            <item.icon className={cn("size-5 md:size-6", pathname === item.href ? "text-white" : "text-white/50")} />
                             <span className="font-bold text-sm tracking-wide">{item.name}</span>
                             {item.isIA && (
                               <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black">IA</Badge>
@@ -218,7 +218,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </ScrollArea>
           <SidebarFooter className="p-6 bg-primary">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold">
-              <LogOut className="size-5" />
+              <LogOut className="size-5 md:size-6" />
               <span>Déconnexion</span>
             </Button>
           </SidebarFooter>
@@ -243,7 +243,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="h-11 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-3 px-4 transition-all">
-                      <Calendar className="size-4 text-primary" />
+                      <Calendar className="size-4 md:size-5 text-primary" />
                       <span className="text-sm">{activeYear}</span>
                       <ChevronDown className="size-3 text-muted-foreground" />
                     </Button>

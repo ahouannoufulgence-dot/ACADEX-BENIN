@@ -155,14 +155,14 @@ export default function StudentLifePage() {
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Vie Scolaire & <span className="text-primary italic">Conduite</span></h1>
+            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">Vie Scolaire & <span className="text-primary italic">Conduite</span></h1>
             <div className="text-muted-foreground font-medium flex items-center gap-2 mt-2">
-              <ShieldCheck className="size-4 text-emerald-500" /> Année Scolaire <Badge className="bg-primary">{activeYear}</Badge>
+              <ShieldCheck className="size-4 md:size-5 text-emerald-500" /> Année Scolaire <Badge className="bg-primary">{activeYear}</Badge>
             </div>
           </div>
-          <Badge className="bg-primary text-white h-14 px-10 rounded-2xl flex items-center gap-3 font-black text-2xl shadow-xl shadow-primary/20">
+          <Badge className="bg-primary text-white h-14 md:h-16 px-8 md:px-12 rounded-2xl flex items-center gap-3 md:gap-4 font-black text-xl md:text-2xl shadow-xl shadow-primary/20">
              NOTE CONDUITE : {stats.conductGrade.toFixed(1)}/20
           </Badge>
         </div>
@@ -180,10 +180,10 @@ export default function StudentLifePage() {
                     className="pl-12 h-12 rounded-xl bg-muted/30 border-none font-bold"
                   />
                 </div>
-                <ScrollArea className="h-[400px] pr-4">
+                <ScrollArea className="h-[300px] md:h-[400px] pr-4">
                   <div className="space-y-2">
                     {loadingStudents ? (
-                      <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary" /></div>
+                      <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto text-primary size-8" /></div>
                     ) : filteredStudents.map((s: any) => (
                       <button
                         key={s.id}
@@ -193,12 +193,12 @@ export default function StudentLifePage() {
                           selectedStudent?.id === s.id ? "bg-primary/5 border-primary text-primary" : "border-transparent hover:bg-muted/50"
                         )}
                       >
-                        <Avatar className="size-10 border-2 border-white">
-                          <AvatarFallback className="font-black text-xs">{s.lastName[0]}</AvatarFallback>
+                        <Avatar className="size-10 md:size-12 border-2 border-white shadow-sm">
+                          <AvatarFallback className="font-black text-xs md:text-sm">{s.lastName[0]}</AvatarFallback>
                         </Avatar>
                         <div className="text-left min-w-0">
-                          <p className="font-black text-sm truncate uppercase">{s.lastName} {s.firstName}</p>
-                          <p className="text-[10px] font-bold text-muted-foreground">{s.matricule}</p>
+                          <p className="font-black text-sm md:text-base truncate uppercase">{s.lastName} {s.firstName}</p>
+                          <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground">{s.matricule}</p>
                         </div>
                       </button>
                     ))}
@@ -212,14 +212,14 @@ export default function StudentLifePage() {
                     <div className="flex justify-between items-start">
                        <div>
                          <p className="text-[10px] font-black uppercase text-primary tracking-widest">Performance Comportementale</p>
-                         <h4 className="text-4xl font-black">{stats.conductGrade.toFixed(1)}<span className="text-sm opacity-40">/20</span></h4>
+                         <h4 className="text-3xl md:text-4xl font-black">{stats.conductGrade.toFixed(1)}<span className="text-sm opacity-40">/20</span></h4>
                        </div>
-                       <Award className="size-10 text-primary animate-pulse" />
+                       <Award className="size-8 md:size-10 text-primary animate-pulse" />
                     </div>
                     <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/10">
-                      <div className="text-center"><p className="text-xl font-black text-red-500">{stats.absence}</p><p className="text-[7px] font-black uppercase opacity-40">Absences</p></div>
-                      <div className="text-center"><p className="text-xl font-black text-amber-400">{stats.retards}</p><p className="text-[7px] font-black uppercase opacity-40">Retards</p></div>
-                      <div className="text-center"><p className="text-xl font-black text-blue-400">{stats.discipline}</p><p className="text-[7px] font-black uppercase opacity-40">Sanctions</p></div>
+                      <div className="text-center"><p className="text-lg md:text-xl font-black text-red-500">{stats.absence}</p><p className="text-[7px] font-black uppercase opacity-40">Absences</p></div>
+                      <div className="text-center"><p className="text-lg md:text-xl font-black text-amber-400">{stats.retards}</p><p className="text-[7px] font-black uppercase opacity-40">Retards</p></div>
+                      <div className="text-center"><p className="text-lg md:text-xl font-black text-blue-400">{stats.discipline}</p><p className="text-[7px] font-black uppercase opacity-40">Sanctions</p></div>
                     </div>
                   </div>
                 </Card>
@@ -229,24 +229,24 @@ export default function StudentLifePage() {
 
           <div className={cn(isStaff ? "lg:col-span-8" : "lg:col-span-12", "space-y-6")}>
             {(!selectedStudent && isStaff) ? (
-              <Card className="p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center h-full">
-                <ClipboardList className="size-20 mb-6" />
-                <h3 className="text-2xl font-black">Sélectionnez un élève</h3>
-                <p className="font-medium text-muted-foreground">Pour ajuster sa note de conduite ou pointer ses absences.</p>
+              <Card className="p-16 md:p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center h-full">
+                <ClipboardList className="size-16 md:size-20 mb-6" />
+                <h3 className="text-xl md:text-2xl font-black">Sélectionnez un élève</h3>
+                <p className="text-sm md:text-base font-medium text-muted-foreground">Pour ajuster sa note de conduite ou pointer ses absences.</p>
               </Card>
             ) : (
               <div className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="bg-white border-2 rounded-[2rem] h-16 p-2 flex w-fit shadow-md overflow-x-auto no-scrollbar mb-8">
-                    <TabsTrigger value="presence" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest flex gap-2"><UserCheck className="size-4" /> Présence</TabsTrigger>
-                    <TabsTrigger value="discipline" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest flex gap-2"><ShieldAlert className="size-4" /> Discipline</TabsTrigger>
-                    <TabsTrigger value="conduite" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest flex gap-2"><Award className="size-4" /> Bonus/Malus</TabsTrigger>
+                  <TabsList className="bg-white border-2 rounded-[2rem] h-14 md:h-16 p-2 flex w-fit shadow-md overflow-x-auto no-scrollbar mb-8">
+                    <TabsTrigger value="presence" className="rounded-2xl font-black px-6 md:px-8 text-[9px] md:text-[10px] uppercase tracking-widest flex gap-2"><UserCheck className="size-3 md:size-4" /> Présence</TabsTrigger>
+                    <TabsTrigger value="discipline" className="rounded-2xl font-black px-6 md:px-8 text-[9px] md:text-[10px] uppercase tracking-widest flex gap-2"><ShieldAlert className="size-3 md:size-4" /> Discipline</TabsTrigger>
+                    <TabsTrigger value="conduite" className="rounded-2xl font-black px-6 md:px-8 text-[9px] md:text-[10px] uppercase tracking-widest flex gap-2"><Award className="size-3 md:size-4" /> Bonus/Malus</TabsTrigger>
                   </TabsList>
 
                   {isStaff && (
-                    <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm mb-8 border-l-[12px] border-primary animate-in slide-in-from-right-4">
+                    <Card className="p-6 md:p-8 rounded-[2.5rem] bg-white border-none shadow-sm mb-8 border-l-[12px] border-primary animate-in slide-in-from-right-4">
                       <TabsContent value="presence" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Statut</Label>
                             <Select value={presenceForm.status} onValueChange={(v) => setPresenceForm({...presenceForm, status: v})}>
@@ -267,14 +267,14 @@ export default function StudentLifePage() {
                             <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Motif</Label>
                             <Input placeholder="Détails..." value={presenceForm.motif} onChange={(e) => setPresenceForm({...presenceForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                           </div>
-                          <Button onClick={() => handleAddEvent('presence')} disabled={loading} className="h-12 bg-primary rounded-xl font-black">
-                            {loading ? <Loader2 className="animate-spin" /> : "Pointer"}
+                          <Button onClick={() => handleAddEvent('presence')} disabled={loading} className="h-12 bg-primary rounded-xl font-black mobile-touch-target">
+                            {loading ? <Loader2 className="animate-spin size-5" /> : "Pointer"}
                           </Button>
                         </div>
                       </TabsContent>
 
                       <TabsContent value="conduite" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Impact Points</Label>
                             <Input type="number" step="0.5" value={bonusForm.points} onChange={(e) => setBonusForm({...bonusForm, points: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black text-center" />
@@ -283,12 +283,12 @@ export default function StudentLifePage() {
                             <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Justification</Label>
                             <Input placeholder="Encouragement ou Malus..." value={bonusForm.motif} onChange={(e) => setBonusForm({...bonusForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                           </div>
-                          <Button onClick={() => handleAddEvent('conduite')} disabled={loading} className="h-12 bg-emerald-500 rounded-xl font-black text-white">Appliquer</Button>
+                          <Button onClick={() => handleAddEvent('conduite')} disabled={loading} className="h-12 bg-emerald-500 rounded-xl font-black text-white mobile-touch-target">Appliquer</Button>
                         </div>
                       </TabsContent>
 
                       <TabsContent value="discipline" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                           <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Sanction</Label>
                             <Select value={disciplineForm.type} onValueChange={(v) => setDisciplineForm({...disciplineForm, type: v})}>
@@ -304,15 +304,15 @@ export default function StudentLifePage() {
                             <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Motif</Label>
                             <Input placeholder="Raison disciplinaire..." value={disciplineForm.motif} onChange={(e) => setDisciplineForm({...disciplineForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                           </div>
-                          <Button onClick={() => handleAddEvent('discipline')} disabled={loading} className="h-12 bg-destructive text-white rounded-xl font-black">Sanctionner</Button>
+                          <Button onClick={() => handleAddEvent('discipline')} disabled={loading} className="h-12 bg-destructive text-white rounded-xl font-black mobile-touch-target">Sanctionner</Button>
                         </div>
                       </TabsContent>
                     </Card>
                   )}
 
                   <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden min-h-[500px]">
-                    <div className="p-8 border-b bg-muted/10 flex items-center justify-between">
-                      <h3 className="text-xl font-black flex items-center gap-3"><History className="text-primary" /> Chronologie Conduite</h3>
+                    <div className="p-6 md:p-8 border-b bg-muted/10 flex items-center justify-between">
+                      <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><History className="text-primary size-5 md:size-6" /> Chronologie Conduite</h3>
                       <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-black uppercase text-[9px] px-3">{events?.length || 0} ENTRÉES</Badge>
                     </div>
                     
@@ -321,34 +321,34 @@ export default function StudentLifePage() {
                         <div className="p-20 text-center animate-pulse font-black text-muted-foreground">Calcul des impacts...</div>
                       ) : !events || events.length === 0 ? (
                         <div className="p-24 text-center space-y-6 opacity-30">
-                          <Award className="size-20 mx-auto" />
+                          <Award className="size-16 md:size-20 mx-auto" />
                           <p className="italic font-bold">L'élève commence avec 20/20. Aucune modification.</p>
                         </div>
                       ) : (
                         <div className="divide-y divide-muted/30">
                           {events.map((event: any, i: number) => (
-                            <div key={i} className="p-8 hover:bg-muted/5 transition-all group flex items-start gap-6">
+                            <div key={i} className="p-6 md:p-8 hover:bg-muted/5 transition-all group flex items-start gap-4 md:gap-6">
                               <div className={cn(
-                                "size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm",
+                                "size-10 md:size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110",
                                 event.category === 'presence' ? (event.status === 'Présent' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600') : 
                                 event.category === 'discipline' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                               )}>
-                                {event.category === 'presence' ? <UserCheck className="size-5" /> : 
-                                 event.category === 'discipline' ? <ShieldAlert className="size-5" /> : <Award className="size-5" />}
+                                {event.category === 'presence' ? <UserCheck className="size-4 md:size-5" /> : 
+                                 event.category === 'discipline' ? <ShieldAlert className="size-4 md:size-5" /> : <Award className="size-4 md:size-5" />}
                               </div>
                               <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start">
-                                   <h4 className="font-black text-lg text-foreground uppercase tracking-tight">
+                                   <h4 className="font-black text-sm md:text-lg text-foreground uppercase tracking-tight">
                                      {event.status || event.type}
-                                     {event.pointsImpact && (
-                                       <Badge className={cn("rounded-lg font-black ml-2", event.pointsImpact > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>
+                                     {event.pointsImpact !== undefined && (
+                                       <Badge className={cn("rounded-lg font-black ml-2 text-[8px] md:text-[10px]", event.pointsImpact > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>
                                          {event.pointsImpact > 0 ? `+${event.pointsImpact}` : event.pointsImpact} pts
                                        </Badge>
                                      )}
                                    </h4>
-                                   <span className="text-[10px] font-black text-muted-foreground uppercase">{new Date(event.date).toLocaleDateString('fr-FR')}</span>
+                                   <span className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase">{new Date(event.date).toLocaleDateString('fr-FR')}</span>
                                 </div>
-                                <div className="p-4 bg-muted/30 rounded-2xl border border-muted/20 text-sm font-medium italic">
+                                <div className="p-3 md:p-4 bg-muted/30 rounded-2xl border border-muted/20 text-xs md:text-sm font-medium italic leading-relaxed">
                                    "{event.motif || 'Aucun détail.'}"
                                 </div>
                               </div>

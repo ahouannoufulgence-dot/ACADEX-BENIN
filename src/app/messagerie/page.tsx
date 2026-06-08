@@ -268,16 +268,16 @@ export default function MessagingPage() {
     <DashboardLayout>
       <div className="h-[calc(100vh-12rem)] flex gap-6 animate-in fade-in duration-500">
         <Card className={`flex-col overflow-hidden border-none shadow-sm bg-white rounded-[2.5rem] w-full md:w-[400px] ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-8 pb-4">
+          <div className="p-6 md:p-8 pb-4">
             <div className="flex items-center justify-between mb-8">
               <div>
-                <h2 className="text-3xl font-black text-foreground tracking-tight">Messagerie</h2>
+                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">Messagerie</h2>
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Canal Officiel Acadex</p>
               </div>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button size="icon" variant="ghost" onClick={fetchContacts} className="size-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all">
-                    <Plus className="size-6" />
+                  <Button size="icon" variant="ghost" onClick={fetchContacts} className="size-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all mobile-touch-target">
+                    <Plus className="size-5 md:size-6" />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="rounded-[2.5rem] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
@@ -288,9 +288,9 @@ export default function MessagingPage() {
                   <div className="p-6 space-y-6">
                     <div className="relative group">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                      <Input placeholder="Rechercher un membre..." className="pl-12 h-14 rounded-2xl border-2 font-bold focus-visible:ring-primary" />
+                      <Input placeholder="Rechercher un membre..." className="pl-12 h-14 rounded-2xl border-2 font-bold focus-visible:ring-primary shadow-inner" />
                     </div>
-                    <ScrollArea className="h-[450px] pr-4">
+                    <ScrollArea className="h-[400px] pr-4">
                       {loadingContacts ? (
                         <div className="flex flex-col items-center justify-center p-20 gap-4">
                            <Loader2 className="animate-spin text-primary size-10" />
@@ -307,20 +307,20 @@ export default function MessagingPage() {
                               className="w-full flex items-center gap-4 p-4 rounded-3xl hover:bg-muted/50 border-2 border-transparent hover:border-primary/10 transition-all text-left group"
                             >
                               <div className="relative">
-                                <Avatar className="size-14 border-4 border-white shadow-sm">
+                                <Avatar className="size-12 md:size-14 border-4 border-white shadow-sm">
                                   <AvatarFallback className="bg-primary/10 text-primary font-black text-lg">{c.name?.[0] || '?'}</AvatarFallback>
                                 </Avatar>
-                                <div className="absolute -bottom-1 -right-1 size-5 bg-emerald-500 border-2 border-white rounded-full" />
+                                <div className="absolute -bottom-1 -right-1 size-4 md:size-5 bg-emerald-500 border-2 border-white rounded-full" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-black text-base group-hover:text-primary transition-colors truncate">{c.name}</p>
+                                <p className="font-black text-sm md:text-base group-hover:text-primary transition-colors truncate">{c.name}</p>
                                 <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary px-2">{c.role}</Badge>
-                                  <p className="text-[10px] font-bold text-muted-foreground truncate">{c.sub}</p>
+                                  <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase border-primary/20 text-primary px-2">{c.role}</Badge>
+                                  <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground truncate">{c.sub}</p>
                                 </div>
                               </div>
                               <div className="size-10 bg-muted/50 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
-                                <Send className="size-4" />
+                                <Send className="size-4 md:size-5" />
                               </div>
                             </button>
                           ))}
@@ -362,8 +362,8 @@ export default function MessagingPage() {
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="text-center py-20 px-8 space-y-6">
-                <div className="size-20 bg-muted rounded-[2rem] flex items-center justify-center mx-auto opacity-30">
-                  <MessageCircle className="size-10" />
+                <div className="size-16 md:size-20 bg-muted rounded-[2rem] flex items-center justify-center mx-auto opacity-30">
+                  <MessageCircle className="size-8 md:size-10" />
                 </div>
                 <div className="space-y-1">
                   <h3 className="font-black text-foreground">Silence radio</h3>
@@ -380,16 +380,16 @@ export default function MessagingPage() {
                   <div 
                     key={chat.id}
                     onClick={() => setSelectedChat({ ...chat, otherName: otherParticipantName })}
-                    className={`flex items-center gap-4 p-5 rounded-[2rem] cursor-pointer transition-all duration-300 relative group ${selectedChat?.id === chat.id ? 'bg-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]' : 'bg-white hover:bg-muted/5 border border-muted/20'}`}
+                    className={`flex items-center gap-4 p-4 md:p-5 rounded-[2rem] cursor-pointer transition-all duration-300 relative group ${selectedChat?.id === chat.id ? 'bg-primary text-white shadow-2xl shadow-primary/20 scale-[1.02]' : 'bg-white hover:bg-muted/5 border border-muted/20'}`}
                   >
                     <div className="relative">
-                      <Avatar className={`size-14 border-4 ${selectedChat?.id === chat.id ? 'border-white/20' : 'border-white'} shadow-sm`}>
-                        <AvatarFallback className={selectedChat?.id === chat.id ? "text-primary bg-white font-black text-xl" : "bg-primary/10 text-primary font-black text-xl"}> 
+                      <Avatar className={`size-12 md:size-14 border-4 ${selectedChat?.id === chat.id ? 'border-white/20' : 'border-white'} shadow-sm`}>
+                        <AvatarFallback className={selectedChat?.id === chat.id ? "text-primary bg-white font-black text-lg" : "bg-primary/10 text-primary font-black text-lg"}> 
                           {otherParticipantName?.[0] || '?'} 
                         </AvatarFallback>
                       </Avatar>
                       {unreadCount > 0 && (
-                        <div className="absolute -top-1 -right-1 size-6 bg-amber-400 text-black font-black text-[10px] rounded-full flex items-center justify-center border-4 border-white shadow-sm">
+                        <div className="absolute -top-1 -right-1 size-5 md:size-6 bg-amber-400 text-black font-black text-[9px] md:text-[10px] rounded-full flex items-center justify-center border-4 border-white shadow-sm">
                           {unreadCount}
                         </div>
                       )}
@@ -397,12 +397,12 @@ export default function MessagingPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center mb-1">
                         <h4 className="font-black truncate text-sm tracking-tight">{otherParticipantName}</h4>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${selectedChat?.id === chat.id ? 'text-white/60' : 'text-muted-foreground'}`}>
+                        <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest ${selectedChat?.id === chat.id ? 'text-white/60' : 'text-muted-foreground'}`}>
                           {formatTime(chat.lastMessageTime)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        {chat.lastMessage && <p className={`text-xs truncate font-medium flex-1 ${selectedChat?.id === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>
+                        {chat.lastMessage && <p className={`text-[11px] md:text-xs truncate font-medium flex-1 ${selectedChat?.id === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>
                           {chat.lastMessage}
                         </p>}
                       </div>
@@ -417,44 +417,42 @@ export default function MessagingPage() {
         <Card className={`flex-1 border-none shadow-sm bg-white rounded-[2.5rem] flex-col overflow-hidden relative ${!selectedChat ? 'hidden md:flex' : 'flex'}`}>
           {!selectedChat ? (
             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-muted/5">
-              <div className="size-32 bg-white rounded-[3rem] flex items-center justify-center shadow-2xl mb-10 group hover:scale-110 transition-all duration-700">
-                <ShieldCheck className="size-16 text-primary animate-pulse" />
+              <div className="size-24 md:size-32 bg-white rounded-[3rem] flex items-center justify-center shadow-2xl mb-10 group hover:scale-110 transition-all duration-700">
+                <ShieldCheck className="size-12 md:size-16 text-primary animate-pulse" />
               </div>
               <div className="max-w-sm space-y-4">
-                <h3 className="text-4xl font-black text-foreground tracking-tight">Canal Sécurisé</h3>
-                <p className="text-muted-foreground font-medium leading-relaxed">
+                <h3 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">Canal Sécurisé</h3>
+                <p className="text-sm md:text-base text-muted-foreground font-medium leading-relaxed">
                   Espace de communication crypté d'ACADEX. Échangez en toute confidentialité selon vos droits d'accès.
                 </p>
-                <div className="pt-6 flex justify-center gap-4">
-                  <Badge className="bg-primary/5 text-primary border-primary/10 rounded-full px-4 py-1.5 font-black text-[10px] uppercase tracking-widest">Restrictions Actives</Badge>
-                  <Badge className="bg-primary/5 text-primary border-primary/10 rounded-full px-4 py-1.5 font-black text-[10px] uppercase tracking-widest">Accès Protégé</Badge>
+                <div className="pt-6 flex flex-wrap justify-center gap-3">
+                  <Badge className="bg-primary/5 text-primary border-primary/10 rounded-full px-4 py-1.5 font-black text-[9px] md:text-[10px] uppercase tracking-widest">Restrictions Actives</Badge>
+                  <Badge className="bg-primary/5 text-primary border-primary/10 rounded-full px-4 py-1.5 font-black text-[9px] md:text-[10px] uppercase tracking-widest">Accès Protégé</Badge>
                 </div>
               </div>
             </div>
           ) : (
             <>
-              <div className="p-6 px-10 border-b flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-20">
-                <div className="flex items-center gap-6">
-                  <Button variant="ghost" size="icon" className="md:hidden rounded-2xl bg-muted/50" onClick={() => setSelectedChat(null)}>
+              <div className="p-4 md:p-6 px-6 md:px-10 border-b flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-20">
+                <div className="flex items-center gap-4 md:gap-6">
+                  <Button variant="ghost" size="icon" className="md:hidden rounded-2xl bg-muted/50 mobile-touch-target" onClick={() => setSelectedChat(null)}>
                     <ChevronLeft className="size-6" />
                   </Button>
                   <div className="relative">
-                    <Avatar className="size-14 border-4 border-muted/20 shadow-sm transition-transform hover:scale-105">
-                      <AvatarFallback className="bg-primary text-white font-black text-xl"> {selectedChat.otherName?.[0] || '?'} </AvatarFallback>
+                    <Avatar className="size-12 md:size-14 border-4 border-muted/20 shadow-sm transition-transform hover:scale-105">
+                      <AvatarFallback className="bg-primary text-white font-black text-lg md:text-xl"> {selectedChat.otherName?.[0] || '?'} </AvatarFallback>
                     </Avatar>
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-foreground tracking-tight">{selectedChat.otherName}</h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <div className="flex items-center gap-2">
-                        <div className="size-2 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Espace d'échange</span>
-                      </div>
+                    <h3 className="text-lg md:text-xl font-black text-foreground tracking-tight">{selectedChat.otherName}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="size-2 bg-emerald-500 rounded-full animate-pulse" />
+                      <span className="text-[9px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Espace d'échange</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                   <Button variant="ghost" size="icon" className="size-12 rounded-2xl hover:bg-muted transition-all">
+                   <Button variant="ghost" size="icon" className="size-10 md:size-12 rounded-2xl hover:bg-muted transition-all mobile-touch-target">
                      <Lock className="size-5 text-muted-foreground" />
                    </Button>
                 </div>
@@ -462,7 +460,7 @@ export default function MessagingPage() {
 
               <div 
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-10 space-y-8 bg-[#F8FAFC]/30 scroll-smooth no-scrollbar"
+                className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 bg-[#F8FAFC]/30 scroll-smooth no-scrollbar"
               >
                 {loadingMsgs ? (
                   <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -495,15 +493,15 @@ export default function MessagingPage() {
                               )}
                             </div>
                           )}
-                          <div className={`max-w-[70%] space-y-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
-                            <div className={`group relative p-5 rounded-[2rem] text-sm md:text-base font-medium shadow-sm leading-relaxed transition-all ${
+                          <div className={`max-w-[85%] md:max-w-[70%] space-y-1.5 ${isMe ? 'items-end' : 'items-start'}`}>
+                            <div className={`group relative p-4 md:p-5 rounded-[2rem] text-sm md:text-base font-medium shadow-sm leading-relaxed transition-all ${
                               isMe 
                                 ? 'bg-primary text-white rounded-br-none' 
                                 : 'bg-white text-foreground rounded-bl-none border border-muted/30'
                             }`}>
                               {msg.text}
                               <div className={`absolute bottom-2 right-4 flex items-center gap-1 opacity-40 group-hover:opacity-100 transition-opacity`}>
-                                 <span className="text-[9px] font-black uppercase tracking-widest">{formatTime(msg.timestamp)}</span>
+                                 <span className="text-[8px] md:text-[9px] font-black uppercase tracking-widest">{formatTime(msg.timestamp)}</span>
                                  {isMe && <CheckCheck className="size-3" />}
                               </div>
                             </div>
@@ -515,18 +513,18 @@ export default function MessagingPage() {
                 )}
               </div>
 
-              <div className="p-8 pt-4 bg-white border-t border-muted/10">
+              <div className="p-6 md:p-8 pt-4 bg-white border-t border-muted/10">
                 <form 
                   onSubmit={handleSendMessage}
-                  className="flex items-center gap-4 bg-muted/30 p-2 pl-6 rounded-[2.5rem] border-2 border-transparent focus-within:border-primary/10 focus-within:bg-white transition-all shadow-inner"
+                  className="flex items-center gap-3 md:gap-4 bg-muted/30 p-2 pl-4 md:pl-6 rounded-[2.5rem] border-2 border-transparent focus-within:border-primary/10 focus-within:bg-white transition-all shadow-inner"
                 >
-                  <Button type="button" variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-primary transition-colors hover:bg-primary/5">
-                    <Paperclip className="size-6" />
+                  <Button type="button" variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-primary transition-colors hover:bg-primary/5 mobile-touch-target">
+                    <Paperclip className="size-5 md:size-6" />
                   </Button>
                   
                   <Input 
-                    placeholder="Tapez votre message officiel..." 
-                    className="flex-1 bg-transparent border-none shadow-none h-14 font-bold focus-visible:ring-0 text-base placeholder:text-muted-foreground/40"
+                    placeholder="Message..." 
+                    className="flex-1 bg-transparent border-none shadow-none h-12 md:h-14 font-bold focus-visible:ring-0 text-sm md:text-base placeholder:text-muted-foreground/40"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                   />
@@ -534,9 +532,9 @@ export default function MessagingPage() {
                   <Button 
                     type="submit" 
                     disabled={!messageText.trim()}
-                    className="bg-primary hover:bg-primary/90 text-white size-14 rounded-[1.5rem] shadow-2xl shadow-primary/30 transition-all active:scale-90 group"
+                    className="bg-primary hover:bg-primary/90 text-white size-12 md:size-14 rounded-2xl md:rounded-[1.5rem] shadow-2xl shadow-primary/30 transition-all active:scale-90 group mobile-touch-target"
                   >
-                    <Send className="size-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                    <Send className="size-5 md:size-6 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </Button>
                 </form>
               </div>

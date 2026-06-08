@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -105,24 +106,24 @@ export default function StudentDashboard() {
           />
           <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/60 to-transparent" />
           
-          <div className="absolute inset-0 p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="absolute inset-0 p-8 md:p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="space-y-4 max-w-xl">
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
                 Bienvenue sur ton <span className="text-emerald-400 italic">Cockpit</span>,
               </h1>
-              <p className="text-2xl font-bold text-white/90">{studentName}</p>
-              <div className="flex flex-wrap items-center gap-4">
-                <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black px-6 py-2 uppercase tracking-widest text-xs">
+              <p className="text-xl md:text-2xl font-bold text-white/90">{studentName}</p>
+              <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black px-4 md:px-6 py-2 uppercase tracking-widest text-[10px] md:text-xs">
                   {studentId}
                 </Badge>
-                <div className="flex items-center gap-2 font-bold text-sm bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
-                  <ShieldCheck className="size-4" /> Certification Acadex Live
+                <div className="flex items-center gap-2 font-bold text-xs bg-emerald-500 text-white px-4 md:px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
+                  <ShieldCheck className="size-3 md:size-4" /> Certification Acadex Live
                 </div>
               </div>
             </div>
-            <Button asChild className="bg-white text-primary hover:bg-white/90 shadow-2xl rounded-2xl h-16 px-10 font-black text-lg transition-all active:scale-95">
+            <Button asChild className="bg-white text-primary hover:bg-white/90 shadow-2xl rounded-2xl h-14 md:h-16 px-8 md:px-10 font-black text-base md:text-lg transition-all active:scale-95">
                <Link href="/assistant">
-                 <Sparkles className="mr-3 size-6 fill-primary/20" /> Assistant IA
+                 <Sparkles className="mr-3 size-5 md:size-6 fill-primary/20" /> Assistant IA
                </Link>
             </Button>
           </div>
@@ -134,14 +135,14 @@ export default function StudentDashboard() {
               <Card className="p-7 rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between group hover:shadow-lg transition-all bg-white h-full">
                 <div className="flex items-center justify-between mb-6">
                   <div className={`p-4 bg-muted rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
-                    <stat.icon className="size-7" />
+                    <stat.icon className="size-6 md:size-7" />
                   </div>
-                  <ArrowRight className="size-4 opacity-30 group-hover:opacity-100 transition-all" />
+                  <ArrowRight className="size-4 md:size-5 opacity-30 group-hover:opacity-100 transition-all" />
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.title}</p>
                   <div className="flex items-baseline gap-1 mt-1">
-                    <div className="text-3xl font-black text-foreground">
+                    <div className="text-2xl md:text-3xl font-black text-foreground">
                       {loadingGrades && stat.title === "Ma Moyenne" ? <Loader2 className="animate-spin size-5" /> : stat.value}
                     </div>
                   </div>
@@ -154,11 +155,11 @@ export default function StudentDashboard() {
 
         <div className="grid lg:grid-cols-12 gap-8">
           <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
-             <div className="p-8 border-b flex items-center justify-between bg-muted/10">
-               <h3 className="text-xl font-black flex items-center gap-3">
-                 <FileText className="text-primary" /> Dernières Notes Scellées
+             <div className="p-6 md:p-8 border-b flex items-center justify-between bg-muted/10">
+               <h3 className="text-lg md:text-xl font-black flex items-center gap-3">
+                 <FileText className="text-primary size-5 md:size-6" /> Dernières Notes Scellées
                </h3>
-               <Button variant="ghost" asChild className="font-bold text-primary rounded-xl">
+               <Button variant="ghost" asChild className="font-bold text-primary rounded-xl mobile-touch-target">
                  <Link href="/dashboard/eleve/notes">Voir tout</Link>
                </Button>
              </div>
@@ -170,14 +171,14 @@ export default function StudentDashboard() {
                ) : (
                  <div className="divide-y divide-muted/30">
                    {grades.slice(0, 5).map((grade: any, i) => (
-                     <div key={i} className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
+                     <div key={i} className="p-5 md:p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                        <div className="flex items-center gap-4">
-                         <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black">
+                         <div className="size-10 md:size-12 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black">
                            {(grade.subject || "?")[0]}
                          </div>
                          <div>
-                            <p className="font-black text-foreground">{grade.subject}</p>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{grade.type} - {grade.term}</p>
+                            <p className="font-black text-sm md:text-base text-foreground">{grade.subject}</p>
+                            <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase">{grade.type} - {grade.term}</p>
                          </div>
                        </div>
                        <Badge className="bg-primary text-white h-10 w-20 justify-center rounded-xl text-lg font-black">
@@ -192,20 +193,20 @@ export default function StudentDashboard() {
 
           <div className="lg:col-span-4 space-y-6">
             <Card className="premium-card p-8 bg-foreground text-white">
-              <h3 className="text-xl font-black mb-6 flex items-center gap-3">
-                <Calendar className="text-primary" /> Prochain Cours
+              <h3 className="text-lg md:text-xl font-black mb-6 flex items-center gap-3">
+                <Calendar className="text-primary size-5 md:size-6" /> Prochain Cours
               </h3>
               <div className="p-12 text-center text-white/40 italic text-xs">
                 Emploi du temps en cours de synchronisation.
               </div>
-              <Button asChild variant="secondary" className="w-full mt-6 rounded-xl font-black h-12">
+              <Button asChild variant="secondary" className="w-full mt-6 rounded-xl font-black h-12 md:h-14 mobile-touch-target">
                 <Link href="/dashboard/eleve/agenda">Voir planning complet</Link>
               </Button>
             </Card>
 
             <Card className="premium-card p-8 border-2 border-dashed border-primary/20">
                <div className="flex items-center gap-4 mb-4">
-                 <Sparkles className="text-primary" />
+                 <Sparkles className="text-primary size-5 md:size-6" />
                  <h4 className="font-black text-lg">Conseil IA</h4>
                </div>
                <p className="text-sm font-medium text-muted-foreground italic leading-relaxed">

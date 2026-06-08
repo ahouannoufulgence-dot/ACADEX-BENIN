@@ -112,20 +112,20 @@ export default function DirectorDashboard() {
           />
           <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/70 to-transparent" />
           
-          <div className="absolute inset-0 p-12 flex flex-col justify-center gap-6">
+          <div className="absolute inset-0 p-8 md:p-12 flex flex-col justify-center gap-6">
             <div className="space-y-4 max-w-2xl">
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
+              <h1 className="text-3xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
                 Bonjour Monsieur <span className="text-emerald-400 italic">le Directeur {directorFullName}</span>,
               </h1>
-              <div className="flex flex-wrap items-center gap-4">
-                <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black px-6 py-2 uppercase tracking-widest text-xs">
+              <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-black px-4 md:px-6 py-2 uppercase tracking-widest text-[10px] md:text-xs">
                   {schoolInfo.name}
                 </Badge>
-                <div className="flex items-center gap-2 font-bold text-sm bg-white/10 backdrop-blur-md text-white/90 px-6 py-2 rounded-full border border-white/10">
-                  <Calendar className="size-4 text-emerald-400" /> {today}
+                <div className="flex items-center gap-2 font-bold text-xs md:text-sm bg-white/10 backdrop-blur-md text-white/90 px-4 md:px-6 py-2 rounded-full border border-white/10">
+                  <Calendar className="size-3 md:size-4 text-emerald-400" /> {today}
                 </div>
-                <div className="flex items-center gap-2 font-bold text-sm bg-emerald-500 text-white px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
-                  <ShieldCheck className="size-4" /> Cockpit {activeYear}
+                <div className="flex items-center gap-2 font-bold text-xs md:text-sm bg-emerald-500 text-white px-4 md:px-6 py-2 rounded-full shadow-lg shadow-emerald-500/30">
+                  <ShieldCheck className="size-3 md:size-4" /> Cockpit {activeYear}
                 </div>
               </div>
             </div>
@@ -136,36 +136,44 @@ export default function DirectorDashboard() {
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs ({activeYear})</p>
             <div className="flex items-center justify-between">
-              <div className="text-4xl font-black text-foreground">
+              <div className="text-3xl md:text-4xl font-black text-foreground">
                 {loadingStudents ? <Loader2 className="animate-spin size-6" /> : stats.totalStudents}
               </div>
-              <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Users className="size-6" /></div>
+              <div className="p-3 md:p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all">
+                <Users className="size-6 md:size-7" />
+              </div>
             </div>
           </Card>
 
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Enseignants</p>
             <div className="flex items-center justify-between">
-              <div className="text-4xl font-black text-foreground">
+              <div className="text-3xl md:text-4xl font-black text-foreground">
                 {loadingTeachers ? <Loader2 className="animate-spin size-6" /> : stats.totalTeachers}
               </div>
-              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><GraduationCap className="size-6" /></div>
+              <div className="p-3 md:p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all">
+                <GraduationCap className="size-6 md:size-7" />
+              </div>
             </div>
           </Card>
 
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Moyenne École</p>
             <div className="flex items-center justify-between">
-              <p className="text-4xl font-black text-foreground">{stats.avg}</p>
-              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Zap className="size-6" /></div>
+              <p className="text-3xl md:text-4xl font-black text-foreground">{stats.avg}</p>
+              <div className="p-3 md:p-4 bg-amber-50 text-amber-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all">
+                <Zap className="size-6 md:size-7" />
+              </div>
             </div>
           </Card>
 
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Recouvrement</p>
             <div className="flex items-center justify-between">
-              <p className="text-2xl font-black text-foreground">{stats.revenue.toLocaleString()} <span className="text-xs font-bold opacity-50">F</span></p>
-              <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><Wallet className="size-6" /></div>
+              <p className="text-2xl md:text-3xl font-black text-foreground">{stats.revenue.toLocaleString()} <span className="text-xs font-bold opacity-50">F</span></p>
+              <div className="p-3 md:p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all">
+                <Wallet className="size-6 md:size-7" />
+              </div>
             </div>
           </Card>
         </div>
@@ -175,8 +183,8 @@ export default function DirectorDashboard() {
             <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
               <CardHeader className="p-8 border-b bg-red-50/30 flex flex-row items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <AlertTriangle className="size-6 text-destructive" />
-                  <CardTitle className="text-2xl font-black">Alertes Flux</CardTitle>
+                  <AlertTriangle className="size-5 md:size-6 text-destructive" />
+                  <CardTitle className="text-xl md:text-2xl font-black">Alertes Flux</CardTitle>
                 </div>
                 {stats.idsCount > 0 && <Badge className="bg-destructive text-white font-black">{stats.idsCount} À ACTIVER</Badge>}
               </CardHeader>
@@ -185,10 +193,10 @@ export default function DirectorDashboard() {
                   {stats.idsCount > 0 && (
                     <div className="p-6 flex items-center justify-between hover:bg-muted/5 transition-all">
                       <div className="flex items-center gap-4">
-                        <div className="size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.idsCount}</div>
-                        <p className="font-bold text-sm text-foreground/80">Identifiants en attente de déploiement élèves.</p>
+                        <div className="size-10 md:size-12 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center font-black">{stats.idsCount}</div>
+                        <p className="font-bold text-xs md:text-sm text-foreground/80">Identifiants en attente de déploiement élèves.</p>
                       </div>
-                      <Button asChild variant="ghost" className="rounded-xl font-bold text-primary">
+                      <Button asChild variant="ghost" className="rounded-xl font-bold text-primary mobile-touch-target">
                         <Link href="/eleves/identifiants">Gérer <ArrowRight className="ml-2 size-4" /></Link>
                       </Button>
                     </div>
@@ -198,7 +206,9 @@ export default function DirectorDashboard() {
             </Card>
 
             <Card className="border-none shadow-sm bg-white rounded-[3rem] p-8">
-              <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><TrendingUp className="text-primary" /> Performance Académique ({activeYear})</h3>
+              <h3 className="text-xl md:text-2xl font-black mb-8 flex items-center gap-3">
+                <TrendingUp className="text-primary size-5 md:size-6" /> Performance Académique ({activeYear})
+              </h3>
               <div className="p-16 text-center border-4 border-dashed rounded-[2.5rem] opacity-30 bg-muted/10">
                 <p className="font-black text-muted-foreground uppercase tracking-widest text-xs">Analyse en temps réel de l'année scolaire active.</p>
               </div>
@@ -207,7 +217,9 @@ export default function DirectorDashboard() {
 
           <div className="lg:col-span-4 space-y-8">
             <Card className="p-8 rounded-[3rem] bg-white border-none shadow-sm">
-               <h4 className="text-xl font-black mb-8 flex items-center gap-2"><Activity className="size-5 text-primary" /> État des Services</h4>
+               <h4 className="text-lg md:text-xl font-black mb-8 flex items-center gap-2">
+                <Activity className="size-5 text-primary" /> État des Services
+               </h4>
                <div className="space-y-6">
                   <div className="flex justify-between items-center text-sm font-bold">
                     <span className="text-muted-foreground">Synchronisation</span>
@@ -222,11 +234,11 @@ export default function DirectorDashboard() {
 
             <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
               <div className="flex items-center gap-3 mb-6">
-                <Sparkles className="size-6 text-primary animate-pulse" />
+                <Sparkles className="size-5 md:size-6 text-primary animate-pulse" />
                 <h4 className="font-black text-lg">Cerveau ACADEX</h4>
               </div>
               <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">"Analysez les disparités de notes entre vos {stats.totalTeachers} enseignants pour l'année {activeYear}."</p>
-              <Button asChild className="w-full bg-white text-primary hover:bg-white/90 rounded-xl font-black h-11 border border-primary/10">
+              <Button asChild className="w-full bg-white text-primary hover:bg-white/90 rounded-xl font-black h-12 border border-primary/10 mobile-touch-target">
                 <Link href="/assistant">Ouvrir l'Assistant</Link>
               </Button>
             </Card>
