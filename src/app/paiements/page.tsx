@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -21,7 +22,16 @@ import {
   Loader2,
   User,
   Calendar as CalendarIcon,
-  ShieldCheck
+  ShieldCheck,
+  TrendingUp,
+  AlertTriangle,
+  ArrowRight,
+  Shapes,
+  UserSquare2,
+  Calculator,
+  HardDrive,
+  Banknote,
+  PiggyBank
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -30,7 +40,7 @@ import { useState, useMemo, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDoc } from "firebase/firestore"
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDoc, setDoc } from "firebase/firestore"
 import {
   Dialog,
   DialogContent,
@@ -43,12 +53,15 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
-export default function PaymentsPage() {
+export default function TreasuryModule() {
   const db = useFirestore()
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [activeTab, setActiveTab] = useState("dashboard")
   const [isAdding, setIsAdding] = useState(false)
+  const [isAddingExpense, setIsAddingExpense] = useState(false)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [studentSearch, setStudentSearch] = useState("")
@@ -57,6 +70,14 @@ export default function PaymentsPage() {
     studentId: "",
     amountPaid: "",
     description: "Scolarité - Tranche",
+    date: new Date().toISOString().split('T')[0]
+  })
+
+  const [expenseForm, setExpenseForm] = useState({
+    category: "Fournitures",
+    amount: "",
+    motif: "",
+    responsible: "",
     date: new Date().toISOString().split('T')[0]
   })
 
@@ -74,6 +95,12 @@ export default function PaymentsPage() {
     orderBy("date", "desc")
   ), [db, activeYear])
 
+  const expensesQuery = useMemo(() => query(
+    collection(db, "expenses"), 
+    where("academicYear", "==", activeYear),
+    orderBy("date", "desc")
+  ), [db, activeYear])
+
   const studentsQuery = useMemo(() => query(
     collection(db, "students"), 
     where("academicYear", "==", activeYear),
@@ -81,6 +108,7 @@ export default function PaymentsPage() {
   ), [db, activeYear])
 
   const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
+  const { data: expenses, loading: loadingExpenses } = useCollection(expensesQuery)
   const { data: students } = useCollection(studentsQuery)
 
   const filteredStudents = useMemo(() => {
@@ -92,19 +120,20 @@ export default function PaymentsPage() {
   }, [students, studentSearch])
 
   const stats = useMemo(() => {
-    const total = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const count = payments?.length || 0
+    const totalReceived = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const totalExpenses = expenses?.reduce((acc, e: any) => acc + (Number(e.amount) || 0), 0) || 0
+    
     // Simulation d'objectif global (ex: 150.000 par élève)
     const expected = (students?.length || 0) * 150000
-    const percent = expected > 0 ? (total / expected) * 100 : 0
-    const remaining = expected - total
+    const percent = expected > 0 ? (totalReceived / expected) * 100 : 0
+    const balance = totalReceived - totalExpenses
 
-    return { total, count, percent, remaining }
-  }, [payments, students])
+    return { totalReceived, totalExpenses, expected, percent, balance }
+  }, [payments, expenses, students])
 
   const handleAddPayment = async () => {
     if (!formData.studentId || !formData.amountPaid) {
-      toast({ title: "Champs requis", description: "Veuillez sélectionner un élève et un montant.", variant: "destructive" })
+      toast({ title: "Champs requis", variant: "destructive" })
       return
     }
 
@@ -121,40 +150,39 @@ export default function PaymentsPage() {
       }
 
       await addDoc(collection(db, "payments"), paymentData)
-      toast({ title: "Paiement confirmé", description: "Le versement a été scellé dans le registre." })
+      toast({ title: "Encaissement scellé" })
       setIsAdding(false)
       setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche", date: new Date().toISOString().split('T')[0] })
     } catch (e) {
-      toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" })
+      toast({ title: "Erreur", variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleExportPDF = () => {
-    if (!payments || payments.length === 0) {
-      toast({ title: "Aucune donnée", description: "Aucun paiement à exporter pour cette année." })
+  const handleAddExpense = async () => {
+    if (!expenseForm.amount || !expenseForm.motif) {
+      toast({ title: "Champs requis", variant: "destructive" })
       return
     }
-    const docPdf = new jsPDF()
-    docPdf.setFillColor(20, 83, 45)
-    docPdf.rect(0, 0, 210, 40, 'F')
-    docPdf.setTextColor(255, 255, 255)
-    docPdf.setFontSize(18)
-    docPdf.text(`ACADEX - JOURNAL DE TRÉSORERIE (${activeYear})`, 105, 25, { align: "center" })
 
-    autoTable(docPdf, {
-      startY: 50,
-      head: [['Date', 'Élève', 'Description', 'Montant (FCFA)']],
-      body: payments.map((p: any) => [
-        new Date(p.date).toLocaleDateString('fr-FR'), 
-        p.studentName, 
-        p.description, 
-        Number(p.amountPaid).toLocaleString()
-      ]),
-      headStyles: { fillColor: [20, 83, 45] }
-    })
-    docPdf.save(`JOURNAL_PAIEMENTS_${activeYear}.pdf`)
+    setLoading(true)
+    try {
+      await addDoc(collection(db, "expenses"), {
+        ...expenseForm,
+        amount: Number(expenseForm.amount),
+        academicYear: activeYear,
+        createdAt: serverTimestamp(),
+        author: localStorage.getItem('acadex_user_name') || "Direction"
+      })
+      toast({ title: "Dépense enregistrée" })
+      setIsAddingExpense(false)
+      setExpenseForm({ category: "Fournitures", amount: "", motif: "", responsible: "", date: new Date().toISOString().split('T')[0] })
+    } catch (e) {
+      toast({ title: "Erreur", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -162,243 +190,213 @@ export default function PaymentsPage() {
       <div className="space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Trésorerie & <span className="text-primary italic">Finance</span></h1>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">Trésorerie <span className="text-primary italic">& Finance</span></h1>
             <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
-              <Wallet className="size-4 text-emerald-500" /> Gestion des flux de l'année <Badge className="bg-primary">{activeYear}</Badge>
+              <ShieldCheck className="size-4 text-emerald-500" /> Pilotage financier de l'année scolaire <Badge className="bg-primary">{activeYear}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button onClick={handleExportPDF} variant="outline" className="h-14 px-8 rounded-2xl border-2 font-black bg-white mobile-touch-target">
-              <FileDown className="mr-2 size-5" /> Journal PDF
+            <Button variant="outline" className="h-12 px-6 rounded-2xl border-2 font-black bg-white">
+              <FileDown className="mr-2 size-5" /> Rapport Global PDF
             </Button>
-            
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
               <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-14 px-10 rounded-2xl font-black text-lg mobile-touch-target">
-                  <Plus className="mr-2 size-6" /> Confirmer Paiement
+                <Button className="bg-primary hover:bg-primary/90 shadow-xl rounded-2xl h-12 px-8 font-black">
+                  <Plus className="mr-2 size-5" /> Encaisser
                 </Button>
               </DialogTrigger>
-              <DialogContent className="rounded-[2.5rem] max-w-2xl border-none shadow-2xl p-0 overflow-hidden">
-                <DialogHeader className="p-8 bg-primary text-white">
-                  <DialogTitle className="text-2xl font-black">Nouveau Versement</DialogTitle>
-                  <DialogDescription className="text-white/70 font-medium italic">Enregistrez un paiement spontané pour l'élève.</DialogDescription>
-                </DialogHeader>
-                <div className="p-8 space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
+              <DialogContent className="rounded-[2.5rem] max-w-2xl">
+                 <DialogHeader><DialogTitle className="text-2xl font-black">Nouveau Paiement Élève</DialogTitle></DialogHeader>
+                 <div className="grid md:grid-cols-2 gap-6 p-4">
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label className="font-black text-xs uppercase text-muted-foreground px-1">Rechercher l'élève</Label>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                          <Input 
-                            placeholder="Nom ou Matricule..." 
-                            className="pl-10 h-12 rounded-xl"
-                            value={studentSearch}
-                            onChange={(e) => setStudentSearch(e.target.value)}
-                          />
-                        </div>
-                      </div>
-                      <ScrollArea className="h-[200px] border-2 rounded-2xl p-2 bg-muted/30">
-                         <div className="space-y-1">
-                            {filteredStudents.length === 0 ? (
-                              <p className="text-center p-10 text-xs font-bold text-muted-foreground italic">Aucun élève trouvé.</p>
-                            ) : filteredStudents.map((s: any) => (
-                              <button
-                                key={s.id}
-                                onClick={() => setFormData({...formData, studentId: s.matricule})}
-                                className={cn(
-                                  "w-full text-left p-3 rounded-xl text-sm font-bold transition-all",
-                                  formData.studentId === s.matricule ? "bg-primary text-white shadow-lg" : "hover:bg-white"
-                                )}
-                              >
-                                {s.lastName} {s.firstName}
-                                <p className={cn("text-[10px] opacity-60", formData.studentId === s.matricule ? "text-white" : "text-muted-foreground")}>{s.matricule} • {s.classId}</p>
-                              </button>
-                            ))}
-                         </div>
-                      </ScrollArea>
+                       <Label className="font-black text-xs uppercase text-muted-foreground">Rechercher l'élève</Label>
+                       <Input placeholder="Nom ou Matricule..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="h-12 rounded-xl" />
+                       <ScrollArea className="h-48 border-2 rounded-xl p-2 bg-muted/30">
+                          {filteredStudents.map((s:any) => (
+                            <button key={s.id} onClick={() => setFormData({...formData, studentId: s.matricule})} className={cn("w-full text-left p-3 rounded-lg text-sm font-bold", formData.studentId === s.matricule ? "bg-primary text-white" : "hover:bg-white")}>
+                              {s.lastName} {s.firstName} <p className="text-[10px] opacity-60">{s.matricule}</p>
+                            </button>
+                          ))}
+                       </ScrollArea>
                     </div>
-
-                    <div className="space-y-6">
-                      <div className="space-y-2">
-                        <Label className="font-black text-xs uppercase text-muted-foreground px-1">Montant Versé (FCFA)</Label>
-                        <Input 
-                          type="number" 
-                          placeholder="Ex: 50000" 
-                          className="h-14 rounded-xl text-2xl font-black focus:ring-primary shadow-inner"
-                          value={formData.amountPaid}
-                          onChange={(e) => setFormData({...formData, amountPaid: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-black text-xs uppercase text-muted-foreground px-1">Motif du versement</Label>
-                        <Input 
-                          placeholder="Ex: Scolarité Tranche 2" 
-                          className="h-12 rounded-xl font-bold"
-                          value={formData.description}
-                          onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-black text-xs uppercase text-muted-foreground px-1">Date</Label>
-                        <Input 
-                          type="date" 
-                          className="h-12 rounded-xl font-black"
-                          value={formData.date}
-                          onChange={(e) => setFormData({...formData, date: e.target.value})}
-                        />
-                      </div>
+                    <div className="space-y-4">
+                       <Label className="font-black text-xs uppercase text-muted-foreground">Montant (FCFA)</Label>
+                       <Input type="number" value={formData.amountPaid} onChange={e => setFormData({...formData, amountPaid: e.target.value})} className="h-14 rounded-xl text-2xl font-black" />
+                       <Label className="font-black text-xs uppercase text-muted-foreground">Motif</Label>
+                       <Input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="h-12 rounded-xl font-bold" />
+                       <Button onClick={handleAddPayment} disabled={loading} className="w-full h-14 rounded-xl bg-primary font-black text-lg">Valider Encaissement</Button>
                     </div>
-                  </div>
-                </div>
-                <DialogFooter className="p-8 bg-muted/30 flex items-center justify-between">
-                  <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold rounded-xl h-12">Annuler</Button>
-                  <Button onClick={handleAddPayment} disabled={loading || !formData.studentId || !formData.amountPaid} className="bg-primary rounded-xl font-black px-12 h-14 shadow-xl shadow-primary/20 text-lg">
-                    {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
-                    Valider l'Encaissement
-                  </Button>
-                </DialogFooter>
+                 </div>
               </DialogContent>
             </Dialog>
           </div>
         </div>
 
-        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-7 group hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-5">
-              <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><DollarSign className="size-7" /></div>
-              <Badge className="bg-emerald-50 text-emerald-700 border-none font-black">RECU</Badge>
-            </div>
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Recettes Totales</p>
-            <p className="text-3xl font-black text-foreground mt-1">{stats.total.toLocaleString()} <span className="text-sm opacity-30">F</span></p>
-          </Card>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+          <TabsList className="bg-white border-2 rounded-[2rem] h-16 p-2 flex w-fit shadow-md overflow-x-auto no-scrollbar">
+            {[
+              { id: "dashboard", label: "Tableau de Bord", icon: TrendingUp },
+              { id: "encaissements", label: "Encaissements", icon: Banknote },
+              { id: "depenses", label: "Dépenses École", icon: PiggyBank },
+              { id: "salaires", label: "Salaires Profs", icon: UserSquare2 },
+              { id: "config", label: "Configuration Frais", icon: Calculator },
+            ].map(t => (
+              <TabsTrigger key={t.id} value={t.id} className="rounded-2xl font-black px-8 text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex gap-2">
+                <t.icon className="size-4" /> {t.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-7 group hover:shadow-xl transition-all border-l-8 border-amber-400">
-            <div className="flex items-center justify-between mb-5">
-              <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl"><Wallet className="size-7" /></div>
-              <Badge className="bg-amber-50 text-amber-700 border-none font-black">EN ATTENTE</Badge>
+          <TabsContent value="dashboard" className="space-y-8">
+            <div className="grid gap-6 md:grid-cols-4">
+              <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Reçu</p>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-3xl font-black text-emerald-600">{stats.totalReceived.toLocaleString()} F</h3>
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><ArrowUpRight className="size-6" /></div>
+                </div>
+              </Card>
+              <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all border-l-8 border-red-500">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Dépenses</p>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-3xl font-black text-red-600">{stats.totalExpenses.toLocaleString()} F</h3>
+                  <div className="p-3 bg-red-50 text-red-600 rounded-2xl"><ArrowDownRight className="size-6" /></div>
+                </div>
+              </Card>
+              <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl flex flex-col justify-between">
+                <p className="text-[10px] font-black uppercase text-white/40 tracking-widest mb-4">Solde Actuel</p>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-3xl font-black text-primary">{stats.balance.toLocaleString()} F</h3>
+                  <div className="p-3 bg-white/10 rounded-2xl"><Wallet className="size-6 text-primary" /></div>
+                </div>
+              </Card>
+              <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between border-l-8 border-amber-500">
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Taux Recouvrement</p>
+                <div className="space-y-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-black">{stats.percent.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={stats.percent} className="h-1.5" />
+                </div>
+              </Card>
             </div>
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Reste à Recouvrer</p>
-            <p className="text-3xl font-black text-foreground mt-1">{stats.remaining.toLocaleString()} <span className="text-sm opacity-30">F</span></p>
-          </Card>
 
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-7 group hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-5">
-              <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl"><ArrowUpRight className="size-7" /></div>
-              <Badge className="bg-blue-50 text-blue-700 border-none font-black">TAUX</Badge>
-            </div>
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Recouvrement Global</p>
-            <p className="text-3xl font-black text-foreground mt-1">{stats.percent.toFixed(1)}%</p>
-            <Progress value={stats.percent} className="h-1.5 mt-4" />
-          </Card>
-
-          <Card className="border-none shadow-sm rounded-3xl bg-white p-7 group hover:shadow-xl transition-all">
-            <div className="flex items-center justify-between mb-5">
-              <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl"><History className="size-7" /></div>
-              <Badge variant="outline" className="font-black">LOGS</Badge>
-            </div>
-            <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Transactions Scellées</p>
-            <p className="text-3xl font-black text-foreground mt-1">{stats.count}</p>
-          </Card>
-        </div>
-
-        <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden min-h-[500px]">
-          <CardHeader className="p-10 border-b bg-muted/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <CardTitle className="text-2xl font-black">Registre des Encaissements</CardTitle>
-              <CardDescription className="font-bold text-primary">Année scolaire {activeYear}</CardDescription>
-            </div>
-            <div className="relative group w-full max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input 
-                placeholder="Chercher par nom ou matricule..." 
-                className="pl-12 h-12 rounded-2xl bg-white border-none shadow-inner font-bold"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="p-0">
-             {loadingPayments ? (
-               <div className="p-20 text-center animate-pulse font-black text-muted-foreground flex flex-col items-center gap-4">
-                 <Loader2 className="size-12 animate-spin text-primary" />
-                 Synchronisation du livre de caisse...
-               </div>
-             ) : !payments || payments.length === 0 ? (
-               <div className="flex flex-col items-center justify-center p-24 text-center space-y-6 opacity-30">
-                 <Wallet className="size-20 text-muted-foreground" />
-                 <div className="space-y-2">
-                   <h3 className="text-2xl font-black">Aucun versement détecté</h3>
-                   <p className="text-muted-foreground max-w-sm mx-auto font-medium">Les paiements enregistrés via le bouton de confirmation apparaîtront ici.</p>
+            <div className="grid lg:grid-cols-12 gap-8">
+              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-10">
+                 <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-black flex items-center gap-3"><History className="text-primary" /> Dernières Transactions</h3>
+                    <Button variant="ghost" className="font-bold text-primary">Voir grand livre <ChevronRight className="ml-1 size-4" /></Button>
                  </div>
-               </div>
-             ) : (
-               <div className="overflow-x-auto">
-                 <table className="w-full">
-                   <thead>
-                     <tr className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b">
-                       <th className="px-10 py-6 text-left">Élève & Matricule</th>
-                       <th className="px-10 py-6 text-left">Description</th>
-                       <th className="px-10 py-6 text-center">Date</th>
-                       <th className="px-10 py-6 text-right">Montant</th>
-                       <th className="px-10 py-6 text-right">Action</th>
-                     </tr>
-                   </thead>
-                   <tbody className="divide-y divide-muted/30">
-                     {payments.filter((p:any) => 
-                        (p.studentName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
-                        (p.studentId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-                      ).map((p: any) => (
-                       <tr key={p.id} className="hover:bg-muted/5 transition-all group">
-                         <td className="px-10 py-6">
-                            <div className="flex items-center gap-4">
-                               <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black">{(p.studentName || "?")[0]}</div>
-                               <div>
-                                  <p className="font-black text-foreground group-hover:text-primary transition-colors">{p.studentName}</p>
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.studentId}</p>
-                               </div>
+                 <div className="divide-y divide-muted/30">
+                    {payments?.slice(0, 5).map((p: any) => (
+                      <div key={p.id} className="py-4 flex items-center justify-between hover:bg-muted/5 transition-all px-4 rounded-xl">
+                         <div className="flex items-center gap-4">
+                            <div className="size-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center"><Banknote className="size-5" /></div>
+                            <div>
+                               <p className="font-black text-sm">{p.studentName}</p>
+                               <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.description}</p>
                             </div>
-                         </td>
-                         <td className="px-10 py-6 font-medium text-sm">{p.description}</td>
-                         <td className="px-10 py-6 text-center">
-                            <Badge variant="outline" className="font-black text-[10px] border-2 bg-white flex items-center justify-center gap-2">
-                               <CalendarIcon className="size-3" /> {new Date(p.date).toLocaleDateString('fr-FR')}
-                            </Badge>
-                         </td>
-                         <td className="px-10 py-6 text-right">
-                            <p className="text-xl font-black text-foreground">{Number(p.amountPaid).toLocaleString()} <span className="text-xs opacity-40">F</span></p>
-                         </td>
-                         <td className="px-10 py-6 text-right">
-                            <Button variant="ghost" size="icon" className="rounded-xl group-hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary">
-                               <Printer className="size-5" />
-                            </Button>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             )}
-          </CardContent>
-        </Card>
+                         </div>
+                         <div className="text-right">
+                            <p className="font-black text-emerald-600">+{Number(p.amountPaid).toLocaleString()} F</p>
+                            <p className="text-[10px] font-bold text-muted-foreground">{new Date(p.date).toLocaleDateString('fr-FR')}</p>
+                         </div>
+                      </div>
+                    ))}
+                    {expenses?.slice(0, 5).map((e: any) => (
+                      <div key={e.id} className="py-4 flex items-center justify-between hover:bg-muted/5 transition-all px-4 rounded-xl">
+                         <div className="flex items-center gap-4">
+                            <div className="size-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center"><PiggyBank className="size-5" /></div>
+                            <div>
+                               <p className="font-black text-sm">{e.motif}</p>
+                               <p className="text-[10px] font-bold text-muted-foreground uppercase">{e.category}</p>
+                            </div>
+                         </div>
+                         <div className="text-right">
+                            <p className="font-black text-red-600">-{Number(e.amount).toLocaleString()} F</p>
+                            <p className="text-[10px] font-bold text-muted-foreground">{new Date(e.date).toLocaleDateString('fr-FR')}</p>
+                         </div>
+                      </div>
+                    ))}
+                 </div>
+              </Card>
 
-        <div className="p-10 bg-foreground text-white rounded-[3.5rem] flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden group">
-           <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
-              <div className="size-20 bg-white/10 rounded-3xl flex items-center justify-center backdrop-blur-md shadow-2xl">
-                 <ShieldCheck className="size-10 text-primary" />
+              <div className="lg:col-span-4 space-y-6">
+                 <Card className="p-8 rounded-[2.5rem] bg-primary/5 border-2 border-dashed border-primary/20 group hover:bg-primary/10 transition-all">
+                    <div className="flex items-center gap-4 mb-6">
+                      <Sparkles className="size-6 text-primary animate-pulse" />
+                      <h4 className="font-black text-lg">IA Financière ACADEX</h4>
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">
+                      "Analyse : Les classes de 3EME présentent un retard de paiement de 12%. Souhaitez-vous générer des lettres de relance ?"
+                    </p>
+                    <Button asChild className="w-full bg-white text-primary border border-primary/10 rounded-xl font-black h-12 shadow-sm">
+                      <Link href="/assistant">Lancer l'Audit IA</Link>
+                    </Button>
+                 </Card>
+
+                 <Card className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-amber-100 flex flex-col gap-4">
+                    <div className="flex items-center gap-3 text-amber-700">
+                       <AlertTriangle className="size-5" />
+                       <h4 className="font-black text-sm uppercase">Alerte Trésorerie</h4>
+                    </div>
+                    <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                       24 élèves de Terminale n'ont pas encore soldé la deuxième tranche de scolarité.
+                    </p>
+                 </Card>
               </div>
-              <div className="space-y-2 text-center md:text-left">
-                <h3 className="text-2xl font-black">Audit de Trésorerie ACADEX</h3>
-                <p className="text-white/60 font-medium max-w-xl leading-relaxed">
-                  Chaque transaction enregistrée est cryptée et inaltérable. Le système garantit une traçabilité totale pour prévenir toute malversation financière.
-                </p>
-              </div>
-           </div>
-           <Button variant="outline" className="relative z-10 border-2 border-white/20 hover:bg-white/10 text-white font-black h-14 px-10 rounded-2xl transition-all active:scale-95">
-             Consulter l'Audit Complet
-           </Button>
-           <CreditCard className="absolute -bottom-10 -right-10 size-64 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-        </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="depenses" className="space-y-8">
+             <div className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] shadow-sm">
+                <div>
+                   <h3 className="text-2xl font-black">Gestion des Sorties</h3>
+                   <p className="text-muted-foreground font-medium">Contrôlez chaque franc dépensé par l'école.</p>
+                </div>
+                <Dialog open={isAddingExpense} onOpenChange={setIsAddingExpense}>
+                   <DialogTrigger asChild><Button className="bg-red-600 hover:bg-red-700 rounded-xl font-black px-8 h-12"><Plus className="mr-2" /> Nouvelle Dépense</Button></DialogTrigger>
+                   <DialogContent className="rounded-[2.5rem]">
+                      <DialogHeader><DialogTitle className="text-2xl font-black">Sortie de Caisse</DialogTitle></DialogHeader>
+                      <div className="space-y-6 p-4">
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                               <Label className="font-bold">Catégorie</Label>
+                               <Select value={expenseForm.category} onValueChange={v => setExpenseForm({...expenseForm, category: v})}>
+                                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                     <SelectItem value="Fournitures">Fournitures</SelectItem>
+                                     <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                     <SelectItem value="Factures">Factures (Eau/Elec)</SelectItem>
+                                     <SelectItem value="Internet">Internet</SelectItem>
+                                     <SelectItem value="Événement">Événement</SelectItem>
+                                  </SelectContent>
+                               </Select>
+                            </div>
+                            <div className="space-y-2">
+                               <Label className="font-bold">Montant (F)</Label>
+                               <Input type="number" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} className="h-12 rounded-xl font-black" />
+                            </div>
+                         </div>
+                         <div className="space-y-2">
+                            <Label className="font-bold">Motif précis</Label>
+                            <Input value={expenseForm.motif} onChange={e => setExpenseForm({...expenseForm, motif: e.target.value})} className="h-12 rounded-xl" placeholder="Ex: Achat de 20 boites de craies" />
+                         </div>
+                         <Button onClick={handleAddExpense} disabled={loading} className="w-full h-14 bg-red-600 rounded-xl font-black text-lg">Sceller la Dépense</Button>
+                      </div>
+                   </DialogContent>
+                </Dialog>
+             </div>
+          </TabsContent>
+          
+          <TabsContent value="salaires">
+             <Card className="p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30">
+                <UserSquare2 className="size-20 mx-auto mb-6" />
+                <h3 className="text-2xl font-black">Module Salaires Enseignants</h3>
+                <p className="max-w-sm mx-auto font-medium">Ce module est en cours de scellage sécurisé pour garantir la confidentialité des paiements du corps professoral.</p>
+             </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </DashboardLayout>
   )
