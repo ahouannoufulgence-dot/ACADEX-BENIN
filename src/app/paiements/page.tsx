@@ -43,6 +43,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
 export default function PaymentsPage() {
   const db = useFirestore()
@@ -103,7 +104,7 @@ export default function PaymentsPage() {
 
   const handleAddPayment = async () => {
     if (!formData.studentId || !formData.amountPaid) {
-      toast({ title: "Champs requis", variant: "destructive" })
+      toast({ title: "Champs requis", description: "Veuillez sélectionner un élève et un montant.", variant: "destructive" })
       return
     }
 
@@ -120,18 +121,21 @@ export default function PaymentsPage() {
       }
 
       await addDoc(collection(db, "payments"), paymentData)
-      toast({ title: "Paiement confirmé", description: "Le reçu a été généré numériquement." })
+      toast({ title: "Paiement confirmé", description: "Le versement a été scellé dans le registre." })
       setIsAdding(false)
       setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche", date: new Date().toISOString().split('T')[0] })
     } catch (e) {
-      toast({ title: "Erreur", variant: "destructive" })
+      toast({ title: "Erreur", description: "Impossible d'enregistrer le paiement.", variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
 
   const handleExportPDF = () => {
-    if (!payments || payments.length === 0) return
+    if (!payments || payments.length === 0) {
+      toast({ title: "Aucune donnée", description: "Aucun paiement à exporter pour cette année." })
+      return
+    }
     const docPdf = new jsPDF()
     docPdf.setFillColor(20, 83, 45)
     docPdf.rect(0, 0, 210, 40, 'F')
@@ -142,7 +146,12 @@ export default function PaymentsPage() {
     autoTable(docPdf, {
       startY: 50,
       head: [['Date', 'Élève', 'Description', 'Montant (FCFA)']],
-      body: payments.map((p: any) => [p.date, p.studentName, p.description, p.amountPaid.toLocaleString()]),
+      body: payments.map((p: any) => [
+        new Date(p.date).toLocaleDateString('fr-FR'), 
+        p.studentName, 
+        p.description, 
+        Number(p.amountPaid).toLocaleString()
+      ]),
       headStyles: { fillColor: [20, 83, 45] }
     })
     docPdf.save(`JOURNAL_PAIEMENTS_${activeYear}.pdf`)
@@ -191,7 +200,9 @@ export default function PaymentsPage() {
                       </div>
                       <ScrollArea className="h-[200px] border-2 rounded-2xl p-2 bg-muted/30">
                          <div className="space-y-1">
-                            {filteredStudents.map((s: any) => (
+                            {filteredStudents.length === 0 ? (
+                              <p className="text-center p-10 text-xs font-bold text-muted-foreground italic">Aucun élève trouvé.</p>
+                            ) : filteredStudents.map((s: any) => (
                               <button
                                 key={s.id}
                                 onClick={() => setFormData({...formData, studentId: s.matricule})}
@@ -242,7 +253,7 @@ export default function PaymentsPage() {
                 </div>
                 <DialogFooter className="p-8 bg-muted/30 flex items-center justify-between">
                   <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold rounded-xl h-12">Annuler</Button>
-                  <Button onClick={handleAddPayment} disabled={loading || !formData.studentId} className="bg-primary rounded-xl font-black px-12 h-14 shadow-xl shadow-primary/20 text-lg">
+                  <Button onClick={handleAddPayment} disabled={loading || !formData.studentId || !formData.amountPaid} className="bg-primary rounded-xl font-black px-12 h-14 shadow-xl shadow-primary/20 text-lg">
                     {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
                     Valider l'Encaissement
                   </Button>
@@ -300,7 +311,7 @@ export default function PaymentsPage() {
             <div className="relative group w-full max-w-md">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input 
-                placeholder="Chercher une transaction..." 
+                placeholder="Chercher par nom ou matricule..." 
                 className="pl-12 h-12 rounded-2xl bg-white border-none shadow-inner font-bold"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -335,8 +346,8 @@ export default function PaymentsPage() {
                    </thead>
                    <tbody className="divide-y divide-muted/30">
                      {payments.filter((p:any) => 
-                        p.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        p.studentId?.toLowerCase().includes(searchTerm.toLowerCase())
+                        (p.studentName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+                        (p.studentId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
                       ).map((p: any) => (
                        <tr key={p.id} className="hover:bg-muted/5 transition-all group">
                          <td className="px-10 py-6">
