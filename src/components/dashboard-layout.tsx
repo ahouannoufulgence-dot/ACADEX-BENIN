@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -11,25 +10,12 @@ import {
   Calendar, 
   Settings, 
   LogOut,
-  Bell,
   MessageSquare,
-  Clock,
-  Archive,
   PenTool,
-  UserCheck,
-  Palette,
-  GraduationCap,
-  TrendingUp,
-  FileText,
-  Shapes,
-  Calculator,
-  Zap,
   BarChart3,
   ChevronDown,
   History,
-  ClipboardList,
-  PanelLeft,
-  Menu
+  ClipboardList
 } from "lucide-react"
 import {
   Sidebar,
@@ -45,12 +31,10 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
@@ -58,7 +42,6 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { doc, onSnapshot } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
-import placeholderData from "@/app/lib/placeholder-images.json"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,8 +93,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [availableYears, setAvailableYears] = useState<string[]>(["2026-2027"])
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const bgImage = placeholderData.placeholderImages.find(img => img.id === "scientific-bg")
-
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
     const name = localStorage.getItem('acadex_user_name')
@@ -143,7 +124,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setActiveYear(year)
     localStorage.setItem('acadex_active_year', year)
     window.dispatchEvent(new CustomEvent('acadex_year_changed', { detail: year }))
-    toast({ title: `Passage en ${year}`, description: "L'univers scolaire a été mis à jour." })
     router.refresh()
   }
 
@@ -256,17 +236,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Avatar>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto p-4 md:p-10 bg-[#F8FAFC] relative">
-            <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none grayscale contrast-125">
-              <Image 
-                src={bgImage?.imageUrl || "https://picsum.photos/seed/scientific-landscape/1920/1080"} 
-                alt="Scientific Landscape Background" 
-                fill 
-                className="object-cover" 
-                data-ai-hint={bgImage?.imageHint || "scientific research"}
-              />
-            </div>
-            <div className="relative z-10 safe-area-bottom">
+          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] relative">
+            <div className="relative z-10 safe-area-bottom p-4 md:p-10">
               {children}
             </div>
           </main>
@@ -274,9 +245,4 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
     </SidebarProvider>
   )
-}
-
-function toast(arg0: { title: string; description: string }) {
-  // Simple toast fallback if needed, but we should use the hook version in pages
-  console.log(arg0.title, arg0.description);
 }

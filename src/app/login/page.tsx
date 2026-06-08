@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { ShieldCheck, Loader2, Sparkles, Eye, EyeOff, Lock } from 'lucide-react';
+import { ShieldCheck, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
@@ -23,7 +23,7 @@ export default function LoginPage() {
   const [schoolName, setSchoolName] = useState("ACADEX")
   const [schoolLogo, setSchoolLogo] = useState("")
 
-  const loginImage = placeholderData.placeholderImages.find(img => img.id === "login-education");
+  const loginImage = placeholderData.placeholderImages.find(img => img.id === "hero-students");
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -93,17 +93,17 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
-      {/* Background Image with Professional Overlay */}
+      {/* Background Image with Professional Dark Overlay */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src={loginImage?.imageUrl || "https://picsum.photos/seed/acadex-login/1920/1080"}
+          src={loginImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
           alt="Login Background"
           fill
           className="object-cover opacity-30 grayscale-[0.2]"
           priority
-          data-ai-hint={loginImage?.imageHint || "school library"}
+          data-ai-hint="smiling students"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-background/90 to-primary/40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-background/90 to-primary/40" />
       </div>
 
       <div className="relative z-10 w-full max-w-[420px] animate-in fade-in duration-700">

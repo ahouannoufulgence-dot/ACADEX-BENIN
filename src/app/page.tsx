@@ -39,23 +39,23 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* Background Image with Overlay */}
+      {/* Professional Background Image with Dark Overlay */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex/1920/1080"}
-          alt="ACADEX Background"
+          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
+          alt="ACADEX Excellence"
           fill
-          className="object-cover opacity-20 grayscale-[0.5] blur-[2px]"
+          className="object-cover opacity-20 transition-transform duration-[10000ms] hover:scale-110"
           priority
-          data-ai-hint={heroImage?.imageHint || "smiling students"}
+          data-ai-hint="smiling students"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-background/90 to-amber-900/40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/60 to-primary/40" />
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-12 animate-in fade-in zoom-in-95 duration-700">
         <div className="text-center space-y-4">
           <div className="flex justify-center mb-6">
-            <div className="size-20 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl">
+            <div className="size-20 bg-white rounded-[2rem] flex items-center justify-center shadow-2xl transition-transform hover:rotate-6">
               <span className="text-primary font-black text-4xl">A</span>
             </div>
           </div>
@@ -66,7 +66,7 @@ export default function Home() {
           <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white drop-shadow-2xl">
             Bienvenue sur votre <span className="text-emerald-400 italic">Cockpit</span>
           </h1>
-          <p className="text-xl text-white/80 font-semibold max-w-2xl mx-auto">
+          <p className="text-xl text-white/80 font-semibold max-w-2xl mx-auto leading-relaxed">
             La plateforme premium de gestion scolaire qui met l'excellence au cœur de l'éducation.
           </p>
         </div>
@@ -107,7 +107,6 @@ export default function Home() {
         </div>
       </div>
       
-      {/* Footer minimaliste */}
       <div className="absolute bottom-8 text-center w-full text-[10px] font-bold text-white/30 uppercase tracking-widest">
         ACADEX V1 • Intelligence Scolaire Béninoise
       </div>

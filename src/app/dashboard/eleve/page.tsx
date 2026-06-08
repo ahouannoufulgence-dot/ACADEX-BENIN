@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -53,9 +52,9 @@ export default function StudentDashboard() {
   const stats = useMemo(() => {
     if (!mounted || !grades) return [
       { title: "Ma Moyenne", value: "0.00", label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
-      { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/progression" },
-      { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/dashboard/eleve/absences" },
-      { title: "Scolarité", value: "0 F", label: "Payés", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
+      { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
+      { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
+      { title: "Scolarité", value: "---", label: "Statut", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
     
     const subjects: Record<string, any> = {}
@@ -79,8 +78,8 @@ export default function StudentDashboard() {
 
     return [
       { title: "Ma Moyenne", value: avg, label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
-      { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/progression" },
-      { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/dashboard/eleve/absences" },
+      { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
+      { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: "---", label: "Statut", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
   }, [grades, mounted])
@@ -89,22 +88,33 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 md:space-y-10 animate-in">
+      {/* Background Image with Professional Overlay - Only for Dashboard */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Image 
+          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
+          alt="ACADEX Background"
+          fill
+          className="object-cover opacity-10 grayscale-[0.3]"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/40 to-transparent" />
+      </div>
+
+      <div className="relative z-10 space-y-6 md:space-y-10 animate-in">
         
-        {/* Immersive Student Banner - Optimized for Mobile First */}
-        <div className="relative min-h-[320px] md:min-h-[380px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group border-4 border-white">
+        {/* Student Banner */}
+        <div className="relative min-h-[280px] md:min-h-[380px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-student/1920/1080"}
-            alt="Student Cockpit Background"
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-student-dashboard/1920/1080"}
+            alt="Student Cockpit"
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-[2000ms]"
+            className="object-cover brightness-[0.7] group-hover:scale-105 transition-transform duration-[3000ms]"
             priority
-            data-ai-hint={heroImage?.imageHint || "smiling students"}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           
-          <div className="absolute inset-0 p-6 md:p-12 flex flex-col justify-end md:justify-center gap-6">
-            <div className="space-y-3 md:space-y-5 max-w-xl">
+          <div className="absolute inset-0 p-6 md:p-12 flex flex-col justify-end gap-4">
+            <div className="space-y-2 md:space-y-4 max-w-xl">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[9px] font-black uppercase tracking-widest">
                 <Star className="size-3 text-amber-400 fill-amber-400" /> Cockpit de Réussite
               </div>
@@ -130,11 +140,11 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Stats Grid - 2x2 on Mobile for better balance */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {stats.map((stat, i) => (
             <Link key={stat.title} href={stat.href}>
-              <Card className="p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between group hover:shadow-lg transition-all bg-white h-full relative overflow-hidden">
+              <Card className="p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between group hover:shadow-lg transition-all bg-white/90 backdrop-blur-sm h-full relative overflow-hidden">
                 <div className={cn("absolute -top-4 -right-4 size-16 md:size-20 rounded-full opacity-[0.05]", stat.bg)} />
                 <div className="flex items-center justify-between mb-4 md:mb-8">
                   <div className={`p-3 md:p-4 bg-muted rounded-xl md:rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
@@ -155,7 +165,7 @@ export default function StudentDashboard() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
-          <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3rem] overflow-hidden">
+          <Card className="lg:col-span-8 border-none shadow-sm bg-white/95 rounded-[2rem] md:rounded-[3rem] overflow-hidden">
              <div className="p-6 md:p-10 border-b flex items-center justify-between bg-muted/5">
                <div className="space-y-1">
                  <h3 className="text-lg md:text-2xl font-black flex items-center gap-3">
@@ -216,12 +226,12 @@ export default function StudentDashboard() {
               <Zap className="absolute -bottom-10 -right-10 size-40 md:size-56 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
             </Card>
 
-            <Card className="p-8 md:p-10 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all cursor-pointer">
+            <Card className="p-8 md:p-10 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-white/10 backdrop-blur-sm group hover:bg-primary/10 transition-all cursor-pointer">
                <div className="flex items-center gap-4 mb-5 md:mb-6">
                  <div className="size-10 md:size-12 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5">
                     <Sparkles className="text-primary size-5 md:size-6" />
                  </div>
-                 <h4 className="font-black text-lg md:text-xl">Conseil du Coach</h4>
+                 <h4 className="font-black text-lg md:text-xl text-foreground">Conseil du Coach</h4>
                </div>
                <p className="text-xs md:text-sm font-medium text-muted-foreground italic leading-relaxed">
                  {grades?.length 
