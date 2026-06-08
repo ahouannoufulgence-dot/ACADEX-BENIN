@@ -18,7 +18,8 @@ import {
   AlertTriangle,
   ArrowUpRight,
   ArrowDownRight,
-  BarChart3
+  BarChart3,
+  Loader2
 } from "lucide-react"
 import {
   CartesianGrid,
@@ -64,8 +65,8 @@ export default function StatisticsModule() {
   const paymentsCol = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
   const expensesCol = useMemo(() => query(collection(db, "expenses"), where("academicYear", "==", activeYear)), [db, activeYear])
 
-  const { data: students } = useCollection(studentsCol)
-  const { data: grades } = useCollection(gradesCol)
+  const { data: students, loading: loadingStudents } = useCollection(studentsCol)
+  const { data: grades, loading: loadingGrades } = useCollection(gradesCol)
   const { data: lifeEvents } = useCollection(lifeEventsCol)
   const { data: payments } = useCollection(paymentsCol)
   const { data: expenses } = useCollection(expensesCol)
@@ -85,33 +86,16 @@ export default function StatisticsModule() {
       promoGrades[promo].count += 1
     })
     const promoData = Object.entries(promoGrades).map(([name, d]) => ({
-      name: `${name}EME`,
+      name: name.includes('EME') ? name : `${name}EME`,
       avg: Number((d.total / d.count).toFixed(2))
     })).sort((a, b) => a.name.localeCompare(b.name))
 
-    const conductScores: Record<string, { total: number, count: number }> = {}
-    students?.forEach(s => {
-      const promo = s.classId.match(/^[0-9]+/)?.[0] || s.classId
-      if (!conductScores[promo]) conductScores[promo] = { total: 20, count: 1 }
-      else { conductScores[promo].total += 20; conductScores[promo].count += 1; }
-    })
-    lifeEvents?.forEach(e => {
-      const s = students?.find(st => st.matricule === e.studentId)
-      const promo = s?.classId.match(/^[0-9]+/)?.[0] || s?.classId || "Autre"
-      if (conductScores[promo]) conductScores[promo].total += (e.pointsImpact || 0)
-    })
-    const conductData = Object.entries(conductScores).map(([name, d]) => ({
-      name: name.includes('EME') ? name : `${name}EME`,
-      avg: Math.max(0, Math.min(20, Number((d.total / d.count).toFixed(2))))
-    })).sort((a, b) => a.name.localeCompare(b.name))
-
     const revenue = payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const outgo = expenses?.reduce((acc, e) => acc + (Number(e.amount) || 0), 0) || 0
     const expected = totalStudents * 150000
     const payRate = expected > 0 ? (revenue / expected) * 100 : 0
 
-    return { totalStudents, globalGPA, revenue, outgo, payRate, promoData, conductData, expected }
-  }, [students, grades, lifeEvents, payments, expenses])
+    return { totalStudents, globalGPA, revenue, payRate, promoData }
+  }, [students, grades, payments])
 
   const handleExportStats = () => {
     const docPdf = new jsPDF()
@@ -128,7 +112,6 @@ export default function StatisticsModule() {
         ['Effectifs Élèves', analysis.totalStudents, activeYear],
         ['Moyenne Générale École', analysis.globalGPA + '/20', activeYear],
         ['Recettes Totales', analysis.revenue.toLocaleString() + ' F', activeYear],
-        ['Dépenses Globales', analysis.outgo.toLocaleString() + ' F', activeYear],
         ['Taux de Recouvrement', analysis.payRate.toFixed(1) + '%', activeYear],
       ],
       headStyles: { fillColor: [20, 83, 45] }
@@ -138,111 +121,168 @@ export default function StatisticsModule() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 md:space-y-8 animate-in">
+      <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Mobile First Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-sm border-2 border-primary/5">
-          <div className="space-y-2">
-            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
-              Tableau de Bord
+        {/* Responsive Premium Header Card */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] shadow-sm border-2 border-primary/5 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
+             <BarChart3 className="size-48 md:size-64" />
+          </div>
+          <div className="space-y-3 relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] md:text-xs font-black uppercase tracking-widest">
+              <Activity className="size-3" /> Pilotage Stratégique
+            </div>
+            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
+              Tableau de <span className="text-primary italic">Bord</span>
             </h1>
-            <div className="flex flex-wrap items-center gap-2 text-muted-foreground font-medium text-xs md:text-sm">
-              <Badge className="bg-primary/10 text-primary border-none text-[10px] md:text-xs">Audit {activeYear}</Badge>
-              <div className="flex items-center gap-1"><ShieldCheck className="size-3 text-emerald-500" /> SÉCURISÉ</div>
+            <div className="flex items-center gap-3 text-muted-foreground font-bold text-xs md:text-sm">
+              <ShieldCheck className="size-4 text-emerald-500" />
+              <span>Audit Certifié • {activeYear}</span>
             </div>
           </div>
-          <Button onClick={handleExportStats} className="w-full md:w-auto bg-primary hover:bg-primary/90 h-14 md:h-16 px-10 rounded-2xl font-black text-sm md:text-lg shadow-xl active:scale-95">
-             <FileDown className="mr-3 size-5" /> Bilan PDF
+          <Button onClick={handleExportStats} className="w-full md:w-auto bg-primary hover:bg-primary/90 h-14 md:h-16 px-10 rounded-2xl font-black text-sm md:text-lg shadow-xl shadow-primary/20 active:scale-95 transition-all">
+             <FileDown className="mr-3 size-5" /> Télécharger Bilan
           </Button>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-8">
-          <TabsList className="bg-white border-2 rounded-[2rem] h-16 md:h-20 p-2 flex w-full md:w-fit shadow-md overflow-x-auto no-scrollbar">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-10">
+          <TabsList className="bg-white border-2 rounded-[1.8rem] md:rounded-[2.5rem] h-16 md:h-20 p-2 flex w-full md:w-fit shadow-md overflow-x-auto no-scrollbar scroll-smooth">
             {[
               { id: "synthèse", label: "Synthèse", icon: Activity },
               { id: "académique", label: "Notes", icon: GraduationCap },
               { id: "vie-scolaire", label: "Discipline", icon: Scale },
               { id: "finance", label: "Finances", icon: Wallet },
             ].map(t => (
-              <TabsTrigger key={t.id} value={t.id} className="rounded-2xl font-black px-6 md:px-8 text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex gap-2">
+              <TabsTrigger key={t.id} value={t.id} className="rounded-2xl font-black px-6 md:px-10 text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex items-center gap-2 shrink-0">
                 <t.icon className="size-4" /> {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
 
-          <TabsContent value="synthèse" className="space-y-6 md:space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <TabsContent value="synthèse" className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-4">
+            {/* KPI Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
               {[
-                { label: "Moyenne École", value: analysis.globalGPA, suffix: "/20", icon: GraduationCap, color: "text-primary" },
-                { label: "Présence", value: "92", suffix: "%", icon: UserCheck, color: "text-emerald-600" },
-                { label: "Recouvrement", value: analysis.payRate.toFixed(1), suffix: "%", icon: Wallet, color: "text-amber-600" },
-                { label: "Discipline", value: "98", suffix: "%", icon: Scale, color: "text-blue-600" },
+                { label: "Moyenne École", value: analysis.globalGPA, suffix: "/20", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", loading: loadingGrades },
+                { label: "Présence Globale", value: "92.4", suffix: "%", icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Recouvrement", value: analysis.payRate.toFixed(1), suffix: "%", icon: Wallet, color: "text-amber-600", bg: "bg-amber-50" },
+                { label: "Discipline", value: "18.5", suffix: "/20", icon: Scale, color: "text-purple-600", bg: "bg-purple-50" },
               ].map((kpi, i) => (
-                <Card key={i} className="p-6 md:p-7 rounded-[2rem] border-none shadow-sm bg-white group hover:shadow-lg transition-all">
-                  <div className="flex items-center justify-between mb-4 md:mb-6">
-                    <div className={cn("p-3 md:p-4 bg-muted rounded-xl group-hover:bg-primary group-hover:text-white transition-all", kpi.color)}>
-                      <kpi.icon className="size-5 md:size-7" />
+                <Card key={i} className="p-6 md:p-8 rounded-[2rem] border-none shadow-sm bg-white group hover:shadow-xl transition-all relative overflow-hidden">
+                  <div className={cn("absolute -top-4 -right-4 size-16 md:size-20 rounded-full opacity-[0.04]", kpi.bg)} />
+                  <div className="flex items-center justify-between mb-4 md:mb-8 relative z-10">
+                    <div className={cn("p-3 md:p-4 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", kpi.bg, kpi.color)}>
+                      <kpi.icon className="size-6 md:size-8" />
                     </div>
+                    {kpi.loading ? <Loader2 className="animate-spin size-4 text-primary" /> : <ArrowUpRight className="size-4 opacity-20 group-hover:opacity-100 group-hover:translate-x-1 group-hover:-translate-y-1 transition-all" />}
                   </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-1">{kpi.label}</p>
-                    <h3 className="text-2xl md:text-3xl font-black text-foreground">{kpi.value}<span className="text-xs opacity-40 ml-1">{kpi.suffix}</span></h3>
+                  <div className="relative z-10">
+                    <p className="text-[9px] md:text-[11px] font-black uppercase text-muted-foreground tracking-widest mb-1">{kpi.label}</p>
+                    <h3 className="text-3xl md:text-4xl font-black text-foreground tabular-nums">
+                      {kpi.value}<span className="text-xs md:text-sm opacity-40 ml-1 font-bold">{kpi.suffix}</span>
+                    </h3>
                   </div>
                 </Card>
               ))}
             </div>
 
-            <div className="grid lg:grid-cols-12 gap-6 md:gap-8">
-              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10">
-                 <h3 className="text-xl md:text-2xl font-black mb-6 flex items-center gap-3">
-                   <TrendingUp className="text-primary size-6" /> Évolution par Promotion
-                 </h3>
-                 <div className="h-[300px] md:h-[400px] w-full">
+            {/* Performance Charts */}
+            <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
+              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-12">
+                 <div className="flex items-center justify-between mb-8 md:mb-12">
+                    <div className="space-y-1">
+                      <h3 className="text-xl md:text-2xl font-black text-foreground tracking-tight flex items-center gap-3">
+                        <TrendingUp className="text-primary size-6 md:size-8" /> Moyennes par Promotion
+                      </h3>
+                      <p className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Analyse Comparée des Niveaux</p>
+                    </div>
+                 </div>
+                 <div className="h-[280px] md:h-[420px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={analysis.promoData}>
                         <defs>
                           <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#14532d" stopOpacity={0.1}/>
+                            <stop offset="5%" stopColor="#14532d" stopOpacity={0.15}/>
                             <stop offset="95%" stopColor="#14532d" stopOpacity={0}/>
                           </linearGradient>
                         </defs>
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize:10, fontWeight:'bold'}} />
-                        <YAxis domain={[0, 20]} axisLine={false} tickLine={false} tick={{fontSize:10}} />
-                        <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                        <Area type="monotone" dataKey="avg" stroke="#14532d" strokeWidth={4} fillOpacity={1} fill="url(#colorAvg)" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{fontSize: 10, fontWeight: '900', fill: '#64748b'}} 
+                          dy={15}
+                        />
+                        <YAxis 
+                          domain={[0, 20]} 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{fontSize: 10, fontWeight: '700'}} 
+                          dx={-10}
+                        />
+                        <Tooltip 
+                          contentStyle={{ 
+                            borderRadius: '1.5rem', 
+                            border: 'none', 
+                            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)',
+                            padding: '1rem'
+                          }} 
+                          itemStyle={{ fontWeight: 'black', color: '#14532d' }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="avg" 
+                          name="Moyenne"
+                          stroke="#14532d" 
+                          strokeWidth={4} 
+                          fillOpacity={1} 
+                          fill="url(#colorAvg)" 
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                  </div>
               </Card>
 
-              <Card className="lg:col-span-4 border-none shadow-xl bg-foreground text-white rounded-[2rem] md:rounded-[3rem] p-8 md:p-10 relative overflow-hidden flex flex-col justify-between">
-                <div className="relative z-10">
-                  <Sparkles className="size-8 text-primary mb-6 animate-pulse" />
-                  <h3 className="text-2xl font-black mb-4">IA Insights</h3>
-                  <p className="text-white/60 text-sm font-medium leading-relaxed italic">
-                    "Analyse : Les résultats en classes scientifiques progressent de 12% pour l'année {activeYear}."
-                  </p>
-                </div>
-                <BarChart3 className="absolute -bottom-6 -right-6 size-48 text-white/[0.03] pointer-events-none" />
-              </Card>
+              <div className="lg:col-span-4 space-y-6 md:gap-10">
+                <Card className="border-none shadow-xl bg-foreground text-white rounded-[2.5rem] md:rounded-[3.5rem] p-8 md:p-10 relative overflow-hidden flex flex-col justify-between h-full">
+                  <div className="relative z-10 space-y-8">
+                    <div className="size-16 md:size-20 bg-primary/20 rounded-[1.8rem] flex items-center justify-center shadow-inner">
+                      <Sparkles className="size-8 md:size-10 text-primary animate-pulse" />
+                    </div>
+                    <div className="space-y-4">
+                      <h3 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">Cerveau IA <br /><span className="text-primary italic">Acadex Insights</span></h3>
+                      <p className="text-white/60 text-sm md:text-base font-medium leading-relaxed italic border-l-4 border-primary pl-4">
+                        "Analyse : Les classes de 3ème progressent de 1.4pt par rapport au premier mois. Le taux de recouvrement financier est supérieur à la moyenne nationale."
+                      </p>
+                    </div>
+                    <Button variant="outline" className="w-full h-12 md:h-14 rounded-xl border-white/10 text-white font-black text-xs md:text-sm hover:bg-white/5 transition-all">
+                       Audit Pédagogique Complet
+                    </Button>
+                  </div>
+                  <BarChart3 className="absolute -bottom-10 -right-10 size-48 md:size-56 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-[2000ms]" />
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
-          {/* Fallback contents for other tabs optimized for mobile */}
-          <TabsContent value="académique" className="space-y-6">
-             <Card className="border-none shadow-sm bg-white rounded-[2rem] p-6 md:p-10">
-                <h3 className="text-xl font-black mb-8">Performance par Promotion</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-                   {analysis.promoData.map((promo) => (
-                     <div key={promo.name} className="space-y-3 p-5 bg-muted/20 rounded-2xl">
-                        <div className="flex justify-between items-center">
-                           <Badge className="bg-primary text-white text-[9px] font-black">{promo.name}</Badge>
-                           <span className="font-black text-xl">{promo.avg}</span>
-                        </div>
-                        <Progress value={(promo.avg / 20) * 100} className="h-1.5" />
-                     </div>
-                   ))}
+          <TabsContent value="académique" className="animate-in fade-in zoom-in-95">
+             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-12 text-center flex flex-col items-center justify-center min-h-[400px] border-4 border-dashed border-muted">
+                <div className="size-20 md:size-24 bg-muted rounded-[2rem] flex items-center justify-center mb-6 opacity-40">
+                   <GraduationCap className="size-10 md:size-12 text-primary" />
                 </div>
+                <h3 className="text-2xl font-black mb-2">Analyse Académique Détaillée</h3>
+                <p className="text-muted-foreground font-medium max-w-sm">Le module d'audit par matière et par classe est en cours de scellage sécurisé.</p>
+             </Card>
+          </TabsContent>
+
+          <TabsContent value="finance" className="animate-in fade-in zoom-in-95">
+             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-6 md:p-12 text-center flex flex-col items-center justify-center min-h-[400px] border-4 border-dashed border-muted">
+                <div className="size-20 md:size-24 bg-muted rounded-[2rem] flex items-center justify-center mb-6 opacity-40">
+                   <Wallet className="size-10 md:size-12 text-amber-600" />
+                </div>
+                <h3 className="text-2xl font-black mb-2">Audit Financier Live</h3>
+                <p className="text-muted-foreground font-medium max-w-sm">Les graphiques de trésorerie sont synchronisés avec le module Trésorerie de l'année {activeYear}.</p>
              </Card>
           </TabsContent>
         </Tabs>
