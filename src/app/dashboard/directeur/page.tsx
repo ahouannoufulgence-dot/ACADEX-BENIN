@@ -104,8 +104,8 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in">
         
-        {/* Immersive Hero Section - Ultra Premium Mobile */}
-        <div className="relative min-h-[260px] md:min-h-[350px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group border-4 border-white">
+        {/* Immersive Hero Section */}
+        <div className="relative min-h-[280px] md:min-h-[380px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group border-4 border-white">
           <Image 
             src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-director/1920/1080"}
             alt="Director Cockpit Background"
@@ -116,17 +116,17 @@ export default function DirectorDashboard() {
           />
           <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/60 to-transparent" />
           
-          <div className="absolute inset-0 p-6 md:p-12 flex flex-col justify-end md:justify-center gap-4 md:gap-6">
-            <div className="space-y-2 md:space-y-4 max-w-2xl">
-              <p className="text-[9px] md:text-xs font-black text-emerald-400 uppercase tracking-[0.3em] drop-shadow-md">Espace Pilotage Stratégique</p>
-              <h1 className="text-2xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
+          <div className="absolute inset-0 p-8 md:p-14 flex flex-col justify-end md:justify-center gap-6">
+            <div className="space-y-3 md:space-y-5 max-w-2xl">
+              <p className="text-[10px] md:text-xs font-black text-emerald-400 uppercase tracking-[0.4em] drop-shadow-md">Espace Pilotage Stratégique</p>
+              <h1 className="text-3xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
                 Bonjour <br className="md:hidden" /> <span className="text-emerald-400 italic">M. le Directeur</span>
               </h1>
-              <div className="flex flex-wrap items-center gap-2 md:gap-4 pt-2">
-                <Badge className="bg-white/20 backdrop-blur-xl text-white border-white/10 font-black px-4 md:px-6 py-2 uppercase tracking-widest text-[8px] md:text-xs">
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <Badge className="bg-white/20 backdrop-blur-xl text-white border-white/10 font-black px-5 md:px-7 py-2 uppercase tracking-widest text-[9px] md:text-xs">
                   {schoolInfo.name}
                 </Badge>
-                <div className="flex items-center gap-2 font-bold text-[8px] md:text-sm bg-white/10 backdrop-blur-xl text-white/90 px-4 md:px-6 py-2 rounded-full border border-white/10">
+                <div className="flex items-center gap-2 font-bold text-[9px] md:text-sm bg-white/10 backdrop-blur-xl text-white/90 px-5 md:px-7 py-2 rounded-full border border-white/10">
                   <Calendar className="size-3 md:size-4 text-emerald-400" /> {today}
                 </div>
               </div>
@@ -134,7 +134,7 @@ export default function DirectorDashboard() {
           </div>
         </div>
 
-        {/* Rapid Stats Grid - Card Design optimized for Mobile */}
+        {/* Rapid Stats Grid - Refined Icons */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {[
             { label: "Élèves Actifs", value: stats.totalStudents, loading: loadingStudents, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -142,14 +142,14 @@ export default function DirectorDashboard() {
             { label: "Moyenne École", value: stats.avg, loading: false, icon: Zap, color: "text-amber-600", bg: "bg-amber-50" },
             { label: "Recouvrement", value: `${stats.revenue.toLocaleString()} F`, loading: false, icon: Wallet, color: "text-purple-600", bg: "bg-purple-50" }
           ].map((stat, i) => (
-            <Card key={i} className="p-4 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group overflow-hidden relative">
-              <div className={cn("absolute -top-4 -right-4 size-16 md:size-24 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform", stat.bg.replace('bg-', 'bg-'))} />
-              <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-2 md:mb-5">{stat.label}</p>
+            <Card key={i} className="p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group overflow-hidden relative">
+              <div className={cn("absolute -top-4 -right-4 size-20 md:size-24 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform", stat.bg)} />
+              <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3 md:mb-5">{stat.label}</p>
               <div className="flex items-center justify-between">
-                <div className="text-lg md:text-4xl font-black text-foreground truncate mr-2">
-                  {stat.loading ? <Loader2 className="animate-spin size-4 md:size-7" /> : stat.value}
+                <div className="text-xl md:text-4xl font-black text-foreground truncate mr-2">
+                  {stat.loading ? <Loader2 className="animate-spin size-5 md:size-8" /> : stat.value}
                 </div>
-                <div className={cn("p-2 md:p-4 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", stat.bg, stat.color)}>
+                <div className={cn("p-2.5 md:p-4 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", stat.bg, stat.color)}>
                   <stat.icon className="size-4 md:size-7" />
                 </div>
               </div>
@@ -157,64 +157,64 @@ export default function DirectorDashboard() {
           ))}
         </div>
 
-        {/* Detailed Insights & Actions */}
+        {/* Detailed Insights */}
         <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
           <div className="lg:col-span-8 space-y-6 md:space-y-10">
             {stats.idsCount > 0 && (
               <Card className="border-none shadow-xl bg-white rounded-[2rem] md:rounded-[3rem] overflow-hidden border-t-8 border-destructive">
-                <CardHeader className="p-5 md:p-10 border-b bg-red-50/20 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <CardHeader className="p-6 md:p-10 border-b bg-red-50/20 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-4">
                     <div className="size-10 md:size-12 bg-destructive text-white rounded-xl flex items-center justify-center shadow-lg shadow-destructive/20">
-                      <AlertTriangle className="size-5 md:size-6" />
+                      <AlertTriangle className="size-4 md:size-6" />
                     </div>
                     <div>
-                      <CardTitle className="text-base md:text-2xl font-black">Alertes Flux</CardTitle>
-                      <p className="text-[8px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Action Requise</p>
+                      <CardTitle className="text-lg md:text-2xl font-black">Alertes Flux</CardTitle>
+                      <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Action Requise Immédiate</p>
                     </div>
                   </div>
-                  <Badge className="bg-destructive text-white font-black px-3 py-1 rounded-full text-[8px] md:text-xs">{stats.idsCount} ATTENTE</Badge>
+                  <Badge className="bg-destructive text-white font-black px-4 py-1.5 rounded-full text-[9px] md:text-xs">{stats.idsCount} ATTENTE</Badge>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="p-5 md:p-10 flex items-center justify-between bg-muted/5 group cursor-pointer hover:bg-muted/10 transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="size-10 md:size-14 bg-white rounded-2xl flex items-center justify-center font-black text-lg md:text-2xl shadow-inner border border-muted/50 text-destructive">{stats.idsCount}</div>
-                      <div className="space-y-0.5">
-                        <p className="font-black text-xs md:text-lg text-foreground">Identifiants de connexion</p>
-                        <p className="text-[9px] md:text-sm font-medium text-muted-foreground">Déployez les codes aux élèves.</p>
+                  <div className="p-6 md:p-10 flex items-center justify-between bg-muted/5 group cursor-pointer hover:bg-muted/10 transition-all">
+                    <div className="flex items-center gap-5">
+                      <div className="size-12 md:size-16 bg-white rounded-2xl flex items-center justify-center font-black text-xl md:text-3xl shadow-inner border border-muted/50 text-destructive">{stats.idsCount}</div>
+                      <div className="space-y-1">
+                        <p className="font-black text-sm md:text-xl text-foreground">Identifiants de connexion</p>
+                        <p className="text-[10px] md:text-base font-medium text-muted-foreground">Distribuez les codes pour activer les cockpits élèves.</p>
                       </div>
                     </div>
-                    <Button asChild variant="ghost" className="size-10 md:size-12 rounded-xl text-primary group-hover:translate-x-2 transition-transform mobile-touch-target">
-                      <Link href="/eleves/identifiants"><ArrowRight className="size-5 md:size-6" /></Link>
+                    <Button asChild variant="ghost" className="size-11 md:size-14 rounded-xl text-primary group-hover:translate-x-2 transition-transform mobile-touch-target">
+                      <Link href="/eleves/identifiants"><ArrowRight className="size-5 md:size-7" /></Link>
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10">
-              <div className="flex items-center justify-between mb-8 md:mb-10">
+            <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-12">
+              <div className="flex items-center justify-between mb-8 md:mb-12">
                 <div className="space-y-1">
-                  <h3 className="text-lg md:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-                    <TrendingUp className="text-primary size-5 md:size-8" /> Performance
+                  <h3 className="text-xl md:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
+                    <TrendingUp className="text-primary size-5 md:size-8" /> Performance Live
                   </h3>
-                  <p className="text-[8px] md:text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">{activeYear} • Analyse Live</p>
+                  <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">{activeYear} • Analyse en temps réel</p>
                 </div>
-                <Button variant="outline" className="rounded-xl font-bold text-[9px] md:text-xs h-9 md:h-10 border-2 mobile-touch-target">Détails <ChevronRight className="ml-1 size-3" /></Button>
+                <Button variant="outline" className="rounded-xl font-black text-[10px] md:text-xs h-10 md:h-12 border-2 px-5 mobile-touch-target">Voir détails <ChevronRight className="ml-1 size-3 md:size-4" /></Button>
               </div>
-              <div className="p-10 md:p-20 text-center border-4 border-dashed rounded-[2rem] md:rounded-[2.5rem] bg-muted/10 opacity-40">
-                <div className="size-14 md:size-20 bg-white rounded-2xl md:rounded-3xl flex items-center justify-center mx-auto shadow-sm mb-6">
-                   <Zap className="size-6 md:size-10 text-primary" />
+              <div className="p-12 md:p-24 text-center border-4 border-dashed rounded-[2.5rem] md:rounded-[3.5rem] bg-muted/10 opacity-40">
+                <div className="size-16 md:size-24 bg-white rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto shadow-sm mb-8">
+                   <Zap className="size-7 md:size-12 text-primary" />
                 </div>
-                <p className="font-black text-muted-foreground uppercase tracking-widest text-[8px] md:text-xs">Synchronisation des notes...</p>
+                <p className="font-black text-muted-foreground uppercase tracking-widest text-[9px] md:text-sm">Synchronisation des moyennes...</p>
               </div>
             </Card>
           </div>
 
-          <div className="lg:col-span-4 space-y-6 md:space-y-8">
-            <Card className="p-6 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-foreground text-white shadow-2xl relative overflow-hidden group">
+          <div className="lg:col-span-4 space-y-6 md:space-y-10">
+            <Card className="p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] bg-foreground text-white shadow-2xl relative overflow-hidden group">
                <div className="relative z-10">
-                 <h4 className="text-base md:text-xl font-black mb-6 md:mb-8 flex items-center gap-3">
-                  <Activity className="size-4 md:size-5 text-primary" /> État des Services
+                 <h4 className="text-lg md:text-2xl font-black mb-8 md:mb-10 flex items-center gap-4">
+                  <Activity className="size-4 md:size-6 text-primary" /> État des Services
                  </h4>
                  <div className="space-y-4 md:space-y-6">
                     {[
@@ -222,30 +222,30 @@ export default function DirectorDashboard() {
                       { label: "IA Acadex", status: "ACTIF", color: "bg-primary" },
                       { label: "Passerelle SMS", status: "SYNC", color: "bg-blue-500" }
                     ].map((svc, i) => (
-                      <div key={i} className="flex justify-between items-center text-[9px] md:text-sm font-bold p-3 md:p-4 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
+                      <div key={i} className="flex justify-between items-center text-[10px] md:text-base font-bold p-4 md:p-5 bg-white/5 rounded-xl md:rounded-2xl border border-white/10">
                         <span className="text-white/60">{svc.label}</span>
-                        <Badge className={cn(svc.color, "text-white border-none font-black text-[7px] md:text-[10px]")}>{svc.status}</Badge>
+                        <Badge className={cn(svc.color, "text-white border-none font-black text-[8px] md:text-[11px]")}>{svc.status}</Badge>
                       </div>
                     ))}
                  </div>
                </div>
-               <ShieldCheck className="absolute -bottom-10 -right-10 size-32 md:size-48 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+               <ShieldCheck className="absolute -bottom-10 -right-10 size-40 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
             </Card>
 
-            <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all cursor-pointer">
-              <div className="flex items-center gap-4 mb-5 md:mb-6">
-                <div className="size-10 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/10">
-                  <Sparkles className="size-5 md:size-8 text-primary fill-primary/10" />
+            <Card className="p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all cursor-pointer">
+              <div className="flex items-center gap-5 mb-6 md:mb-8">
+                <div className="size-11 md:size-16 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/10">
+                  <Sparkles className="size-5 md:size-9 text-primary fill-primary/10" />
                 </div>
                 <div>
-                  <h4 className="font-black text-base md:text-xl">Assistant IA</h4>
-                  <p className="text-[8px] md:text-[10px] font-black text-primary uppercase tracking-widest">Brain v1.0</p>
+                  <h4 className="font-black text-lg md:text-2xl">Assistant IA</h4>
+                  <p className="text-[9px] md:text-[11px] font-black text-primary uppercase tracking-widest">Brain v1.0</p>
                 </div>
               </div>
-              <p className="text-[10px] md:text-sm font-medium text-muted-foreground italic leading-relaxed mb-6 md:mb-8">
+              <p className="text-[11px] md:text-base font-medium text-muted-foreground italic leading-relaxed mb-8 md:mb-10">
                 "Analysez les disparités de notes pour l'année {activeYear} en un clic."
               </p>
-              <Button asChild className="w-full bg-primary text-white hover:bg-primary/90 rounded-xl font-black h-12 md:h-14 shadow-xl shadow-primary/20 transition-all active:scale-95 mobile-touch-target">
+              <Button asChild className="w-full bg-primary text-white hover:bg-primary/90 rounded-xl font-black h-12 md:h-16 shadow-xl shadow-primary/20 transition-all active:scale-95 mobile-touch-target">
                 <Link href="/assistant">Lancer l'Audit IA</Link>
               </Button>
             </Card>

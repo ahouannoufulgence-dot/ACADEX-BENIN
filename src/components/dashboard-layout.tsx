@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -160,22 +161,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
         <Sidebar className="border-none shadow-2xl flex-shrink-0" collapsible="icon">
-          <SidebarHeader className="h-20 md:h-24 flex items-center px-4 bg-primary overflow-hidden">
+          <SidebarHeader className="h-18 md:h-24 flex items-center px-4 bg-primary overflow-hidden">
             <Link href="/dashboard" className="flex items-center gap-3 w-full">
-              <div className="size-10 md:size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+              <div className="size-9 md:size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
                 {schoolInfo.logo ? (
                   <img src={schoolInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <span className="text-primary font-black text-xl md:text-2xl">{schoolInfo.name[0]}</span>
+                  <span className="text-primary font-black text-lg md:text-2xl">{schoolInfo.name[0]}</span>
                 )}
               </div>
-              <span className="text-lg md:text-xl font-black text-white tracking-tight uppercase line-clamp-1 group-data-[collapsible=icon]:hidden">{schoolInfo.name}</span>
+              <span className="text-base md:text-xl font-black text-white tracking-tight uppercase line-clamp-1 group-data-[collapsible=icon]:hidden">{schoolInfo.name}</span>
             </Link>
           </SidebarHeader>
           <ScrollArea className="flex-1 bg-primary">
             <SidebarContent className="px-2 py-4 md:py-6">
               <SidebarGroup>
-                <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px] group-data-[collapsible=icon]:hidden">
+                <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.25em] text-[9px] group-data-[collapsible=icon]:hidden">
                   MENU {userRole.toUpperCase()}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -185,7 +186,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         <SidebarMenuButton
                           asChild
                           isActive={pathname === item.href}
-                          className={`group transition-all duration-300 h-11 md:h-12 rounded-xl md:rounded-2xl px-4 ${
+                          className={`group transition-all duration-300 h-10 md:h-12 rounded-[0.8rem] md:rounded-2xl px-4 ${
                             pathname === item.href 
                               ? "bg-white/20 text-white shadow-lg" 
                               : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -193,10 +194,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           tooltip={item.name}
                         >
                           <Link href={item.href}>
-                            <item.icon className={cn("size-5 md:size-6 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
-                            <span className="font-bold text-xs md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
+                            <item.icon className={cn("size-4.5 md:size-5.5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
+                            <span className="font-bold text-[11px] md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
-                              <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden">IA</Badge>
+                              <Badge className="ml-auto bg-amber-400 text-[7px] font-black h-3.5 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden">IA</Badge>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -207,53 +208,53 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroup>
             </SidebarContent>
           </ScrollArea>
-          <SidebarFooter className="p-4 bg-primary">
-            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-11 md:h-12 rounded-xl md:rounded-2xl font-bold">
-              <LogOut className="size-5 md:size-6 shrink-0" />
-              <span className="group-data-[collapsible=icon]:hidden">Déconnexion</span>
+          <SidebarFooter className="p-3 md:p-4 bg-primary">
+            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-10 md:h-12 rounded-xl font-bold">
+              <LogOut className="size-4.5 md:size-5.5 shrink-0" />
+              <span className="group-data-[collapsible=icon]:hidden text-[11px] md:text-sm">Déconnexion</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="flex flex-col flex-1 min-w-0">
-          <header className="sticky top-0 z-30 flex h-16 md:h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-4 md:px-6 border-b border-border/40">
-            <div className="flex items-center gap-2 md:gap-4">
-              <SidebarTrigger className="text-primary hover:bg-primary/5 size-10 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
+          <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-4 md:px-7 border-b border-border/40">
+            <div className="flex items-center gap-3 md:gap-5">
+              <SidebarTrigger className="text-primary hover:bg-primary/5 size-9 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
               
-              <div className="flex flex-col ml-1 md:ml-2">
-                <h2 className="text-xs md:text-lg font-black text-foreground truncate max-w-[120px] md:max-w-none">
+              <div className="flex flex-col ml-1">
+                <h2 className="text-xs md:text-lg font-black text-foreground truncate max-w-[110px] md:max-w-none uppercase tracking-tight">
                   {userName}
                 </h2>
-                <div className="flex items-center gap-1 md:gap-2">
-                  <Badge variant="outline" className="text-[7px] md:text-[8px] font-black border-primary/20 text-primary uppercase">{userId}</Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant="outline" className="text-[7px] md:text-[9px] font-black border-primary/20 text-primary px-1.5 h-3.5 md:h-5 uppercase">{userId}</Badge>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-2 md:gap-5">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-9 md:h-11 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-4 transition-all text-[10px] md:text-sm mobile-touch-target">
+                  <Button variant="outline" className="h-8 md:h-12 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-5 transition-all text-[9px] md:text-sm mobile-touch-target">
                     <Calendar className="size-3 md:size-4 text-primary" />
                     <span>{activeYear}</span>
                     <ChevronDown className="size-2 md:size-3 text-muted-foreground" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 p-1 shadow-2xl">
+                <DropdownMenuContent align="end" className="w-48 rounded-2xl border-2 p-1.5 shadow-2xl">
                   {availableYears.map((year) => (
-                    <DropdownMenuItem key={year} onClick={() => handleYearChange(year)} className={cn("p-3 rounded-lg font-bold cursor-pointer", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}>
+                    <DropdownMenuItem key={year} onClick={() => handleYearChange(year)} className={cn("p-3 rounded-xl font-bold cursor-pointer text-xs md:text-sm", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}>
                       {year}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
               
-              <Avatar className="size-9 md:size-10 border-2 border-primary/10 shadow-sm mobile-touch-target">
-                <AvatarFallback className="bg-primary text-white font-black text-xs md:text-sm">{userName[0]}</AvatarFallback>
+              <Avatar className="size-8 md:size-11 border-2 border-primary/10 shadow-sm mobile-touch-target">
+                <AvatarFallback className="bg-primary text-white font-black text-[10px] md:text-base">{userName[0]}</AvatarFallback>
               </Avatar>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F8FAFC] relative">
+          <main className="flex-1 overflow-y-auto p-4 md:p-10 bg-[#F8FAFC] relative">
             <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none grayscale">
               <Image src={bgImage?.imageUrl || "https://picsum.photos/seed/acadex-bg/1920/1080"} alt="ACADEX Filigree" fill className="object-cover" />
             </div>
