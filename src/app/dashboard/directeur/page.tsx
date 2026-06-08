@@ -37,7 +37,7 @@ export default function DirectorDashboard() {
   const [directorFullName, setDirectorFullName] = useState("le Directeur")
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "scientific-bg")
 
   useEffect(() => {
     setMounted(true)
@@ -104,21 +104,23 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in">
         
-        {/* Immersive Hero Section */}
+        {/* Immersive Hero Section - Scientific Theme */}
         <div className="relative min-h-[280px] md:min-h-[380px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group border-4 border-white">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-director/1920/1080"}
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/science-research/1920/1080"}
             alt="Director Cockpit Background"
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-[2000ms]"
+            className="object-cover group-hover:scale-105 transition-transform duration-[3000ms] brightness-[0.85]"
             priority
-            data-ai-hint={heroImage?.imageHint || "smiling students"}
+            data-ai-hint={heroImage?.imageHint || "scientific research"}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/40 to-transparent" />
           
           <div className="absolute inset-0 p-8 md:p-14 flex flex-col justify-end md:justify-center gap-6">
             <div className="space-y-3 md:space-y-5 max-w-2xl">
-              <p className="text-[10px] md:text-xs font-black text-emerald-400 uppercase tracking-[0.4em] drop-shadow-md">Espace Pilotage Stratégique</p>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 text-emerald-400 text-[9px] md:text-[11px] font-black uppercase tracking-[0.3em]">
+                <Zap className="size-3 fill-emerald-400" /> Pilotage Stratégique Acadex
+              </div>
               <h1 className="text-3xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
                 Bonjour <br className="md:hidden" /> <span className="text-emerald-400 italic">M. le Directeur</span>
               </h1>
@@ -134,7 +136,7 @@ export default function DirectorDashboard() {
           </div>
         </div>
 
-        {/* Rapid Stats Grid - Refined Icons */}
+        {/* Rapid Stats Grid - Refined Small Icons */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {[
             { label: "Élèves Actifs", value: stats.totalStudents, loading: loadingStudents, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -143,15 +145,16 @@ export default function DirectorDashboard() {
             { label: "Recouvrement", value: `${stats.revenue.toLocaleString()} F`, loading: false, icon: Wallet, color: "text-purple-600", bg: "bg-purple-50" }
           ].map((stat, i) => (
             <Card key={i} className="p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group overflow-hidden relative">
-              <div className={cn("absolute -top-4 -right-4 size-20 md:size-24 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform", stat.bg)} />
-              <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3 md:mb-5">{stat.label}</p>
-              <div className="flex items-center justify-between">
-                <div className="text-xl md:text-4xl font-black text-foreground truncate mr-2">
-                  {stat.loading ? <Loader2 className="animate-spin size-5 md:size-8" /> : stat.value}
-                </div>
-                <div className={cn("p-2.5 md:p-4 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", stat.bg, stat.color)}>
-                  <stat.icon className="size-4 md:size-7" />
-                </div>
+              <div className={cn("absolute -top-4 -right-4 size-16 md:size-24 rounded-full opacity-[0.03] group-hover:scale-150 transition-transform", stat.bg)} />
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                 <div className={cn("p-2.5 md:p-3 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", stat.bg, stat.color)}>
+                   <stat.icon className="size-4 md:size-5" />
+                 </div>
+                 <Badge variant="outline" className="border-none text-[7px] md:text-[9px] font-black uppercase bg-muted/50 px-2">LIVE</Badge>
+              </div>
+              <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{stat.label}</p>
+              <div className="text-xl md:text-3xl font-black text-foreground truncate">
+                {stat.loading ? <Loader2 className="animate-spin size-5 md:size-8" /> : stat.value}
               </div>
             </Card>
           ))}
@@ -165,7 +168,7 @@ export default function DirectorDashboard() {
                 <CardHeader className="p-6 md:p-10 border-b bg-red-50/20 flex flex-row items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="size-10 md:size-12 bg-destructive text-white rounded-xl flex items-center justify-center shadow-lg shadow-destructive/20">
-                      <AlertTriangle className="size-4 md:size-6" />
+                      <AlertTriangle className="size-4 md:size-5" />
                     </div>
                     <div>
                       <CardTitle className="text-lg md:text-2xl font-black">Alertes Flux</CardTitle>
@@ -184,7 +187,7 @@ export default function DirectorDashboard() {
                       </div>
                     </div>
                     <Button asChild variant="ghost" className="size-11 md:size-14 rounded-xl text-primary group-hover:translate-x-2 transition-transform mobile-touch-target">
-                      <Link href="/eleves/identifiants"><ArrowRight className="size-5 md:size-7" /></Link>
+                      <Link href="/eleves/identifiants"><ArrowRight className="size-5 md:size-6" /></Link>
                     </Button>
                   </div>
                 </CardContent>
@@ -195,15 +198,15 @@ export default function DirectorDashboard() {
               <div className="flex items-center justify-between mb-8 md:mb-12">
                 <div className="space-y-1">
                   <h3 className="text-xl md:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-                    <TrendingUp className="text-primary size-5 md:size-8" /> Performance Live
+                    <TrendingUp className="text-primary size-5 md:size-7" /> Performance Live
                   </h3>
                   <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">{activeYear} • Analyse en temps réel</p>
                 </div>
-                <Button variant="outline" className="rounded-xl font-black text-[10px] md:text-xs h-10 md:h-12 border-2 px-5 mobile-touch-target">Voir détails <ChevronRight className="ml-1 size-3 md:size-4" /></Button>
+                <Button variant="outline" className="rounded-xl font-black text-[10px] md:text-xs h-10 md:h-12 border-2 px-5 mobile-touch-target">Détails <ChevronRight className="ml-1 size-3" /></Button>
               </div>
               <div className="p-12 md:p-24 text-center border-4 border-dashed rounded-[2.5rem] md:rounded-[3.5rem] bg-muted/10 opacity-40">
                 <div className="size-16 md:size-24 bg-white rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center mx-auto shadow-sm mb-8">
-                   <Zap className="size-7 md:size-12 text-primary" />
+                   <Zap className="size-7 md:size-10 text-primary" />
                 </div>
                 <p className="font-black text-muted-foreground uppercase tracking-widest text-[9px] md:text-sm">Synchronisation des moyennes...</p>
               </div>
@@ -214,7 +217,7 @@ export default function DirectorDashboard() {
             <Card className="p-8 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] bg-foreground text-white shadow-2xl relative overflow-hidden group">
                <div className="relative z-10">
                  <h4 className="text-lg md:text-2xl font-black mb-8 md:mb-10 flex items-center gap-4">
-                  <Activity className="size-4 md:size-6 text-primary" /> État des Services
+                  <Activity className="size-4 md:size-5 text-primary" /> État des Services
                  </h4>
                  <div className="space-y-4 md:space-y-6">
                     {[
@@ -234,8 +237,8 @@ export default function DirectorDashboard() {
 
             <Card className="p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all cursor-pointer">
               <div className="flex items-center gap-5 mb-6 md:mb-8">
-                <div className="size-11 md:size-16 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/10">
-                  <Sparkles className="size-5 md:size-9 text-primary fill-primary/10" />
+                <div className="size-11 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/10">
+                  <Sparkles className="size-5 md:size-7 text-primary fill-primary/10" />
                 </div>
                 <div>
                   <h4 className="font-black text-lg md:text-2xl">Assistant IA</h4>

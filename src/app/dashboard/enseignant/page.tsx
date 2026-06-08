@@ -36,7 +36,7 @@ export default function TeacherDashboard() {
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "login-education")
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "teacher-lab")
 
   useEffect(() => {
     const id = localStorage.getItem('acadex_user_id') || ""
@@ -78,21 +78,21 @@ export default function TeacherDashboard() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Immersive Teacher Banner - Premium Mobile */}
+        {/* Immersive Teacher Banner - Scientific Theme */}
         <div className="relative min-h-[300px] md:min-h-[360px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group border-4 border-white">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-teacher/1920/1080"}
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/teacher-research/1920/1080"}
             alt="Teacher Cockpit Background"
             fill
-            className="object-cover grayscale-[0.2] brightness-75 group-hover:scale-105 transition-transform duration-[2000ms]"
+            className="object-cover brightness-75 group-hover:scale-105 transition-transform duration-[3000ms]"
             priority
-            data-ai-hint={heroImage?.imageHint || "school library"}
+            data-ai-hint={heroImage?.imageHint || "laboratory research"}
           />
           <div className="absolute inset-0 bg-gradient-to-br from-foreground/95 via-foreground/60 to-transparent" />
           
           <div className="absolute inset-0 p-6 md:p-12 flex flex-col justify-end md:justify-center gap-6">
             <div className="space-y-3 md:space-y-5 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[9px] font-black uppercase tracking-[0.2em]">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 backdrop-blur-md border border-primary/30 text-white text-[9px] font-black uppercase tracking-[0.2em]">
                 <Zap className="size-3 text-primary fill-primary" /> Espace Pédagogique Acadex
               </div>
               <h1 className="text-3xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
@@ -117,14 +117,14 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        {/* Stats Grid - optimized 2x2 for Mobile */}
+        {/* Stats Grid - optimized 2x2 for Mobile with Small Icons */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {stats.map((stat, i) => (
             <Card key={stat.title} className="p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between bg-white hover:shadow-lg transition-all group relative overflow-hidden h-full">
               <div className={cn("absolute -top-4 -right-4 size-16 md:size-20 rounded-full opacity-[0.05]", stat.bg)} />
-              <div className="flex items-center justify-between mb-4 md:mb-8">
-                <div className={`p-3 md:p-4 bg-muted rounded-xl md:rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
-                  <stat.icon className="size-5 md:size-7" />
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <div className={`p-2.5 md:p-3 bg-muted rounded-xl md:rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
+                  <stat.icon className="size-4 md:size-5" />
                 </div>
                 <Badge variant="outline" className="border-none text-[7px] md:text-[9px] font-black uppercase bg-muted/50 px-2">{stat.label}</Badge>
               </div>
@@ -176,7 +176,7 @@ export default function TeacherDashboard() {
               <Card className="p-8 md:p-10 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all relative">
                 <div className="flex items-center gap-4 mb-6 md:mb-8">
                   <div className="size-12 md:size-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5 animate-pulse-slow">
-                    <Sparkles className="size-6 md:size-8 text-primary fill-primary/10" />
+                    <Sparkles className="size-6 md:size-7 text-primary fill-primary/10" />
                   </div>
                   <div>
                     <h4 className="font-black text-lg md:text-xl">Assistant IA</h4>

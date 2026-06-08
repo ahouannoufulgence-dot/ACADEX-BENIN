@@ -109,7 +109,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [availableYears, setAvailableYears] = useState<string[]>(["2026-2027"])
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const bgImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
+  const bgImage = placeholderData.placeholderImages.find(img => img.id === "scientific-bg")
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
@@ -194,7 +194,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           tooltip={item.name}
                         >
                           <Link href={item.href}>
-                            <item.icon className={cn("size-4.5 md:size-5.5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
+                            <item.icon className={cn("size-4 md:size-5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
                             <span className="font-bold text-[11px] md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
                               <Badge className="ml-auto bg-amber-400 text-[7px] font-black h-3.5 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden">IA</Badge>
@@ -210,7 +210,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </ScrollArea>
           <SidebarFooter className="p-3 md:p-4 bg-primary">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-10 md:h-12 rounded-xl font-bold">
-              <LogOut className="size-4.5 md:size-5.5 shrink-0" />
+              <LogOut className="size-4 md:size-5 shrink-0" />
               <span className="group-data-[collapsible=icon]:hidden text-[11px] md:text-sm">Déconnexion</span>
             </Button>
           </SidebarFooter>
@@ -255,8 +255,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
           <main className="flex-1 overflow-y-auto p-4 md:p-10 bg-[#F8FAFC] relative">
-            <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none grayscale">
-              <Image src={bgImage?.imageUrl || "https://picsum.photos/seed/acadex-bg/1920/1080"} alt="ACADEX Filigree" fill className="object-cover" />
+            <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none grayscale contrast-125">
+              <Image 
+                src={bgImage?.imageUrl || "https://picsum.photos/seed/scientific-landscape/1920/1080"} 
+                alt="Scientific Landscape Background" 
+                fill 
+                className="object-cover" 
+                data-ai-hint={bgImage?.imageHint || "scientific research"}
+              />
             </div>
             <div className="relative z-10 safe-area-bottom">
               {children}
