@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -21,7 +20,8 @@ import {
   Wallet,
   Loader2,
   User,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ShieldCheck
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
