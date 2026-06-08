@@ -31,7 +31,8 @@ import {
   Calculator,
   HardDrive,
   Banknote,
-  PiggyBank
+  PiggyBank,
+  Sparkles
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -191,8 +192,8 @@ export default function TreasuryModule() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Trésorerie <span className="text-primary italic">& Finance</span></h1>
-            <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-emerald-500" /> Pilotage financier de l'année scolaire <Badge className="bg-primary">{activeYear}</Badge>
+            <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2 mt-2">
+              <ShieldCheck className="size-4 md:size-5 text-emerald-500" /> Pilotage financier de l'année scolaire <Badge className="bg-primary">{activeYear}</Badge>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -206,15 +207,28 @@ export default function TreasuryModule() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="rounded-[2.5rem] max-w-2xl">
-                 <DialogHeader><DialogTitle className="text-2xl font-black">Nouveau Paiement Élève</DialogTitle></DialogHeader>
+                 <DialogHeader>
+                   <DialogTitle className="text-2xl font-black">Nouveau Paiement Élève</DialogTitle>
+                   <DialogDescription className="font-medium">
+                     Enregistrez un versement officiel pour l'année {activeYear}.
+                   </DialogDescription>
+                 </DialogHeader>
                  <div className="grid md:grid-cols-2 gap-6 p-4">
                     <div className="space-y-4">
                        <Label className="font-black text-xs uppercase text-muted-foreground">Rechercher l'élève</Label>
                        <Input placeholder="Nom ou Matricule..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="h-12 rounded-xl" />
                        <ScrollArea className="h-48 border-2 rounded-xl p-2 bg-muted/30">
                           {filteredStudents.map((s:any) => (
-                            <button key={s.id} onClick={() => setFormData({...formData, studentId: s.matricule})} className={cn("w-full text-left p-3 rounded-lg text-sm font-bold", formData.studentId === s.matricule ? "bg-primary text-white" : "hover:bg-white")}>
-                              {s.lastName} {s.firstName} <p className="text-[10px] opacity-60">{s.matricule}</p>
+                            <button 
+                              key={s.id} 
+                              onClick={() => setFormData({...formData, studentId: s.matricule})} 
+                              className={cn(
+                                "w-full text-left p-3 rounded-lg text-sm font-bold transition-all", 
+                                formData.studentId === s.matricule ? "bg-primary text-white shadow-lg" : "hover:bg-white"
+                              )}
+                            >
+                              {s.lastName} {s.firstName} 
+                              <p className={cn("text-[10px] opacity-60", formData.studentId === s.matricule ? "text-white" : "")}>{s.matricule}</p>
                             </button>
                           ))}
                        </ScrollArea>
@@ -224,7 +238,10 @@ export default function TreasuryModule() {
                        <Input type="number" value={formData.amountPaid} onChange={e => setFormData({...formData, amountPaid: e.target.value})} className="h-14 rounded-xl text-2xl font-black" />
                        <Label className="font-black text-xs uppercase text-muted-foreground">Motif</Label>
                        <Input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="h-12 rounded-xl font-bold" />
-                       <Button onClick={handleAddPayment} disabled={loading} className="w-full h-14 rounded-xl bg-primary font-black text-lg">Valider Encaissement</Button>
+                       <Button onClick={handleAddPayment} disabled={loading || !formData.studentId} className="w-full h-14 rounded-xl bg-primary font-black text-lg shadow-xl shadow-primary/20">
+                         {loading ? <Loader2 className="animate-spin mr-2" /> : null}
+                         Valider Encaissement
+                       </Button>
                     </div>
                  </div>
               </DialogContent>
@@ -252,23 +269,24 @@ export default function TreasuryModule() {
               <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all">
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Reçu</p>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-3xl font-black text-emerald-600">{stats.totalReceived.toLocaleString()} F</h3>
-                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl"><ArrowUpRight className="size-6" /></div>
+                  <h3 className="text-2xl md:text-3xl font-black text-emerald-600">{stats.totalReceived.toLocaleString()} F</h3>
+                  <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><ArrowUpRight className="size-6" /></div>
                 </div>
               </Card>
               <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all border-l-8 border-red-500">
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Total Dépenses</p>
                 <div className="flex items-center justify-between">
-                  <h3 className="text-3xl font-black text-red-600">{stats.totalExpenses.toLocaleString()} F</h3>
-                  <div className="p-3 bg-red-50 text-red-600 rounded-2xl"><ArrowDownRight className="size-6" /></div>
+                  <h3 className="text-2xl md:text-3xl font-black text-red-600">{stats.totalExpenses.toLocaleString()} F</h3>
+                  <div className="p-3 bg-red-50 text-red-600 rounded-2xl group-hover:bg-primary group-hover:text-white transition-all"><ArrowDownRight className="size-6" /></div>
                 </div>
               </Card>
-              <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl flex flex-col justify-between">
-                <p className="text-[10px] font-black uppercase text-white/40 tracking-widest mb-4">Solde Actuel</p>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-3xl font-black text-primary">{stats.balance.toLocaleString()} F</h3>
+              <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-xl flex flex-col justify-between overflow-hidden relative">
+                <p className="text-[10px] font-black uppercase text-white/40 tracking-widest mb-4 relative z-10">Solde Actuel</p>
+                <div className="flex items-center justify-between relative z-10">
+                  <h3 className="text-2xl md:text-3xl font-black text-primary">{stats.balance.toLocaleString()} F</h3>
                   <div className="p-3 bg-white/10 rounded-2xl"><Wallet className="size-6 text-primary" /></div>
                 </div>
+                <ShieldCheck className="absolute -bottom-6 -right-6 size-32 text-white/5" />
               </Card>
               <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col justify-between border-l-8 border-amber-500">
                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Taux Recouvrement</p>
@@ -282,42 +300,50 @@ export default function TreasuryModule() {
             </div>
 
             <div className="grid lg:grid-cols-12 gap-8">
-              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-10">
+              <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[3rem] p-6 md:p-10">
                  <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-2xl font-black flex items-center gap-3"><History className="text-primary" /> Dernières Transactions</h3>
-                    <Button variant="ghost" className="font-bold text-primary">Voir grand livre <ChevronRight className="ml-1 size-4" /></Button>
+                    <h3 className="text-xl md:text-2xl font-black flex items-center gap-3"><History className="text-primary size-5 md:size-6" /> Dernières Transactions</h3>
+                    <Button variant="ghost" className="font-bold text-primary rounded-xl mobile-touch-target">Voir tout <ChevronRight className="ml-1 size-4" /></Button>
                  </div>
                  <div className="divide-y divide-muted/30">
-                    {payments?.slice(0, 5).map((p: any) => (
-                      <div key={p.id} className="py-4 flex items-center justify-between hover:bg-muted/5 transition-all px-4 rounded-xl">
-                         <div className="flex items-center gap-4">
-                            <div className="size-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center"><Banknote className="size-5" /></div>
-                            <div>
-                               <p className="font-black text-sm">{p.studentName}</p>
-                               <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.description}</p>
+                    {loadingPayments ? (
+                      <div className="p-20 text-center animate-pulse"><Loader2 className="animate-spin mx-auto text-primary/30" /></div>
+                    ) : (payments?.length === 0 && expenses?.length === 0) ? (
+                      <div className="p-20 text-center italic text-muted-foreground">Aucune transaction enregistrée.</div>
+                    ) : (
+                      <>
+                        {payments?.slice(0, 5).map((p: any) => (
+                          <div key={p.id} className="py-4 flex items-center justify-between hover:bg-muted/5 transition-all px-4 rounded-2xl group">
+                            <div className="flex items-center gap-4">
+                                <div className="size-10 md:size-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all"><Banknote className="size-5 md:size-6" /></div>
+                                <div>
+                                  <p className="font-black text-sm md:text-base">{p.studentName}</p>
+                                  <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase">{p.description}</p>
+                                </div>
                             </div>
-                         </div>
-                         <div className="text-right">
-                            <p className="font-black text-emerald-600">+{Number(p.amountPaid).toLocaleString()} F</p>
-                            <p className="text-[10px] font-bold text-muted-foreground">{new Date(p.date).toLocaleDateString('fr-FR')}</p>
-                         </div>
-                      </div>
-                    ))}
-                    {expenses?.slice(0, 5).map((e: any) => (
-                      <div key={e.id} className="py-4 flex items-center justify-between hover:bg-muted/5 transition-all px-4 rounded-xl">
-                         <div className="flex items-center gap-4">
-                            <div className="size-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center"><PiggyBank className="size-5" /></div>
-                            <div>
-                               <p className="font-black text-sm">{e.motif}</p>
-                               <p className="text-[10px] font-bold text-muted-foreground uppercase">{e.category}</p>
+                            <div className="text-right">
+                                <p className="font-black text-emerald-600 text-sm md:text-lg">+{Number(p.amountPaid).toLocaleString()} F</p>
+                                <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground">{new Date(p.date).toLocaleDateString('fr-FR')}</p>
                             </div>
-                         </div>
-                         <div className="text-right">
-                            <p className="font-black text-red-600">-{Number(e.amount).toLocaleString()} F</p>
-                            <p className="text-[10px] font-bold text-muted-foreground">{new Date(e.date).toLocaleDateString('fr-FR')}</p>
-                         </div>
-                      </div>
-                    ))}
+                          </div>
+                        ))}
+                        {expenses?.slice(0, 5).map((e: any) => (
+                          <div key={e.id} className="py-4 flex items-center justify-between hover:bg-muted/5 transition-all px-4 rounded-2xl group">
+                            <div className="flex items-center gap-4">
+                                <div className="size-10 md:size-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center group-hover:bg-destructive group-hover:text-white transition-all"><PiggyBank className="size-5 md:size-6" /></div>
+                                <div>
+                                  <p className="font-black text-sm md:text-base">{e.motif}</p>
+                                  <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase">{e.category}</p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="font-black text-red-600 text-sm md:text-lg">-{Number(e.amount).toLocaleString()} F</p>
+                                <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground">{new Date(e.date).toLocaleDateString('fr-FR')}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
                  </div>
               </Card>
 
@@ -330,17 +356,17 @@ export default function TreasuryModule() {
                     <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">
                       "Analyse : Les classes de 3EME présentent un retard de paiement de 12%. Souhaitez-vous générer des lettres de relance ?"
                     </p>
-                    <Button asChild className="w-full bg-white text-primary border border-primary/10 rounded-xl font-black h-12 shadow-sm">
+                    <Button asChild className="w-full bg-white text-primary border border-primary/10 rounded-xl font-black h-12 shadow-sm mobile-touch-target">
                       <Link href="/assistant">Lancer l'Audit IA</Link>
                     </Button>
                  </Card>
 
                  <Card className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-amber-100 flex flex-col gap-4">
                     <div className="flex items-center gap-3 text-amber-700">
-                       <AlertTriangle className="size-5" />
+                       <AlertTriangle className="size-5 md:size-6" />
                        <h4 className="font-black text-sm uppercase">Alerte Trésorerie</h4>
                     </div>
-                    <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
+                    <p className="text-[11px] font-bold text-amber-800 leading-relaxed uppercase tracking-tight">
                        24 élèves de Terminale n'ont pas encore soldé la deuxième tranche de scolarité.
                     </p>
                  </Card>
@@ -348,52 +374,163 @@ export default function TreasuryModule() {
             </div>
           </TabsContent>
 
+          <TabsContent value="encaissements" className="space-y-8">
+             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
+                <div className="p-8 border-b bg-muted/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                   <div className="flex items-center gap-4">
+                      <h3 className="text-2xl font-black">Journal des Recettes</h3>
+                      <Badge className="bg-primary text-white font-black">{payments?.length || 0} ENCAISSEMENTS</Badge>
+                   </div>
+                   <div className="relative group w-full md:w-64">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="Chercher élève..." 
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="pl-12 h-11 rounded-xl bg-white border-2 font-bold"
+                      />
+                   </div>
+                </div>
+                <div className="overflow-x-auto">
+                   <table className="w-full min-w-[800px]">
+                      <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b">
+                         <tr>
+                            <th className="px-10 py-5 text-left">Élève & Matricule</th>
+                            <th className="px-10 py-5 text-left">Date</th>
+                            <th className="px-10 py-5 text-left">Description</th>
+                            <th className="px-10 py-5 text-right">Montant Encaissé</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-muted/30">
+                        {loadingPayments ? (
+                          <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-primary size-8" /></td></tr>
+                        ) : payments?.filter((p: any) => 
+                          (p.studentName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+                          (p.studentId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+                        ).map((p: any) => (
+                          <tr key={p.id} className="hover:bg-muted/5 transition-all group">
+                            <td className="px-10 py-6">
+                               <div className="flex items-center gap-4">
+                                  <div className="size-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black">{(p.studentName || "?")[0]}</div>
+                                  <div>
+                                    <p className="font-black text-foreground uppercase tracking-tight">{p.studentName}</p>
+                                    <p className="text-[10px] font-bold text-muted-foreground">{p.studentId}</p>
+                                  </div>
+                               </div>
+                            </td>
+                            <td className="px-10 py-6 font-bold text-muted-foreground">{new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
+                            <td className="px-10 py-6">
+                               <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[9px] px-3">{p.description}</Badge>
+                            </td>
+                            <td className="px-10 py-6 text-right font-black text-xl text-emerald-600">
+                               {Number(p.amountPaid).toLocaleString()} F
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                   </table>
+                </div>
+             </Card>
+          </TabsContent>
+
           <TabsContent value="depenses" className="space-y-8">
-             <div className="flex justify-between items-center bg-white p-8 rounded-[2.5rem] shadow-sm">
-                <div>
+             <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm gap-4">
+                <div className="text-center md:text-left">
                    <h3 className="text-2xl font-black">Gestion des Sorties</h3>
-                   <p className="text-muted-foreground font-medium">Contrôlez chaque franc dépensé par l'école.</p>
+                   <p className="text-muted-foreground font-medium">Contrôlez chaque franc dépensé par l'établissement.</p>
                 </div>
                 <Dialog open={isAddingExpense} onOpenChange={setIsAddingExpense}>
-                   <DialogTrigger asChild><Button className="bg-red-600 hover:bg-red-700 rounded-xl font-black px-8 h-12"><Plus className="mr-2" /> Nouvelle Dépense</Button></DialogTrigger>
-                   <DialogContent className="rounded-[2.5rem]">
-                      <DialogHeader><DialogTitle className="text-2xl font-black">Sortie de Caisse</DialogTitle></DialogHeader>
+                   <DialogTrigger asChild><Button className="bg-red-600 hover:bg-red-700 shadow-xl shadow-red-600/20 rounded-2xl font-black px-8 h-14 w-full md:w-auto"><Plus className="mr-2" /> Nouvelle Dépense</Button></DialogTrigger>
+                   <DialogContent className="rounded-[2.5rem] max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-2xl font-black text-destructive">Sortie de Caisse</DialogTitle>
+                        <DialogDescription className="font-medium">Autorisez une dépense pour l'année {activeYear}.</DialogDescription>
+                      </DialogHeader>
                       <div className="space-y-6 p-4">
                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                               <Label className="font-bold">Catégorie</Label>
+                               <Label className="font-black text-xs uppercase text-muted-foreground">Catégorie</Label>
                                <Select value={expenseForm.category} onValueChange={v => setExpenseForm({...expenseForm, category: v})}>
-                                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                                   <SelectContent>
-                                     <SelectItem value="Fournitures">Fournitures</SelectItem>
-                                     <SelectItem value="Maintenance">Maintenance</SelectItem>
-                                     <SelectItem value="Factures">Factures (Eau/Elec)</SelectItem>
-                                     <SelectItem value="Internet">Internet</SelectItem>
-                                     <SelectItem value="Événement">Événement</SelectItem>
+                                     <SelectItem value="Fournitures" className="font-bold">Fournitures</SelectItem>
+                                     <SelectItem value="Maintenance" className="font-bold">Maintenance</SelectItem>
+                                     <SelectItem value="Factures" className="font-bold">Factures (Eau/Elec)</SelectItem>
+                                     <SelectItem value="Internet" className="font-bold">Internet</SelectItem>
+                                     <SelectItem value="Événement" className="font-bold">Événement</SelectItem>
                                   </SelectContent>
                                </Select>
                             </div>
                             <div className="space-y-2">
-                               <Label className="font-bold">Montant (F)</Label>
-                               <Input type="number" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} className="h-12 rounded-xl font-black" />
+                               <Label className="font-black text-xs uppercase text-muted-foreground">Montant (F)</Label>
+                               <Input type="number" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} className="h-12 rounded-xl border-2 font-black text-xl" />
                             </div>
                          </div>
                          <div className="space-y-2">
-                            <Label className="font-bold">Motif précis</Label>
-                            <Input value={expenseForm.motif} onChange={e => setExpenseForm({...expenseForm, motif: e.target.value})} className="h-12 rounded-xl" placeholder="Ex: Achat de 20 boites de craies" />
+                            <Label className="font-black text-xs uppercase text-muted-foreground">Motif précis</Label>
+                            <Input value={expenseForm.motif} onChange={e => setExpenseForm({...expenseForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" placeholder="Ex: Achat de 20 boites de craies" />
                          </div>
-                         <Button onClick={handleAddExpense} disabled={loading} className="w-full h-14 bg-red-600 rounded-xl font-black text-lg">Sceller la Dépense</Button>
+                         <Button onClick={handleAddExpense} disabled={loading} className="w-full h-14 bg-red-600 hover:bg-red-700 rounded-xl font-black text-lg shadow-xl shadow-red-600/20">
+                            {loading ? <Loader2 className="animate-spin mr-2" /> : null}
+                            Sceller la Dépense
+                         </Button>
                       </div>
                    </DialogContent>
                 </Dialog>
              </div>
+             
+             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
+                <div className="overflow-x-auto">
+                   <table className="w-full min-w-[800px]">
+                      <thead className="bg-red-50 text-[10px] font-black uppercase text-red-700 border-b">
+                         <tr>
+                            <th className="px-10 py-5 text-left">Motif de la Sortie</th>
+                            <th className="px-10 py-5 text-left">Catégorie</th>
+                            <th className="px-10 py-5 text-left">Date</th>
+                            <th className="px-10 py-5 text-right">Montant (F)</th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-muted/30">
+                        {loadingExpenses ? (
+                          <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="animate-spin mx-auto text-primary size-8" /></td></tr>
+                        ) : expenses?.length === 0 ? (
+                          <tr><td colSpan={4} className="p-20 text-center italic text-muted-foreground">Aucune dépense enregistrée.</td></tr>
+                        ) : (
+                          expenses.map((e: any) => (
+                            <tr key={e.id} className="hover:bg-red-50/10 transition-all group">
+                              <td className="px-10 py-6">
+                                 <p className="font-black text-foreground uppercase tracking-tight">{e.motif}</p>
+                                 <p className="text-[10px] font-bold text-muted-foreground">Auteur: {e.author}</p>
+                              </td>
+                              <td className="px-10 py-6">
+                                 <Badge className="bg-red-50 text-red-700 border-red-100 font-black uppercase text-[9px] px-3">{e.category}</Badge>
+                              </td>
+                              <td className="px-10 py-6 font-bold text-muted-foreground">{new Date(e.date).toLocaleDateString('fr-FR')}</td>
+                              <td className="px-10 py-6 text-right font-black text-xl text-red-600">
+                                 -{Number(e.amount).toLocaleString()} F
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                   </table>
+                </div>
+             </Card>
           </TabsContent>
           
           <TabsContent value="salaires">
-             <Card className="p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30">
-                <UserSquare2 className="size-20 mx-auto mb-6" />
-                <h3 className="text-2xl font-black">Module Salaires Enseignants</h3>
-                <p className="max-w-sm mx-auto font-medium">Ce module est en cours de scellage sécurisé pour garantir la confidentialité des paiements du corps professoral.</p>
+             <Card className="p-16 md:p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center">
+                <UserSquare2 className="size-16 md:size-20 mx-auto mb-6" />
+                <h3 className="text-xl md:text-2xl font-black">Module Salaires Enseignants</h3>
+                <p className="max-w-sm mx-auto font-medium text-sm md:text-base">Ce module est en cours de scellage sécurisé pour garantir la confidentialité des paiements du corps professoral.</p>
+             </Card>
+          </TabsContent>
+          
+          <TabsContent value="config">
+             <Card className="p-16 md:p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center">
+                <Calculator className="size-16 md:size-20 mx-auto mb-6" />
+                <h3 className="text-xl md:text-2xl font-black">Configuration des Tarifs</h3>
+                <p className="max-w-sm mx-auto font-medium text-sm md:text-base">Gérez les montants d'inscription et de scolarité par niveau pour l'année {activeYear}.</p>
              </Card>
           </TabsContent>
         </Tabs>
