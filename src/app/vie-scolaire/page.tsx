@@ -18,22 +18,19 @@ import {
   CheckCircle2, 
   Loader2,
   Calendar,
-  MoreVertical,
   AlertTriangle,
-  Info,
-  Smartphone,
   ShieldCheck,
-  TrendingUp,
   ClipboardList,
-  Zap,
   Award,
-  MinusCircle
+  Zap,
+  TrendingUp,
+  ArrowRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, addDoc, serverTimestamp, orderBy, limit, doc, onSnapshot } from "firebase/firestore"
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, onSnapshot } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -52,10 +49,8 @@ export default function StudentLifePage() {
   const [loading, setLoading] = useState(false)
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
 
-  // États pour les formulaires
   const [presenceForm, setPresenceForm] = useState({ status: "Présent", motif: "", time: "08:00" })
-  const [disciplineForm, setDisciplineForm] = useState({ type: "Avertissement oral", motif: "", sanction: "" })
-  const [observationForm, setObservationForm] = useState({ text: "" })
+  const [disciplineForm, setDisciplineForm] = useState({ type: "Avertissement oral", motif: "" })
   const [bonusForm, setBonusForm] = useState({ points: 1, motif: "" })
 
   useEffect(() => {
@@ -69,7 +64,6 @@ export default function StudentLifePage() {
     return () => unsubConfig()
   }, [db])
 
-  // RÉCUPÉRATION DES ÉLÈVES (pour le staff)
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear || userRole === "Élève") return null
     return query(collection(db, "students"), where("academicYear", "==", activeYear))
@@ -85,7 +79,6 @@ export default function StudentLifePage() {
     )
   }, [students, searchTerm])
 
-  // RÉCUPÉRATION DES ÉVÉNEMENTS
   const currentTargetId = userRole === "Élève" ? userId : selectedStudent?.matricule
 
   const lifeEventsQuery = useMemo(() => {
@@ -102,31 +95,20 @@ export default function StudentLifePage() {
 
   const stats = useMemo(() => {
     if (!events) return { presence: 0, absence: 0, retards: 0, discipline: 0, conductGrade: 20 }
-    const absences = events.filter((e: any) => e.category === 'presence' && e.status === 'Absent').length
-    const retards = events.filter((e: any) => e.category === 'presence' && e.status === 'Retard').length
-    const disciplineCount = events.filter((e: any) => e.category === 'discipline').length
-    
-    // CALCUL DE LA NOTE DE CONDUITE
     let conductGrade = 20
-    events.forEach((e: any) => {
-      if (e.pointsImpact) conductGrade += Number(e.pointsImpact)
-    })
+    events.forEach((e: any) => { if (e.pointsImpact) conductGrade += Number(e.pointsImpact) })
     
     return {
       presence: events.filter((e: any) => e.category === 'presence' && e.status === 'Présent').length,
-      absence: absences,
-      retards: retards,
-      discipline: disciplineCount,
+      absence: events.filter((e: any) => e.category === 'presence' && e.status === 'Absent').length,
+      retards: events.filter((e: any) => e.category === 'presence' && e.status === 'Retard').length,
+      discipline: events.filter((e: any) => e.category === 'discipline').length,
       conductGrade: Math.max(0, Math.min(20, conductGrade))
     }
   }, [events])
 
   const handleAddEvent = async (category: string) => {
-    if (!currentTargetId || !db) {
-      toast({ title: "Action impossible", description: "Veuillez sélectionner un élève.", variant: "destructive" })
-      return
-    }
-
+    if (!currentTargetId || !db) return
     setLoading(true)
     try {
       let pointsImpact = 0
@@ -136,7 +118,6 @@ export default function StudentLifePage() {
         studentName: userRole === "Élève" ? localStorage.getItem('acadex_user_name') : `${selectedStudent.firstName} ${selectedStudent.lastName}`,
         academicYear: activeYear,
         authorName: localStorage.getItem('acadex_user_name'),
-        authorId: userId,
         createdAt: serverTimestamp(),
         date: new Date().toISOString().split('T')[0]
       }
@@ -147,29 +128,20 @@ export default function StudentLifePage() {
         Object.assign(data, presenceForm)
         if (presenceForm.status === 'Retard') pointsImpact = rules.tardy
         if (presenceForm.status === 'Absent') pointsImpact = rules.absence
-      }
-      if (category === 'discipline') {
+      } else if (category === 'discipline') {
         Object.assign(data, disciplineForm)
-        if (disciplineForm.type.includes('Avertissement')) pointsImpact = rules.warning
-        if (disciplineForm.type.includes('Exclusion')) pointsImpact = rules.exclusion
-      }
-      if (category === 'observation') {
-        Object.assign(data, { text: observationForm.text })
-      }
-      if (category === 'conduite') {
+        pointsImpact = disciplineForm.type.includes('Exclusion') ? rules.exclusion : rules.warning
+      } else if (category === 'conduite') {
         Object.assign(data, { pointsImpact: bonusForm.points, motif: bonusForm.motif, status: bonusForm.points > 0 ? 'Bonus' : 'Malus' })
         pointsImpact = bonusForm.points
       }
 
       data.pointsImpact = pointsImpact
-
       await addDoc(collection(db, "student_life"), data)
-      toast({ title: "Enregistré", description: "La note de conduite a été recalculée." })
+      toast({ title: "Action scellée", description: "La note de conduite a été mise à jour." })
       
-      // Reset forms
       setPresenceForm({ status: "Présent", motif: "", time: "08:00" })
-      setDisciplineForm({ type: "Avertissement oral", motif: "", sanction: "" })
-      setObservationForm({ text: "" })
+      setDisciplineForm({ type: "Avertissement oral", motif: "" })
       setBonusForm({ points: 1, motif: "" })
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
@@ -185,13 +157,13 @@ export default function StudentLifePage() {
       <div className="space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Vie de <span className="text-primary italic">l'Élève & Conduite</span></h1>
+            <h1 className="text-4xl font-black text-foreground tracking-tight">Vie Scolaire & <span className="text-primary italic">Conduite</span></h1>
             <div className="text-muted-foreground font-medium flex items-center gap-2 mt-2">
-              <ShieldCheck className="size-4 text-emerald-500" /> Système de conduite intelligent relié à la moyenne générale.
+              <ShieldCheck className="size-4 text-emerald-500" /> Année Scolaire <Badge className="bg-primary">{activeYear}</Badge>
             </div>
           </div>
-          <Badge className="bg-primary text-white h-12 px-8 rounded-2xl flex items-center gap-3 font-black text-xl shadow-xl shadow-primary/20">
-             MOY. CONDUITE : {stats.conductGrade.toFixed(1)}/20
+          <Badge className="bg-primary text-white h-14 px-10 rounded-2xl flex items-center gap-3 font-black text-2xl shadow-xl shadow-primary/20">
+             NOTE CONDUITE : {stats.conductGrade.toFixed(1)}/20
           </Badge>
         </div>
 
@@ -199,11 +171,10 @@ export default function StudentLifePage() {
           {isStaff && (
             <div className="lg:col-span-4 space-y-6">
               <Card className="p-6 rounded-[2.5rem] bg-white border-none shadow-sm">
-                <h3 className="text-sm font-black uppercase text-muted-foreground tracking-widest mb-6">Sélectionner un élève</h3>
-                <div className="relative group mb-6">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary" />
+                <div className="relative group mb-4">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                   <Input 
-                    placeholder="Nom ou Matricule..." 
+                    placeholder="Chercher un élève..." 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-12 h-12 rounded-xl bg-muted/30 border-none font-bold"
@@ -227,7 +198,7 @@ export default function StudentLifePage() {
                         </Avatar>
                         <div className="text-left min-w-0">
                           <p className="font-black text-sm truncate uppercase">{s.lastName} {s.firstName}</p>
-                          <p className="text-[10px] font-bold text-muted-foreground">{s.matricule} • {s.classId}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground">{s.matricule}</p>
                         </div>
                       </button>
                     ))}
@@ -240,27 +211,17 @@ export default function StudentLifePage() {
                   <div className="relative z-10 space-y-4">
                     <div className="flex justify-between items-start">
                        <div>
-                         <p className="text-[10px] font-black uppercase text-primary tracking-widest">Note de Conduite</p>
+                         <p className="text-[10px] font-black uppercase text-primary tracking-widest">Performance Comportementale</p>
                          <h4 className="text-4xl font-black">{stats.conductGrade.toFixed(1)}<span className="text-sm opacity-40">/20</span></h4>
                        </div>
                        <Award className="size-10 text-primary animate-pulse" />
                     </div>
-                    <div className="flex gap-4 pt-4 border-t border-white/10">
-                      <div className="text-center">
-                        <p className="text-xl font-black text-red-500">{stats.absence}</p>
-                        <p className="text-[8px] font-black uppercase text-white/40">Absences</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xl font-black text-amber-400">{stats.retards}</p>
-                        <p className="text-[8px] font-black uppercase text-white/40">Retards</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xl font-black text-blue-400">{stats.discipline}</p>
-                        <p className="text-[8px] font-black uppercase text-white/40">Sanctions</p>
-                      </div>
+                    <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/10">
+                      <div className="text-center"><p className="text-xl font-black text-red-500">{stats.absence}</p><p className="text-[7px] font-black uppercase opacity-40">Absences</p></div>
+                      <div className="text-center"><p className="text-xl font-black text-amber-400">{stats.retards}</p><p className="text-[7px] font-black uppercase opacity-40">Retards</p></div>
+                      <div className="text-center"><p className="text-xl font-black text-blue-400">{stats.discipline}</p><p className="text-[7px] font-black uppercase opacity-40">Sanctions</p></div>
                     </div>
                   </div>
-                  <UserCheck className="absolute -bottom-10 -right-10 size-40 text-white/5 group-hover:scale-110 transition-transform" />
                 </Card>
               )}
             </div>
@@ -270,50 +231,41 @@ export default function StudentLifePage() {
             {(!selectedStudent && isStaff) ? (
               <Card className="p-20 text-center rounded-[3rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center h-full">
                 <ClipboardList className="size-20 mb-6" />
-                <h3 className="text-2xl font-black">Pilotage Comportemental</h3>
-                <p className="font-medium text-muted-foreground max-w-xs">Sélectionnez un élève pour ajuster sa note de conduite ou pointer ses absences.</p>
+                <h3 className="text-2xl font-black">Sélectionnez un élève</h3>
+                <p className="font-medium text-muted-foreground">Pour ajuster sa note de conduite ou pointer ses absences.</p>
               </Card>
             ) : (
               <div className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                   <TabsList className="bg-white border-2 rounded-[2rem] h-16 p-2 flex w-fit shadow-md overflow-x-auto no-scrollbar mb-8">
-                    <TabsTrigger value="presence" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest">
-                      <UserCheck className="size-4 mr-2" /> Présence
-                    </TabsTrigger>
-                    <TabsTrigger value="discipline" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest">
-                      <ShieldAlert className="size-4 mr-2" /> Discipline
-                    </TabsTrigger>
-                    <TabsTrigger value="conduite" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest">
-                      <Award className="size-4 mr-2" /> Bonus/Malus
-                    </TabsTrigger>
-                    <TabsTrigger value="observations" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest">
-                      <FileText className="size-4 mr-2" /> Observations
-                    </TabsTrigger>
+                    <TabsTrigger value="presence" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest flex gap-2"><UserCheck className="size-4" /> Présence</TabsTrigger>
+                    <TabsTrigger value="discipline" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest flex gap-2"><ShieldAlert className="size-4" /> Discipline</TabsTrigger>
+                    <TabsTrigger value="conduite" className="rounded-2xl font-black px-8 text-[10px] uppercase tracking-widest flex gap-2"><Award className="size-4" /> Bonus/Malus</TabsTrigger>
                   </TabsList>
 
                   {isStaff && (
-                    <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm mb-8 border-l-[12px] border-primary">
+                    <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm mb-8 border-l-[12px] border-primary animate-in slide-in-from-right-4">
                       <TabsContent value="presence" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                           <div className="space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Statut</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Statut</Label>
                             <Select value={presenceForm.status} onValueChange={(v) => setPresenceForm({...presenceForm, status: v})}>
                               <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Présent" className="font-bold">Présent</SelectItem>
-                                <SelectItem value="Absent" className="font-bold text-red-600">Absent (-1pt)</SelectItem>
-                                <SelectItem value="Retard" className="font-bold text-amber-600">Retard (-0.5pt)</SelectItem>
-                                <SelectItem value="Absence justifiée" className="font-bold">Justifiée (0pt)</SelectItem>
+                                <SelectItem value="Absent" className="font-bold text-red-600">Absent (-1.0)</SelectItem>
+                                <SelectItem value="Retard" className="font-bold text-amber-600">Retard (-0.5)</SelectItem>
+                                <SelectItem value="Absence justifiée" className="font-bold text-emerald-600">Justifiée (0.0)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Heure</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Heure</Label>
                             <Input type="time" value={presenceForm.time} onChange={(e) => setPresenceForm({...presenceForm, time: e.target.value})} className="h-12 rounded-xl border-2 font-black" />
                           </div>
                           <div className="space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Motif</Label>
-                            <Input placeholder="Transport..." value={presenceForm.motif} onChange={(e) => setPresenceForm({...presenceForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Motif</Label>
+                            <Input placeholder="Détails..." value={presenceForm.motif} onChange={(e) => setPresenceForm({...presenceForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                           </div>
                           <Button onClick={() => handleAddEvent('presence')} disabled={loading} className="h-12 bg-primary rounded-xl font-black">
                             {loading ? <Loader2 className="animate-spin" /> : "Pointer"}
@@ -322,64 +274,46 @@ export default function StudentLifePage() {
                       </TabsContent>
 
                       <TabsContent value="conduite" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                           <div className="space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Valeur Impact</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Impact Points</Label>
                             <Input type="number" step="0.5" value={bonusForm.points} onChange={(e) => setBonusForm({...bonusForm, points: Number(e.target.value)})} className="h-12 rounded-xl border-2 font-black text-center" />
                           </div>
                           <div className="md:col-span-2 space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Justification de la note</Label>
-                            <Input placeholder="Participation exceptionnelle, aide aux camarades..." value={bonusForm.motif} onChange={(e) => setBonusForm({...bonusForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Justification</Label>
+                            <Input placeholder="Encouragement ou Malus..." value={bonusForm.motif} onChange={(e) => setBonusForm({...bonusForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                           </div>
-                          <Button onClick={() => handleAddEvent('conduite')} disabled={loading} className="h-12 bg-emerald-500 rounded-xl font-black text-white shadow-lg shadow-emerald-200">
-                             Appliquer Impact
-                          </Button>
+                          <Button onClick={() => handleAddEvent('conduite')} disabled={loading} className="h-12 bg-emerald-500 rounded-xl font-black text-white">Appliquer</Button>
                         </div>
                       </TabsContent>
 
                       <TabsContent value="discipline" className="m-0">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                           <div className="space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Sanction</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Sanction</Label>
                             <Select value={disciplineForm.type} onValueChange={(v) => setDisciplineForm({...disciplineForm, type: v})}>
                               <SelectTrigger className="h-12 rounded-xl border-2 font-bold"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Avertissement oral" className="font-bold text-amber-600">Avertissement oral (-2pt)</SelectItem>
-                                <SelectItem value="Exclusion temporaire" className="font-bold text-red-600">Exclusion (-5pt)</SelectItem>
-                                <SelectItem value="Punition scolaire" className="font-bold text-blue-600">Punition (-1pt)</SelectItem>
+                                <SelectItem value="Avertissement oral" className="font-bold text-amber-600">Avertissement (-2)</SelectItem>
+                                <SelectItem value="Exclusion temporaire" className="font-bold text-red-600">Exclusion (-5)</SelectItem>
+                                <SelectItem value="Punition scolaire" className="font-bold text-blue-600">Punition (-1)</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="md:col-span-2 space-y-2">
-                            <Label className="font-black text-[10px] uppercase text-muted-foreground">Motif disciplinaire</Label>
-                            <Input placeholder="Indiscipline..." value={disciplineForm.motif} onChange={(e) => setDisciplineForm({...disciplineForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground px-1">Motif</Label>
+                            <Input placeholder="Raison disciplinaire..." value={disciplineForm.motif} onChange={(e) => setDisciplineForm({...disciplineForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold" />
                           </div>
-                          <Button onClick={() => handleAddEvent('discipline')} disabled={loading} className="h-12 bg-destructive text-white rounded-xl font-black shadow-lg">
-                             Sanctionner
-                          </Button>
+                          <Button onClick={() => handleAddEvent('discipline')} disabled={loading} className="h-12 bg-destructive text-white rounded-xl font-black">Sanctionner</Button>
                         </div>
-                      </TabsContent>
-
-                      <TabsContent value="observations" className="m-0">
-                         <div className="space-y-4">
-                           <Label className="font-black text-[10px] uppercase text-muted-foreground">Observation Qualitative</Label>
-                           <div className="flex gap-4">
-                             <Textarea placeholder="Élève en progression constante..." value={observationForm.text} onChange={(e) => setObservationForm({...observationForm, text: e.target.value})} className="rounded-2xl border-2 font-medium" />
-                             <Button onClick={() => handleAddEvent('observation')} disabled={loading || !observationForm.text} className="h-20 w-32 bg-primary rounded-2xl font-black">Sceller</Button>
-                           </div>
-                         </div>
                       </TabsContent>
                     </Card>
                   )}
 
                   <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden min-h-[500px]">
                     <div className="p-8 border-b bg-muted/10 flex items-center justify-between">
-                      <h3 className="text-xl font-black flex items-center gap-3">
-                         <History className="text-primary" /> Chronologie Conduite & Vie
-                      </h3>
-                      <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-black uppercase text-[9px] px-3">
-                        {events?.length || 0} ENTRÉES
-                      </Badge>
+                      <h3 className="text-xl font-black flex items-center gap-3"><History className="text-primary" /> Chronologie Conduite</h3>
+                      <Badge variant="outline" className="rounded-full border-primary/20 text-primary font-black uppercase text-[9px] px-3">{events?.length || 0} ENTRÉES</Badge>
                     </div>
                     
                     <div className="p-0">
@@ -388,7 +322,7 @@ export default function StudentLifePage() {
                       ) : !events || events.length === 0 ? (
                         <div className="p-24 text-center space-y-6 opacity-30">
                           <Award className="size-20 mx-auto" />
-                          <p className="italic font-bold">L'élève commence avec 20/20. Aucune modification enregistrée.</p>
+                          <p className="italic font-bold">L'élève commence avec 20/20. Aucune modification.</p>
                         </div>
                       ) : (
                         <div className="divide-y divide-muted/30">
@@ -400,26 +334,22 @@ export default function StudentLifePage() {
                                 event.category === 'discipline' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                               )}>
                                 {event.category === 'presence' ? <UserCheck className="size-5" /> : 
-                                 event.category === 'discipline' ? <ShieldAlert className="size-5" /> : <FileText className="size-5" />}
+                                 event.category === 'discipline' ? <ShieldAlert className="size-5" /> : <Award className="size-5" />}
                               </div>
                               <div className="flex-1 space-y-2">
                                 <div className="flex justify-between items-start">
-                                   <div>
-                                      <h4 className="font-black text-lg text-foreground flex items-center gap-3 uppercase tracking-tight">
-                                        {event.status || event.type || 'Observation'}
-                                        {event.pointsImpact && (
-                                          <Badge className={cn("rounded-lg font-black ml-2", event.pointsImpact > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>
-                                            {event.pointsImpact > 0 ? `+${event.pointsImpact}` : event.pointsImpact} pts
-                                          </Badge>
-                                        )}
-                                      </h4>
-                                      <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">
-                                        {new Date(event.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} • Par {event.authorName}
-                                      </p>
-                                   </div>
+                                   <h4 className="font-black text-lg text-foreground uppercase tracking-tight">
+                                     {event.status || event.type}
+                                     {event.pointsImpact && (
+                                       <Badge className={cn("rounded-lg font-black ml-2", event.pointsImpact > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>
+                                         {event.pointsImpact > 0 ? `+${event.pointsImpact}` : event.pointsImpact} pts
+                                       </Badge>
+                                     )}
+                                   </h4>
+                                   <span className="text-[10px] font-black text-muted-foreground uppercase">{new Date(event.date).toLocaleDateString('fr-FR')}</span>
                                 </div>
-                                <div className="p-4 bg-muted/30 rounded-2xl border border-muted/20 text-sm font-medium italic text-foreground/80">
-                                   "{event.motif || event.text || event.sanction || 'Aucun détail précisé.'}"
+                                <div className="p-4 bg-muted/30 rounded-2xl border border-muted/20 text-sm font-medium italic">
+                                   "{event.motif || 'Aucun détail.'}"
                                 </div>
                               </div>
                             </div>

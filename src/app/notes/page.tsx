@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck, RefreshCw } from "lucide-react"
+import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck, RefreshCw, Info } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
   Select, 
@@ -20,6 +20,7 @@ import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import Link from "next/link"
 
 const trimestres = [
   { id: "T1", label: "1er Trimestre" },
@@ -41,6 +42,7 @@ export default function GradesPage() {
   const [userClasses, setUserClasses] = useState<string[]>([])
   const [userSubject, setUserSubject] = useState("")
   const [userName, setUserName] = useState("")
+  const [activeYear, setActiveYear] = useState("2026-2027")
   
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
@@ -55,9 +57,9 @@ export default function GradesPage() {
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     setUserSubject(localStorage.getItem('acadex_user_subject') || "")
     setUserName(localStorage.getItem('acadex_user_name') || "")
+    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
-  // RÉCUPÉRATION SPONTANNÉE : Coef + Notes existantes
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass || !userSubject) return
@@ -75,7 +77,8 @@ export default function GradesPage() {
           where("classId", "==", selectedClass),
           where("subject", "==", userSubject),
           where("term", "==", selectedTrimestre),
-          where("type", "==", selectedEvalType)
+          where("type", "==", selectedEvalType),
+          where("academicYear", "==", activeYear)
         )
         const notesSnap = await getDocs(q)
         const existing: Record<string, string> = {}
@@ -85,22 +88,23 @@ export default function GradesPage() {
         })
         setGradesData(existing)
       } catch (e) {
-        console.warn("Erreur de pré-chargement", e)
+        console.warn("Erreur synchro", e)
       } finally {
         setLoadingExisting(false)
       }
     }
     fetchData()
-  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db])
+  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear])
 
   const studentsQuery = useMemo(() => {
     if (!db || !selectedClass) return null
     return query(
       collection(db, 'students'), 
       where("classId", "==", selectedClass),
-      where("status", "==", "Actif")
+      where("status", "==", "Actif"),
+      where("academicYear", "==", activeYear)
     )
-  }, [db, selectedClass])
+  }, [db, selectedClass, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
@@ -112,22 +116,13 @@ export default function GradesPage() {
 
   const handleSaveGrades = async () => {
     if (!selectedClass || !selectedTrimestre || !selectedEvalType) return
-
     setSaving(true)
     const batch = writeBatch(db)
 
     try {
-      const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
-      const configRef = doc(db, "subject_configs", configId)
-      batch.set(configRef, { 
-        level: selectedClass, 
-        subject: userSubject, 
-        coef: Number(classCoefficient) || 1 
-      }, { merge: true })
-
       students?.forEach((student: any) => {
         const val = parseFloat(gradesData[student.matricule] || "0")
-        const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}`.replace(/\s/g, '_')
+        const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}_${activeYear}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
         batch.set(gradeRef, {
@@ -140,12 +135,13 @@ export default function GradesPage() {
           value: val,
           coefficient: Number(classCoefficient) || 1,
           teacherName: userName,
+          academicYear: activeYear,
           updatedAt: serverTimestamp()
         }, { merge: true })
       })
 
       await batch.commit()
-      toast({ title: "Notes scellées !", description: "Mise à jour instantanée des carnets élèves." })
+      toast({ title: "Notes scellées !", description: `Registre ${selectedClass} publié pour l'année ${activeYear}.` })
     } catch (e) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'grades', operation: 'write' }))
     } finally {
@@ -160,113 +156,129 @@ export default function GradesPage() {
           <div>
             <h1 className="text-4xl font-black text-foreground tracking-tight">Saisie <span className="text-primary italic">Spontanée</span></h1>
             <p className="text-muted-foreground font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-primary" /> Vos notes sont liées au matricule élève en temps réel.
+              <ShieldCheck className="size-4 text-emerald-500" /> Année Scolaire Active : <b>{activeYear}</b>
             </p>
           </div>
-          <div className="flex items-center gap-3">
-             {loadingExisting && <div className="flex items-center gap-2 text-xs font-black text-primary animate-pulse uppercase"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}
-             <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
-              {saving ? <Loader2 className="mr-2 animate-spin" /> : <UserCheck className="mr-2 group-hover:scale-110 transition-transform" />} 
-              {saving ? "Scellage..." : "Sceller & Publier"}
-            </Button>
-          </div>
+          <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || students?.length === 0} className="bg-primary hover:bg-primary/90 shadow-2xl h-14 px-10 rounded-2xl font-black text-lg group">
+            {saving ? <Loader2 className="mr-2 animate-spin" /> : <UserCheck className="mr-2 group-hover:scale-110 transition-transform" />} 
+            {saving ? "Scellage..." : "Sceller & Publier"}
+          </Button>
         </div>
 
-        <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8 border-l-[12px] border-primary">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe</label>
-              <Select onValueChange={setSelectedClass} value={selectedClass}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>{userClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Trimestre</label>
-              <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
-                <SelectContent>{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Évaluation</label>
-              <Select value={selectedEvalType} onValueChange={setSelectedEvalType}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
-                <SelectContent>{evalTypes.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Coefficient</label>
-              <Input type="number" min="1" max="10" value={classCoefficient} onChange={(e) => setClassCoefficient(Number(e.target.value))} className="h-14 rounded-2xl border-2 font-black text-center text-xl focus:ring-primary" />
-            </div>
-          </div>
-        </Card>
-
-        {selectedClass && (
-          <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
-            <div className="p-8 border-b bg-muted/10 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <h3 className="text-xl font-black">Registre : {selectedClass}</h3>
-                 <Badge className="bg-primary text-white font-black px-4 py-1 uppercase">{userSubject}</Badge>
-                 <Badge variant="outline" className="border-primary text-primary font-black uppercase px-4">{selectedTrimestre}</Badge>
+        <div className="grid lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-9 space-y-8">
+            <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8 border-l-[12px] border-primary">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Classe</label>
+                  <Select onValueChange={setSelectedClass} value={selectedClass}>
+                    <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
+                    <SelectContent>{userClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Trimestre</label>
+                  <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
+                    <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
+                    <SelectContent>{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Évaluation</label>
+                  <Select value={selectedEvalType} onValueChange={setSelectedEvalType}>
+                    <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue /></SelectTrigger>
+                    <SelectContent>{evalTypes.map(t => <SelectItem key={t.id} value={t.id} className="font-bold">{t.label}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground px-2">Coefficient</label>
+                  <Input type="number" min="1" max="10" value={classCoefficient} onChange={(e) => setClassCoefficient(Number(e.target.value))} className="h-14 rounded-2xl border-2 font-black text-center text-xl focus:ring-primary" />
+                </div>
               </div>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Saisie par {userName}</p>
-            </div>
-            <CardContent className="p-0">
-              {loadingStudents ? (
-                <div className="p-20 text-center animate-pulse font-bold text-muted-foreground flex flex-col items-center gap-4">
-                  <Loader2 className="size-10 animate-spin text-primary" />
-                  Appel de la classe en cours...
+            </Card>
+
+            {selectedClass && (
+              <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
+                <div className="p-8 border-b bg-muted/10 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                     <h3 className="text-xl font-black">Registre : {selectedClass}</h3>
+                     <Badge className="bg-primary text-white font-black px-4 py-1 uppercase">{userSubject}</Badge>
+                     <Badge variant="outline" className="border-primary text-primary font-black uppercase px-4">{selectedTrimestre}</Badge>
+                  </div>
+                  {loadingExisting && <div className="flex items-center gap-2 text-xs font-black text-primary animate-pulse"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}
                 </div>
-              ) : !students || students.length === 0 ? (
-                <div className="p-20 text-center italic text-muted-foreground">Aucun élève actif trouvé dans cette classe.</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b">
-                      <tr>
-                        <th className="px-10 py-6 text-left">Élève (Nom & Matricule)</th>
-                        <th className="px-10 py-6 text-center">Note / 20</th>
-                        <th className="px-10 py-6 text-right bg-primary text-white">Impact Coefficié</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-muted/30">
-                      {students.map((student: any) => {
-                        const val = parseFloat(gradesData[student.matricule] || "0")
-                        const impact = (val * (Number(classCoefficient) || 1)).toFixed(2)
-                        return (
-                          <tr key={student.id} className="hover:bg-muted/5 transition-colors group">
-                            <td className="px-10 py-6">
-                              <div className="flex flex-col">
-                                <span className="font-black text-lg text-foreground group-hover:text-primary transition-colors">{student.lastName.toUpperCase()} {student.firstName}</span>
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{student.matricule}</span>
-                              </div>
-                            </td>
-                            <td className="px-10 py-6 text-center">
-                              <Input 
-                                type="number" 
-                                step="0.25" 
-                                placeholder="0.00" 
-                                value={gradesData[student.matricule] || ""} 
-                                onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
-                                className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2 focus:ring-primary shadow-inner" 
-                              />
-                            </td>
-                            <td className="px-10 py-6 text-right">
-                               <Badge className="h-12 w-32 justify-center rounded-2xl bg-primary/10 text-primary border-2 border-primary/20 text-xl font-black">
-                                 {impact}
-                               </Badge>
-                            </td>
+                <CardContent className="p-0">
+                  {loadingStudents ? (
+                    <div className="p-20 text-center animate-pulse font-bold text-muted-foreground flex flex-col items-center gap-4">
+                      <Loader2 className="size-10 animate-spin text-primary" />
+                      Appel de la classe...
+                    </div>
+                  ) : !students || students.length === 0 ? (
+                    <div className="p-20 text-center italic text-muted-foreground">Aucun élève trouvé.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b">
+                          <tr>
+                            <th className="px-10 py-6 text-left">Élève</th>
+                            <th className="px-10 py-6 text-center">Note / 20</th>
+                            <th className="px-10 py-6 text-right bg-primary text-white">Impact Coefficié</th>
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                        </thead>
+                        <tbody className="divide-y divide-muted/30">
+                          {students.map((student: any) => {
+                            const val = parseFloat(gradesData[student.matricule] || "0")
+                            const impact = (val * (Number(classCoefficient) || 1)).toFixed(2)
+                            return (
+                              <tr key={student.id} className="hover:bg-muted/5 transition-colors group">
+                                <td className="px-10 py-6">
+                                  <div className="flex flex-col">
+                                    <span className="font-black text-lg text-foreground group-hover:text-primary transition-colors uppercase">{student.lastName} {student.firstName}</span>
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
+                                  </div>
+                                </td>
+                                <td className="px-10 py-6 text-center">
+                                  <Input 
+                                    type="number" 
+                                    step="0.25" 
+                                    placeholder="0.00" 
+                                    value={gradesData[student.matricule] || ""} 
+                                    onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
+                                    className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2 focus:ring-primary shadow-inner" 
+                                  />
+                                </td>
+                                <td className="px-10 py-6 text-right">
+                                   <Badge className="h-12 w-32 justify-center rounded-2xl bg-primary/10 text-primary border-2 border-primary/20 text-xl font-black">
+                                     {impact}
+                                   </Badge>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="lg:col-span-3 space-y-6">
+            <Card className="p-8 rounded-[2.5rem] bg-amber-50 border-2 border-amber-100 flex flex-col gap-4">
+              <div className="flex items-center gap-3 text-amber-700">
+                <Info className="size-6" />
+                <h4 className="font-black text-sm uppercase">Note de Conduite</h4>
+              </div>
+              <p className="text-xs font-medium leading-relaxed text-amber-800">
+                La note de <b>Conduite</b> est calculée automatiquement à partir du module <b>Vie Scolaire</b>.
+              </p>
+              <Button asChild variant="outline" className="w-full rounded-xl border-amber-200 text-amber-700 font-bold text-xs bg-white">
+                <Link href="/vie-scolaire">Gérer la discipline <ArrowRight className="ml-2 size-3" /></Link>
+              </Button>
+            </Card>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   )
