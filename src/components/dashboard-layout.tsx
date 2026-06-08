@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -35,6 +36,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
@@ -48,6 +50,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import placeholderData from "@/app/lib/placeholder-images.json"
 
 const navigationConfig = {
   Directeur: [
@@ -92,6 +95,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
   const [availableYears, setAvailableYears] = useState<string[]>(["2026-2027"])
   const [activeYear, setActiveYear] = useState("2026-2027")
+
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
+
+  // Determine if we should show the background image
+  const showBackground = pathname.includes('/dashboard/') || pathname === '/dashboard'
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
@@ -141,8 +149,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-[#F8FAFC]">
-        <Sidebar className="border-none shadow-2xl flex-shrink-0" collapsible="icon">
+      <div className="flex min-h-screen w-full bg-[#F8FAFC] relative overflow-hidden">
+        {/* GLOBAL BACKGROUND FOR DASHBOARDS */}
+        {showBackground && (
+          <div className="fixed inset-0 z-0">
+            <Image 
+              src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
+              alt="Background"
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-0 bg-black/60" />
+          </div>
+        )}
+
+        <Sidebar className="border-none shadow-2xl flex-shrink-0 z-40" collapsible="icon">
           <SidebarHeader className="h-18 md:h-24 flex items-center px-4 bg-primary overflow-hidden">
             <Link href="/dashboard" className="flex items-center gap-3 w-full">
               <div className="size-9 md:size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
@@ -198,8 +220,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset className="flex flex-col flex-1 min-w-0">
-          <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-4 md:px-7 border-b border-border/40">
+        <SidebarInset className="flex flex-col flex-1 min-w-0 bg-transparent">
+          <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/85 backdrop-blur-xl px-4 md:px-7 border-b border-border/40">
             <div className="flex items-center gap-3 md:gap-5">
               <SidebarTrigger className="text-primary hover:bg-primary/5 size-9 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
               
@@ -236,7 +258,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </Avatar>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto bg-[#F8FAFC] relative">
+          <main className="flex-1 overflow-y-auto bg-transparent relative">
             <div className="relative z-10 safe-area-bottom p-4 md:p-10">
               {children}
             </div>

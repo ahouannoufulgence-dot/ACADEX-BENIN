@@ -94,17 +94,18 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
-      {/* Background Image exactly as requested */}
-      <div className="absolute inset-0 z-0">
+      {/* PROFESSIONAL BACKGROUND IMAGE */}
+      <div className="fixed inset-0 z-0">
         <Image 
           src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
           alt="Login Background"
           fill
-          className="object-cover opacity-30"
+          className="object-cover"
           priority
           data-ai-hint="students green uniforms"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-background/90 to-primary/40" />
+        {/* DARK OVERLAY FOR READABILITY */}
+        <div className="absolute inset-0 bg-black/70" />
       </div>
 
       <div className="relative z-10 w-full max-w-[420px] animate-in fade-in duration-700">

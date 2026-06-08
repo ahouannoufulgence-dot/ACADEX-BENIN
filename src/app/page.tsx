@@ -33,24 +33,25 @@ export default function Home() {
       desc: "Suivre mes notes et ma progression",
       icon: GraduationCap,
       href: "/register/student",
-      color: "bg-amber-600",
+      color: "bg-emerald-600",
       buttonText: "Espace Élève"
     }
   ];
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* Immersive Background Image exactly as requested */}
-      <div className="absolute inset-0 z-0">
+      {/* PROFESSIONAL BACKGROUND IMAGE */}
+      <div className="fixed inset-0 z-0">
         <Image 
           src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
           alt="ACADEX Excellence"
           fill
-          className="object-cover opacity-20"
+          className="object-cover"
           priority
           data-ai-hint="students green uniforms"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/40 to-primary/30" />
+        {/* DARK OVERLAY FOR READABILITY */}
+        <div className="absolute inset-0 bg-black/65" />
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-12 animate-in fade-in zoom-in-95 duration-700">
@@ -74,7 +75,7 @@ export default function Home() {
 
         <div className="grid md:grid-cols-3 gap-4 md:gap-6">
           {roles.map((role) => (
-            <Card key={role.title} className="border-none shadow-2xl rounded-[2rem] md:rounded-[2.5rem] bg-white/90 backdrop-blur-xl group hover:shadow-primary/20 transition-all duration-500 overflow-hidden">
+            <Card key={role.title} className="border-none shadow-2xl rounded-[2rem] md:rounded-[2.5rem] bg-white/95 backdrop-blur-xl group hover:shadow-primary/20 transition-all duration-500 overflow-hidden">
               <div className={`h-1.5 md:h-2 w-full ${role.color}`} />
               <CardContent className="p-6 md:p-8 flex flex-col items-center text-center space-y-4 md:space-y-6">
                 <div className={`size-12 md:size-16 ${role.color} text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform`}>
