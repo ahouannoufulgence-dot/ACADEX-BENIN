@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -23,6 +22,7 @@ import {
   User,
   Calendar as CalendarIcon,
   ShieldCheck,
+  ShieldAlert,
   TrendingUp,
   AlertTriangle,
   ArrowRight,
