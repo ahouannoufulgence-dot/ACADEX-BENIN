@@ -10,25 +10,16 @@ import {
   Send, 
   MoreVertical, 
   Paperclip, 
-  Smile, 
   Plus, 
   CheckCheck,
   Loader2,
   MessageCircle,
   ChevronLeft,
-  UserPlus,
-  Users as UsersIcon,
-  Megaphone,
-  FileText,
-  ImageIcon,
   ShieldCheck,
-  Archive,
-  Trash2,
-  Lock,
   Zap,
   Bot
 } from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { 
@@ -45,8 +36,6 @@ import {
   setDoc,
   increment
 } from "firebase/firestore"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
 import { toast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -114,7 +103,7 @@ export default function MessagingPage() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-    if (selectedChat && db) {
+    if (selectedChat && db && currentUserId) {
       const convRef = doc(db, "conversations", selectedChat.id)
       updateDoc(convRef, {
         [`unreadCount.${currentUserId}`]: 0
@@ -171,7 +160,8 @@ export default function MessagingPage() {
         allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }, ...myStudents]
         userClasses.forEach(cls => allContacts.push({ id: `GROUP_${cls}`, name: `Classe ${cls}`, role: 'Groupe', sub: 'Discussion Collective', type: 'class', classId: cls }))
       } else {
-        const studentClass = currentUserId.split('-')[1]
+        const parts = currentUserId.split('-')
+        const studentClass = parts.length > 1 ? parts[1] : ""
         const myTeachers = teachersSnap.docs
           .filter(d => d.data().classes?.includes(studentClass))
           .map(d => ({ id: d.data().officialId || d.id, name: d.data().fullName, role: 'Professeur', sub: d.data().subject, type: 'private' }))
@@ -224,16 +214,15 @@ export default function MessagingPage() {
     <DashboardLayout>
       <div className="h-[calc(100svh-12rem)] md:h-[calc(100vh-12rem)] flex gap-6 animate-in fade-in duration-500">
         
-        {/* Mobile-Friendly Sidebar */}
         <Card className={cn(
           "flex-col overflow-hidden border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] w-full md:w-[420px] transition-all",
           selectedChat ? "hidden md:flex" : "flex"
         )}>
           <div className="p-6 md:p-10 pb-4">
-            <div className="flex items-center justify-between mb-8 md:mb-10">
+            <div className="flex items-center justify-between mb-8">
               <div className="space-y-1">
-                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">Canal <span className="text-primary italic">Scellé</span></h2>
-                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight uppercase">Canal <span className="text-primary italic">Scellé</span></h2>
+                <p className="text-[8px] font-black uppercase text-muted-foreground tracking-[0.3em] flex items-center gap-2">
                    <ShieldCheck className="size-3 text-emerald-500" /> Sécurité Acadex
                 </p>
               </div>
@@ -257,13 +246,13 @@ export default function MessagingPage() {
                       {loadingContacts ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4 opacity-30">
                            <Loader2 className="animate-spin text-primary size-10" />
-                           <p className="text-[10px] font-black uppercase tracking-widest">Appel de l'annuaire...</p>
+                           <p className="text-[9px] font-black uppercase tracking-widest">Appel de l'annuaire...</p>
                         </div>
                       ) : (
                         <div className="space-y-3">
                           {contacts.map((c) => (
                             <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white hover:shadow-lg transition-all text-left group border-2 border-transparent hover:border-primary/10">
-                              <Avatar className="size-12 md:size-14 border-4 border-white shadow-sm group-hover:border-primary/20 transition-all"><AvatarFallback className="bg-primary/5 text-primary font-black text-lg">{c.name?.[0]}</AvatarFallback></Avatar>
+                              <Avatar className="size-12 border-4 border-white shadow-sm group-hover:border-primary/20 transition-all"><AvatarFallback className="bg-primary/5 text-primary font-black text-lg">{c.name?.[0]}</AvatarFallback></Avatar>
                               <div className="flex-1 min-w-0">
                                 <p className="font-black text-sm md:text-lg truncate uppercase tracking-tight">{c.name}</p>
                                 <div className="flex items-center gap-2">
@@ -283,13 +272,13 @@ export default function MessagingPage() {
 
             <div className="space-y-5 mb-6">
               <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input placeholder="Rechercher une discussion..." className="pl-12 h-13 bg-muted/30 border-none rounded-2xl font-bold text-sm shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Input placeholder="Chercher une discussion..." className="pl-11 h-12 bg-muted/30 border-none rounded-2xl font-bold text-xs shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="w-full bg-muted/30 p-1 rounded-2xl h-11 md:h-13">
-                  <TabsTrigger value="all" className="flex-1 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">TOUT</TabsTrigger>
-                  <TabsTrigger value="unread" className="flex-1 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">NON LUS</TabsTrigger>
+                <TabsList className="w-full bg-muted/30 p-1 rounded-2xl h-11">
+                  <TabsTrigger value="all" className="flex-1 rounded-xl font-black text-[9px] uppercase tracking-widest data-[state=active]:bg-white">TOUT</TabsTrigger>
+                  <TabsTrigger value="unread" className="flex-1 rounded-xl font-black text-[9px] uppercase tracking-widest data-[state=active]:bg-white">NON LUS</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -297,11 +286,11 @@ export default function MessagingPage() {
 
           <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 no-scrollbar bg-muted/5">
             {loadingConvs ? (
-              <div className="flex justify-center py-20 animate-pulse opacity-20"><Loader2 className="size-10 animate-spin text-primary" /></div>
+              <div className="flex justify-center py-20 animate-pulse opacity-20"><Loader2 className="size-8 animate-spin text-primary" /></div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-20 text-center space-y-4 opacity-30">
-                 <MessageCircle className="size-12 mx-auto" />
-                 <p className="text-[10px] font-black uppercase tracking-widest">Aucune discussion</p>
+                 <MessageCircle className="size-10 mx-auto" />
+                 <p className="text-[8px] font-black uppercase tracking-widest">Aucune discussion</p>
               </div>
             ) : filteredConversations.map((chat: any) => {
               const otherId = chat.participants.find((p: string) => p !== currentUserId)
@@ -310,21 +299,21 @@ export default function MessagingPage() {
               const isActive = selectedChat?.id === chat.id
               return (
                 <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={cn(
-                  "flex items-center gap-4 p-4 md:p-5 rounded-[2rem] cursor-pointer transition-all border-2",
+                  "flex items-center gap-4 p-4 rounded-[1.8rem] cursor-pointer transition-all border-2",
                   isActive ? "bg-primary text-white border-primary shadow-xl scale-[1.02]" : "bg-white hover:bg-muted/5 border-transparent shadow-sm"
                 )}>
                   <div className="relative shrink-0">
-                    <Avatar className={cn("size-12 md:size-15 border-4 transition-all", isActive ? "border-white/20" : "border-white")}>
+                    <Avatar className={cn("size-12 border-4 transition-all", isActive ? "border-white/20" : "border-white")}>
                       <AvatarFallback className={cn("font-black text-lg", isActive ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>{name?.[0]}</AvatarFallback>
                     </Avatar>
-                    {unread > 0 && <div className="absolute -top-1 -right-1 size-5 md:size-6 bg-amber-400 text-black font-black text-[10px] rounded-full flex items-center justify-center border-4 border-white animate-bounce-slow">{unread}</div>}
+                    {unread > 0 && <div className="absolute -top-1 -right-1 size-5 bg-amber-400 text-black font-black text-[10px] rounded-full flex items-center justify-center border-4 border-white animate-bounce">{unread}</div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                      <h4 className="font-black truncate text-sm md:text-base uppercase tracking-tight">{name}</h4>
-                      <span className={cn("text-[8px] font-black uppercase", isActive ? "text-white/60" : "opacity-40")}>{formatTime(chat.lastMessageTime)}</span>
+                      <h4 className="font-black truncate text-xs md:text-base uppercase tracking-tight">{name}</h4>
+                      <span className={cn("text-[7px] font-black uppercase", isActive ? "text-white/60" : "opacity-40")}>{formatTime(chat.lastMessageTime)}</span>
                     </div>
-                    <p className={cn("text-[10px] md:text-xs truncate font-medium", isActive ? "text-white/80" : "text-muted-foreground")}>{chat.lastMessage}</p>
+                    <p className={cn("text-[9px] md:text-xs truncate font-medium", isActive ? "text-white/80" : "text-muted-foreground")}>{chat.lastMessage}</p>
                   </div>
                 </div>
               )
@@ -332,7 +321,6 @@ export default function MessagingPage() {
           </div>
         </Card>
 
-        {/* Chat Area - Full screen transition on mobile */}
         <Card className={cn(
           "flex-1 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] flex-col overflow-hidden relative transition-all",
           !selectedChat ? "hidden md:flex" : "fixed inset-0 z-50 md:relative md:flex"
@@ -340,11 +328,11 @@ export default function MessagingPage() {
           {!selectedChat ? (
             <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-[#F8FAFC]/50 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-1000"><Zap className="size-64" /></div>
-              <div className="size-24 md:size-32 bg-white rounded-[3rem] flex items-center justify-center shadow-xl mb-8 relative z-10">
-                <ShieldCheck className="size-12 md:size-16 text-primary" />
+              <div className="size-24 bg-white rounded-[3rem] flex items-center justify-center shadow-xl mb-8 relative z-10">
+                <ShieldCheck className="size-12 text-primary" />
               </div>
               <h3 className="text-2xl md:text-4xl font-black mb-3 uppercase tracking-tight relative z-10">Espace Crypté</h3>
-              <p className="text-[10px] md:text-sm font-bold text-muted-foreground max-w-xs uppercase tracking-widest relative z-10">Communications certifiées ACADEX • AES-256</p>
+              <p className="text-[9px] md:text-sm font-bold text-muted-foreground max-w-xs uppercase tracking-widest relative z-10">Communications certifiées ACADEX • AES-256</p>
             </div>
           ) : (
             <>
@@ -356,12 +344,12 @@ export default function MessagingPage() {
                     <h3 className="text-base md:text-2xl font-black tracking-tight uppercase">{selectedChat.otherName}</h3>
                     <div className="flex items-center gap-2">
                        <div className="size-2 bg-emerald-500 rounded-full animate-pulse" />
-                       <span className="text-[8px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest">En ligne scellé</span>
+                       <span className="text-[7px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest">En ligne scellé</span>
                     </div>
                   </div>
                 </div>
                 <Button variant="ghost" size="icon" className="size-12 rounded-2xl hover:bg-muted mobile-touch-target">
-                  <MoreVertical className="size-6 text-muted-foreground" />
+                  <MoreVertical className="size-5 text-muted-foreground" />
                 </Button>
               </div>
 
@@ -371,12 +359,12 @@ export default function MessagingPage() {
                   return (
                     <div key={msg.id || i} className={cn("flex animate-in slide-in-from-bottom-2", isMe ? "justify-end" : "justify-start")}>
                       <div className={cn(
-                        "group relative p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] text-sm md:text-lg font-medium shadow-sm leading-relaxed max-w-[88%] md:max-w-[75%]",
+                        "group relative p-4 md:p-8 rounded-[1.8rem] md:rounded-[3rem] text-xs md:text-lg font-medium shadow-sm leading-relaxed max-w-[88%] md:max-w-[75%]",
                         isMe ? "bg-primary text-white rounded-br-none shadow-primary/20" : "bg-white text-foreground rounded-bl-none border border-muted/30"
                       )}>
                         {msg.text}
                         <div className="flex justify-end gap-1.5 opacity-40 mt-2">
-                           <span className="text-[8px] md:text-[10px] font-black uppercase">{formatTime(msg.timestamp)}</span>
+                           <span className="text-[7px] md:text-[10px] font-black uppercase">{formatTime(msg.timestamp)}</span>
                            {isMe && <CheckCheck className="size-2 md:size-3" />}
                         </div>
                       </div>
@@ -389,13 +377,13 @@ export default function MessagingPage() {
                 <form onSubmit={handleSendMessage} className="flex items-center gap-3 md:gap-6 bg-muted/40 p-2 md:p-3 pl-5 md:pl-10 rounded-[2rem] md:rounded-[3rem] border-2 border-transparent focus-within:border-primary/10 transition-all shadow-inner">
                   <Input 
                     placeholder="Votre message scellé..." 
-                    className="flex-1 bg-transparent border-none shadow-none h-12 md:h-16 font-bold focus-visible:ring-0 text-sm md:text-xl placeholder:text-muted-foreground/30" 
+                    className="flex-1 bg-transparent border-none shadow-none h-11 md:h-16 font-bold focus-visible:ring-0 text-sm md:text-xl placeholder:text-muted-foreground/30" 
                     value={messageText} 
                     onChange={(e) => setMessageText(e.target.value)} 
                   />
                   <div className="flex items-center gap-2">
-                    <Button type="button" variant="ghost" className="size-11 md:size-14 rounded-2xl text-muted-foreground hidden sm:flex"><Paperclip className="size-5 md:size-7" /></Button>
-                    <Button type="submit" disabled={!messageText.trim()} className="bg-primary text-white size-12 md:size-16 rounded-[1.2rem] md:rounded-3xl shadow-xl transition-all active:scale-90 mobile-touch-target">
+                    <Button type="button" variant="ghost" className="size-10 md:size-14 rounded-2xl text-muted-foreground hidden sm:flex"><Paperclip className="size-4 md:size-7" /></Button>
+                    <Button type="submit" disabled={!messageText.trim()} className="bg-primary text-white size-11 md:size-16 rounded-[1.1rem] md:rounded-3xl shadow-xl transition-all active:scale-90 mobile-touch-target">
                       <Send className="size-5 md:size-8" />
                     </Button>
                   </div>
