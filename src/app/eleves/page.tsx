@@ -58,18 +58,15 @@ export default function StudentsPage() {
     setUserRole(localStorage.getItem('acadex_user_role'))
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     
-    // Initialisation depuis localStorage ou défaut
     const savedYear = localStorage.getItem('acadex_active_year') || "2026-2027"
     setActiveYear(savedYear)
 
-    // Écouter les changements d'année en temps réel
     const updateYear = (e: any) => {
       if (e.detail) setActiveYear(e.detail)
     }
     
     window.addEventListener('acadex_year_changed', updateYear as any)
     
-    // Synchronisation avec la config réelle de l'école pour plus de sécurité
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists() && !localStorage.getItem('acadex_active_year')) {
         setActiveYear(snap.data().academicYear || "2026-2027")
@@ -82,17 +79,12 @@ export default function StudentsPage() {
     }
   }, [db])
 
-  // REQUÊTE SÉCURISÉE : Filtrée par ANNÉE SCOLAIRE ACTIVE
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
-    
     const baseCol = collection(db, "students")
-    
     if (userRole === "Enseignant" && userClasses.length > 0) {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
     }
-    
-    // Pour le Directeur, on affiche tous les élèves de l'année active
     return query(baseCol, where("academicYear", "==", activeYear))
   }, [db, userRole, userClasses, activeYear])
 
@@ -134,35 +126,35 @@ export default function StudentsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-in">
+      <div className="space-y-6 md:space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">
+            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
               {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
             </h1>
             <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-emerald-500" /> Univers scolaire de l'année <Badge className="bg-primary">{activeYear}</Badge>
+              <ShieldCheck className="size-4 text-emerald-500" /> <span className="text-xs md:text-sm">Année <Badge className="bg-primary text-[10px] md:text-xs">{activeYear}</Badge></span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
-              <FileDown className="mr-2 size-5" /> Exporter Liste PDF
+          <div className="flex items-center gap-2 md:gap-3">
+            <Button onClick={handleExportPDF} variant="outline" className="flex-1 md:flex-none border-2 rounded-2xl h-12 px-4 md:px-6 font-black bg-white text-xs md:text-sm">
+              <FileDown className="mr-2 size-4 md:size-5" /> Exporter
             </Button>
             {userRole === "Directeur" && (
-              <Button asChild className="bg-primary hover:bg-primary/90 shadow-xl rounded-2xl h-12 px-8 font-black">
-                <Link href="/eleves/identifiants">Gérer Identifiants</Link>
+              <Button asChild className="flex-1 md:flex-none bg-primary hover:bg-primary/90 shadow-xl rounded-2xl h-12 px-4 md:px-8 font-black text-xs md:text-sm">
+                <Link href="/eleves/identifiants">Identifiants</Link>
               </Button>
             )}
           </div>
         </div>
 
-        <div className="relative group max-w-xl">
+        <div className="relative group w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
-            placeholder="Chercher par nom, prénom ou matricule..." 
+            placeholder="Rechercher un élève..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl font-medium"
+            className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl font-medium text-sm md:text-base"
           />
         </div>
 
@@ -170,59 +162,47 @@ export default function StudentsPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center p-20 gap-4">
               <Loader2 className="size-10 animate-spin text-primary" />
-              <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Appel de la promotion {activeYear}...</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Récupération de la classe...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
-            <Card className="p-20 text-center bg-white rounded-[3.5rem] border-none shadow-sm flex flex-col items-center justify-center space-y-6">
-              <div className="size-20 bg-muted rounded-full flex items-center justify-center opacity-20">
-                <Users className="size-10" />
+            <Card className="p-12 md:p-20 text-center bg-white rounded-[2.5rem] border-none shadow-sm flex flex-col items-center justify-center space-y-6">
+              <div className="size-16 md:size-20 bg-muted rounded-full flex items-center justify-center opacity-20">
+                <Users className="size-8 md:size-10" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-2xl font-black">Aucun élève trouvé</h3>
-                <div className="text-muted-foreground font-medium max-w-sm flex items-center justify-center gap-2">
-                  Vérifiez que l'année scolaire <Badge variant="outline" className="border-primary/20 text-primary">{activeYear}</Badge> est la bonne.
-                </div>
+                <h3 className="text-xl md:text-2xl font-black">Aucun élève trouvé</h3>
+                <p className="text-muted-foreground text-sm font-medium max-w-xs mx-auto">Vérifiez l'orthographe ou l'année active.</p>
               </div>
-              <Button asChild variant="outline" className="rounded-xl border-2 font-bold">
-                <Link href="/eleves/identifiants">Gérer les inscriptions</Link>
-              </Button>
             </Card>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredStudents.map((student: any) => (
                 <Card key={student.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden hover:shadow-lg transition-all group">
-                  <CardContent className="p-5 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                      <Avatar className="size-16 border-4 border-muted group-hover:border-primary/20 transition-all">
-                        <AvatarFallback className="bg-primary text-white font-black text-xl">{student.lastName?.[0]}{student.firstName?.[0]}</AvatarFallback>
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4 mb-4">
+                      <Avatar className="size-14 border-4 border-muted group-hover:border-primary/20 transition-all">
+                        <AvatarFallback className="bg-primary text-white font-black text-lg">{student.lastName?.[0]}{student.firstName?.[0]}</AvatarFallback>
                       </Avatar>
-                      <div>
-                        <h3 className="text-xl font-black text-foreground group-hover:text-primary transition-colors">{student.lastName?.toUpperCase()} {student.firstName}</h3>
-                        <div className="flex flex-wrap items-center gap-4 mt-1">
-                          <Badge className="bg-primary/10 text-primary border-none font-black text-[10px] px-3">{student.classId}</Badge>
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{student.matricule}</span>
-                          <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1"><Phone className="size-3" /> {student.phone}</span>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors truncate uppercase">{student.lastName} {student.firstName}</h3>
+                        <div className="flex items-center gap-2">
+                           <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] px-2">{student.classId}</Badge>
+                           <span className="text-[9px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
                         </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right hidden sm:block">
-                        <p className="text-[9px] font-black text-muted-foreground uppercase">Statut</p>
-                        <Badge variant="outline" className="text-[10px] font-black uppercase border-emerald-200 text-emerald-600 bg-emerald-50">{student.status}</Badge>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-10 rounded-xl"><MoreVertical className="size-5" /></Button>
+                          <Button variant="ghost" size="icon" className="size-10 rounded-xl mobile-touch-target"><MoreVertical className="size-5" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="rounded-xl border-2 w-48 p-2">
                           <DropdownMenuItem asChild>
-                            <Link href={`/eleves/${student.id}`} className="flex items-center gap-2 font-bold cursor-pointer w-full">
+                            <Link href={`/eleves/${student.id}`} className="flex items-center gap-2 font-bold cursor-pointer w-full p-2">
                               <UserCircle2 className="size-4" /> Voir Profil
                             </Link>
                           </DropdownMenuItem>
                           {userRole === "Directeur" && (
                             <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer"
+                              className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer p-2"
                               onSelect={() => setStudentToDelete(student)}
                             >
                               <Trash2 className="size-4" /> Supprimer
@@ -230,6 +210,16 @@ export default function StudentsPage() {
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
+                    </div>
+                    
+                    <div className="flex items-center justify-between pt-4 border-t border-muted/30">
+                       <div className="flex items-center gap-2">
+                          <div className="size-8 bg-muted rounded-lg flex items-center justify-center"><Phone className="size-3 text-muted-foreground" /></div>
+                          <span className="text-[10px] font-bold text-foreground">{student.phone || "---"}</span>
+                       </div>
+                       <Button variant="ghost" size="sm" asChild className="text-primary font-black text-[10px] rounded-lg h-8 px-3 hover:bg-primary/5">
+                          <Link href={`/eleves/${student.id}`}>Profil <ChevronRight className="ml-1 size-3" /></Link>
+                       </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -240,18 +230,17 @@ export default function StudentsPage() {
       </div>
 
       <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-        <AlertDialogContent className="rounded-[2.5rem]">
+        <AlertDialogContent className="rounded-[2rem] w-[90%] max-w-lg">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black">Supprimer définitivement ?</AlertDialogTitle>
-            <AlertDialogDescription className="font-medium">
-              Voulez-vous supprimer le profil de <span className="font-black text-foreground">{studentToDelete?.lastName} {studentToDelete?.firstName}</span> ?
-              Cette action supprimera également toutes ses notes et paiements de l'année {activeYear}.
+            <AlertDialogTitle className="text-xl font-black">Supprimer ?</AlertDialogTitle>
+            <AlertDialogDescription className="font-medium text-sm">
+              Confirmez-vous la suppression de <span className="font-black text-foreground">{studentToDelete?.lastName}</span> ? Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold">Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black">
-              Confirmer la suppression
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-xl font-bold flex-1">Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black flex-1">
+              Supprimer
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

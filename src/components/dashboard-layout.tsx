@@ -27,7 +27,8 @@ import {
   ChevronDown,
   History,
   ClipboardList,
-  PanelLeft
+  PanelLeft,
+  Menu
 } from "lucide-react"
 import {
   Sidebar,
@@ -69,23 +70,19 @@ const navigationConfig = {
     { name: "Dashboard", href: "/dashboard/directeur", icon: LayoutDashboard },
     { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
     { name: "Vie de l’Élève", href: "/vie-scolaire", icon: ClipboardList },
-    { name: "Gestion des Élèves", href: "/eleves", icon: Users },
-    { name: "Identifiants Élèves", href: "/eleves/identifiants", icon: Zap },
-    { name: "Corps Enseignant", href: "/enseignants", icon: UserSquare2 },
-    { name: "Matières & Coefs", href: "/matieres", icon: Calculator },
-    { name: "Gestion des Notes", href: "/notes", icon: PenTool },
+    { name: "Élèves", href: "/eleves", icon: Users },
+    { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
+    { name: "Notes", href: "/notes", icon: PenTool },
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
-    { name: "Années Scolaires", href: "/archives", icon: History },
-    { name: "Assistant Brain", href: "/assistant", icon: Sparkles, isIA: true },
+    { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
   Enseignant: [
-    { name: "Tableau de Bord", href: "/dashboard/enseignant", icon: LayoutDashboard },
-    { name: "Vie de l’Élève", href: "/vie-scolaire", icon: ClipboardList },
+    { name: "Dashboard", href: "/dashboard/enseignant", icon: LayoutDashboard },
+    { name: "Vie Scolaire", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Mes Classes", href: "/eleves", icon: Users },
-    { name: "Gestion des Notes", href: "/notes", icon: PenTool },
-    { name: "Mon Programme", href: "/disponibilites", icon: Calendar },
+    { name: "Saisie Notes", href: "/notes", icon: PenTool },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
   ],
@@ -93,11 +90,9 @@ const navigationConfig = {
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
     { name: "Cahier de Vie", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Mes Notes", href: "/dashboard/eleve/notes", icon: PenTool },
-    { name: "Ma Progression", href: "/dashboard/eleve/progression", icon: TrendingUp },
-    { name: "Mon Emploi du Temps", href: "/dashboard/eleve/agenda", icon: Calendar },
-    { name: "Mes Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
+    { name: "Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
-    { name: "Assistant ACADEX", href: "/assistant", icon: Sparkles, isIA: true },
+    { name: "Assistant", href: "/assistant", icon: Sparkles, isIA: true },
   ]
 }
 
@@ -129,14 +124,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserName(name || "Monsieur")
     setUserRole(role)
     setUserId(id || "INV-000")
-    
-    if (savedYear) {
-      setActiveYear(savedYear)
-    } else {
-      setActiveYear("2026-2027")
-      localStorage.setItem('acadex_active_year', "2026-2027")
-    }
-    
+    setActiveYear(savedYear || "2026-2027")
     setMounted(true)
 
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
@@ -172,41 +160,41 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
         <Sidebar className="border-none shadow-2xl flex-shrink-0" collapsible="icon">
-          <SidebarHeader className="h-24 flex items-center px-4 bg-primary overflow-hidden">
+          <SidebarHeader className="h-20 md:h-24 flex items-center px-4 bg-primary overflow-hidden">
             <Link href="/dashboard" className="flex items-center gap-3 w-full">
-              <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+              <div className="size-10 md:size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
                 {schoolInfo.logo ? (
                   <img src={schoolInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
-                  <span className="text-primary font-black text-2xl">{schoolInfo.name[0]}</span>
+                  <span className="text-primary font-black text-xl md:text-2xl">{schoolInfo.name[0]}</span>
                 )}
               </div>
-              <span className="text-xl font-black text-white tracking-tight uppercase line-clamp-1 group-data-[collapsible=icon]:hidden">{schoolInfo.name}</span>
+              <span className="text-lg md:text-xl font-black text-white tracking-tight uppercase line-clamp-1 group-data-[collapsible=icon]:hidden">{schoolInfo.name}</span>
             </Link>
           </SidebarHeader>
           <ScrollArea className="flex-1 bg-primary">
-            <SidebarContent className="px-2 py-6">
+            <SidebarContent className="px-2 py-4 md:py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px] group-data-[collapsible=icon]:hidden">
-                  Espace {userRole.toUpperCase()}
+                  MENU {userRole.toUpperCase()}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
-                  <SidebarMenu className="gap-2">
+                  <SidebarMenu className="gap-1 md:gap-2">
                     {menuItems.map((item: any) => (
                       <SidebarMenuItem key={item.name}>
                         <SidebarMenuButton
                           asChild
                           isActive={pathname === item.href}
-                          className={`group transition-all duration-300 h-12 rounded-2xl px-4 ${
+                          className={`group transition-all duration-300 h-11 md:h-12 rounded-xl md:rounded-2xl px-4 ${
                             pathname === item.href 
-                              ? "bg-white/15 text-white shadow-lg" 
+                              ? "bg-white/20 text-white shadow-lg" 
                               : "text-white/60 hover:bg-white/10 hover:text-white"
                           }`}
                           tooltip={item.name}
                         >
                           <Link href={item.href}>
                             <item.icon className={cn("size-5 md:size-6 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
-                            <span className="font-bold text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
+                            <span className="font-bold text-xs md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
                               <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden">IA</Badge>
                             )}
@@ -220,7 +208,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </SidebarContent>
           </ScrollArea>
           <SidebarFooter className="p-4 bg-primary">
-            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold">
+            <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-11 md:h-12 rounded-xl md:rounded-2xl font-bold">
               <LogOut className="size-5 md:size-6 shrink-0" />
               <span className="group-data-[collapsible=icon]:hidden">Déconnexion</span>
             </Button>
@@ -228,69 +216,48 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </Sidebar>
 
         <SidebarInset className="flex flex-col flex-1 min-w-0">
-          <header className="sticky top-0 z-30 flex h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-6 border-b border-border/40">
-            <div className="flex items-center gap-4">
-              <SidebarTrigger className="text-primary hover:bg-primary/5 size-11 rounded-xl border-2 border-primary/10 transition-all" />
+          <header className="sticky top-0 z-30 flex h-16 md:h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-4 md:px-6 border-b border-border/40">
+            <div className="flex items-center gap-2 md:gap-4">
+              <SidebarTrigger className="text-primary hover:bg-primary/5 size-10 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
               
-              <div className="flex flex-col ml-2">
-                <h2 className="text-sm md:text-lg font-black text-foreground">
-                  Bonjour <span className="text-primary italic">{userName}</span>
+              <div className="flex flex-col ml-1 md:ml-2">
+                <h2 className="text-xs md:text-lg font-black text-foreground truncate max-w-[120px] md:max-w-none">
+                  {userName}
                 </h2>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[8px] font-black border-primary/20 text-primary uppercase">{userId}</Badge>
-                  <span className="text-[8px] font-bold text-muted-foreground uppercase">{userRole}</span>
+                <div className="flex items-center gap-1 md:gap-2">
+                  <Badge variant="outline" className="text-[7px] md:text-[8px] font-black border-primary/20 text-primary uppercase">{userId}</Badge>
                 </div>
-              </div>
-              
-              <div className="h-10 w-px bg-border/40 hidden sm:block mx-2" />
-              
-              <div className="hidden lg:flex items-center gap-3">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-11 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-3 px-4 transition-all">
-                      <Calendar className="size-4 md:size-5 text-primary" />
-                      <span className="text-sm">{activeYear}</span>
-                      <ChevronDown className="size-3 text-muted-foreground" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-48 rounded-xl border-2 p-1 shadow-2xl">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest p-2 border-b">Année Scolaire Active</p>
-                    {availableYears.map((year) => (
-                      <DropdownMenuItem 
-                        key={year} 
-                        onClick={() => handleYearChange(year)}
-                        className={cn("p-3 rounded-lg font-bold cursor-pointer transition-all", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}
-                      >
-                        {year}
-                        {activeYear === year && <Badge className="ml-auto bg-white/20 text-[8px]">ACTIVE</Badge>}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <div className="flex sm:hidden">
-                 <Badge className="bg-primary text-white font-black">{activeYear}</Badge>
-              </div>
-              <Avatar className="size-10 border-2 border-primary/10 shadow-sm">
-                <AvatarImage src={`https://picsum.photos/seed/${userName}/200/200`} />
-                <AvatarFallback className="bg-primary text-white font-black">{userName[0]}</AvatarFallback>
+            <div className="flex items-center gap-2 md:gap-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-9 md:h-11 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-4 transition-all text-[10px] md:text-sm mobile-touch-target">
+                    <Calendar className="size-3 md:size-4 text-primary" />
+                    <span>{activeYear}</span>
+                    <ChevronDown className="size-2 md:size-3 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48 rounded-xl border-2 p-1 shadow-2xl">
+                  {availableYears.map((year) => (
+                    <DropdownMenuItem key={year} onClick={() => handleYearChange(year)} className={cn("p-3 rounded-lg font-bold cursor-pointer", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}>
+                      {year}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              <Avatar className="size-9 md:size-10 border-2 border-primary/10 shadow-sm mobile-touch-target">
+                <AvatarFallback className="bg-primary text-white font-black text-xs md:text-sm">{userName[0]}</AvatarFallback>
               </Avatar>
             </div>
           </header>
-          <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC] relative">
-            <div className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none grayscale">
-              <Image 
-                src={bgImage?.imageUrl || "https://picsum.photos/seed/acadex-bg/1920/1080"} 
-                alt="ACADEX Background Filigree" 
-                fill 
-                className="object-cover"
-                data-ai-hint={bgImage?.imageHint || "smiling students"}
-              />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F8FAFC] relative">
+            <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none grayscale">
+              <Image src={bgImage?.imageUrl || "https://picsum.photos/seed/acadex-bg/1920/1080"} alt="ACADEX Filigree" fill className="object-cover" />
             </div>
-            <div className="relative z-10">
+            <div className="relative z-10 safe-area-bottom">
               {children}
             </div>
           </main>

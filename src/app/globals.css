@@ -44,6 +44,7 @@
     @apply bg-background text-foreground overflow-x-hidden;
     font-feature-settings: "rlig" 1, "calt" 1;
     overscroll-behavior-y: none;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
@@ -89,4 +90,11 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Utilities for responsive tables */
+@media (max-width: 768px) {
+  .responsive-table-hide {
+    display: none;
+  }
 }
