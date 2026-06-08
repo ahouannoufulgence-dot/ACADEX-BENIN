@@ -27,7 +27,8 @@ import {
   BarChart3,
   ChevronDown,
   History,
-  ClipboardList
+  ClipboardList,
+  PanelLeft
 } from "lucide-react"
 import {
   Sidebar,
@@ -42,6 +43,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -169,23 +172,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC]">
-        <Sidebar className="hidden md:flex border-none shadow-2xl flex-shrink-0" collapsible="none">
-          <SidebarHeader className="h-24 flex items-center px-8 bg-primary">
-            <Link href="/dashboard" className="flex items-center gap-3">
-              <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+        <Sidebar className="border-none shadow-2xl flex-shrink-0" collapsible="icon">
+          <SidebarHeader className="h-24 flex items-center px-4 bg-primary overflow-hidden">
+            <Link href="/dashboard" className="flex items-center gap-3 w-full">
+              <div className="size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
                 {schoolInfo.logo ? (
                   <img src={schoolInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
                   <span className="text-primary font-black text-2xl">{schoolInfo.name[0]}</span>
                 )}
               </div>
-              <span className="text-xl font-black text-white tracking-tight uppercase line-clamp-1">{schoolInfo.name}</span>
+              <span className="text-xl font-black text-white tracking-tight uppercase line-clamp-1 group-data-[collapsible=icon]:hidden">{schoolInfo.name}</span>
             </Link>
           </SidebarHeader>
           <ScrollArea className="flex-1 bg-primary">
-            <SidebarContent className="px-4 py-6">
+            <SidebarContent className="px-2 py-6">
               <SidebarGroup>
-                <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px]">
+                <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.2em] text-[10px] group-data-[collapsible=icon]:hidden">
                   Espace {userRole.toUpperCase()}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
@@ -200,12 +203,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                               ? "bg-white/15 text-white shadow-lg" 
                               : "text-white/60 hover:bg-white/10 hover:text-white"
                           }`}
+                          tooltip={item.name}
                         >
                           <Link href={item.href}>
-                            <item.icon className={cn("size-5 md:size-6", pathname === item.href ? "text-white" : "text-white/50")} />
-                            <span className="font-bold text-sm tracking-wide">{item.name}</span>
+                            <item.icon className={cn("size-5 md:size-6 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
+                            <span className="font-bold text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
-                              <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black">IA</Badge>
+                              <Badge className="ml-auto bg-amber-400 text-[8px] font-black h-4 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden">IA</Badge>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -216,19 +220,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </SidebarGroup>
             </SidebarContent>
           </ScrollArea>
-          <SidebarFooter className="p-6 bg-primary">
+          <SidebarFooter className="p-4 bg-primary">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-12 rounded-2xl font-bold">
-              <LogOut className="size-5 md:size-6" />
-              <span>Déconnexion</span>
+              <LogOut className="size-5 md:size-6 shrink-0" />
+              <span className="group-data-[collapsible=icon]:hidden">Déconnexion</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="flex flex-col flex-1 min-w-0">
           <header className="sticky top-0 z-30 flex h-20 items-center justify-between bg-white/80 backdrop-blur-xl px-6 border-b border-border/40">
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col">
-                <h2 className="text-lg font-black text-foreground">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger className="text-primary hover:bg-primary/5 size-11 rounded-xl border-2 border-primary/10 transition-all" />
+              
+              <div className="flex flex-col ml-2">
+                <h2 className="text-sm md:text-lg font-black text-foreground">
                   Bonjour <span className="text-primary italic">{userName}</span>
                 </h2>
                 <div className="flex items-center gap-2">
@@ -237,9 +243,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </div>
               </div>
               
-              <div className="h-10 w-px bg-border/40 hidden sm:block" />
+              <div className="h-10 w-px bg-border/40 hidden sm:block mx-2" />
               
-              <div className="hidden sm:flex items-center gap-3">
+              <div className="hidden lg:flex items-center gap-3">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="h-11 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-3 px-4 transition-all">
