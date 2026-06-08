@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -101,6 +100,7 @@ export default function DirectorDashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-8 animate-in">
+        {/* Immersive Hero Section */}
         <div className="relative min-h-[320px] rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
             src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-director/1920/1080"}
@@ -132,6 +132,7 @@ export default function DirectorDashboard() {
           </div>
         </div>
 
+        {/* Rapid Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-xl transition-all group">
             <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Élèves Actifs ({activeYear})</p>
@@ -178,6 +179,7 @@ export default function DirectorDashboard() {
           </Card>
         </div>
 
+        {/* Detailed Insights */}
         <div className="grid lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
             <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden">
