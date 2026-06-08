@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -23,7 +24,9 @@ import {
   ShieldCheck,
   Archive,
   Trash2,
-  Lock
+  Lock,
+  Zap,
+  Bot
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
@@ -55,6 +58,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 export default function MessagingPage() {
   const db = useFirestore()
@@ -104,7 +108,7 @@ export default function MessagingPage() {
     )
   }, [db, selectedChat])
 
-  const { data: messages, loading: loadingMsgs } = useCollection(messagesQuery)
+  const { data: messages } = useCollection(messagesQuery)
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -164,25 +168,14 @@ export default function MessagingPage() {
         const myStudents = studentsSnap.docs
           .filter(d => userClasses.includes(d.data().classId))
           .map(d => ({ id: d.data().matricule || d.id, name: `${d.data().firstName} ${d.data().lastName}`, role: 'Élève', sub: d.data().classId, type: 'private' }))
-        
-        allContacts = [
-          { id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' },
-          ...myStudents
-        ]
-        userClasses.forEach(cls => {
-          allContacts.push({ id: `GROUP_${cls}`, name: `Classe ${cls}`, role: 'Groupe', sub: 'Discussion Collective', type: 'class', classId: cls })
-        })
+        allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }, ...myStudents]
+        userClasses.forEach(cls => allContacts.push({ id: `GROUP_${cls}`, name: `Classe ${cls}`, role: 'Groupe', sub: 'Discussion Collective', type: 'class', classId: cls }))
       } else {
-        const studentMatricule = currentUserId
-        const studentClass = studentMatricule.split('-')[1]
+        const studentClass = currentUserId.split('-')[1]
         const myTeachers = teachersSnap.docs
           .filter(d => d.data().classes?.includes(studentClass))
           .map(d => ({ id: d.data().officialId || d.id, name: d.data().fullName, role: 'Professeur', sub: d.data().subject, type: 'private' }))
-        
-        allContacts = [
-          { id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' },
-          ...myTeachers
-        ]
+        allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }, ...myTeachers]
       }
       setContacts(allContacts.filter(c => c.id !== currentUserId))
     } catch (e) { console.error(e) } 
@@ -210,64 +203,73 @@ export default function MessagingPage() {
   const filteredConversations = useMemo(() => {
     if (!conversations) return []
     let list = conversations
-    if (activeTab === "unread") {
-      list = conversations.filter(c => (c.unreadCount?.[currentUserId] || 0) > 0)
-    }
+    if (activeTab === "unread") list = conversations.filter(c => (c.unreadCount?.[currentUserId] || 0) > 0)
     return list.filter(c => {
-      const otherParticipantId = c.participants.find((p: string) => p !== currentUserId)
-      const name = c.participantNames?.[otherParticipantId] || c.id
+      const otherId = c.participants.find((p: string) => p !== currentUserId)
+      const name = c.participantNames?.[otherId] || c.id
       return name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.lastMessage?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     })
   }, [conversations, searchTerm, activeTab, currentUserId])
 
-  const formatTime = (timestamp: any) => {
-    if (!timestamp) return ""
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+  const formatTime = (ts: any) => {
+    if (!ts) return ""
+    const date = ts.toDate ? ts.toDate() : new Date(ts)
     const now = new Date()
-    if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-    }
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    return date.toDateString() === now.toDateString() 
+      ? date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      : date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
   }
 
   return (
     <DashboardLayout>
-      <div className="h-[calc(100svh-12rem)] md:h-[calc(100vh-12rem)] flex gap-6 animate-in">
+      <div className="h-[calc(100svh-12rem)] md:h-[calc(100vh-12rem)] flex gap-6 animate-in fade-in duration-500">
         
-        {/* Contacts Sidebar - Mobile friendly */}
-        <Card className={`flex-col overflow-hidden border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] w-full md:w-[400px] ${selectedChat ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-6 md:p-8 pb-4">
-            <div className="flex items-center justify-between mb-6 md:mb-8">
-              <div>
-                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">Messagerie</h2>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mt-1">Canal Officiel Acadex</p>
+        {/* Mobile-Friendly Sidebar */}
+        <Card className={cn(
+          "flex-col overflow-hidden border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] w-full md:w-[420px] transition-all",
+          selectedChat ? "hidden md:flex" : "flex"
+        )}>
+          <div className="p-6 md:p-10 pb-4">
+            <div className="flex items-center justify-between mb-8 md:mb-10">
+              <div className="space-y-1">
+                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">Canal <span className="text-primary italic">Scellé</span></h2>
+                <p className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+                   <ShieldCheck className="size-3 text-emerald-500" /> Sécurité Acadex
+                </p>
               </div>
               <Dialog>
                 <DialogTrigger asChild>
-                  <Button size="icon" variant="ghost" onClick={fetchContacts} className="size-12 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all mobile-touch-target">
-                    <Plus className="size-5 md:size-6" />
+                  <Button size="icon" variant="ghost" onClick={fetchContacts} className="size-11 md:size-14 rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all mobile-touch-target">
+                    <Plus className="size-5 md:size-7" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="rounded-[2.5rem] max-w-lg p-0 overflow-hidden border-none shadow-2xl w-[95%]">
-                  <DialogHeader className="p-6 md:p-8 bg-primary text-white">
-                    <DialogTitle className="text-xl md:text-2xl font-black">Nouveau Message</DialogTitle>
-                  </DialogHeader>
-                  <div className="p-4 md:p-6 space-y-6">
+                <DialogContent className="rounded-[2.5rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
+                  <div className="p-6 md:p-10 bg-primary text-white">
+                    <DialogTitle className="text-xl md:text-3xl font-black">Nouveau Message</DialogTitle>
+                    <p className="text-white/40 text-[9px] uppercase font-black tracking-widest mt-1">Sélectionnez un destinataire certifié</p>
+                  </div>
+                  <div className="p-5 md:p-8 space-y-6 bg-[#F8FAFC]">
                     <div className="relative group">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                      <Input placeholder="Rechercher..." className="pl-12 h-12 rounded-xl border-2 font-bold" />
+                      <Input placeholder="Rechercher un contact..." className="pl-12 h-13 rounded-2xl border-none shadow-inner font-bold bg-white" />
                     </div>
-                    <ScrollArea className="h-[350px] md:h-[400px] pr-4">
+                    <ScrollArea className="h-[350px] md:h-[450px] pr-2 no-scrollbar">
                       {loadingContacts ? (
-                        <div className="flex flex-col items-center justify-center py-20"><Loader2 className="animate-spin text-primary size-10" /></div>
+                        <div className="flex flex-col items-center justify-center py-24 gap-4 opacity-30">
+                           <Loader2 className="animate-spin text-primary size-10" />
+                           <p className="text-[10px] font-black uppercase tracking-widest">Appel de l'annuaire...</p>
+                        </div>
                       ) : (
                         <div className="space-y-3">
                           {contacts.map((c) => (
-                            <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-4 p-4 rounded-3xl hover:bg-muted/50 transition-all text-left">
-                              <Avatar className="size-12 border-2 border-white shadow-sm"><AvatarFallback className="bg-primary/10 text-primary font-black">{c.name?.[0]}</AvatarFallback></Avatar>
+                            <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-white hover:shadow-lg transition-all text-left group border-2 border-transparent hover:border-primary/10">
+                              <Avatar className="size-12 md:size-14 border-4 border-white shadow-sm group-hover:border-primary/20 transition-all"><AvatarFallback className="bg-primary/5 text-primary font-black text-lg">{c.name?.[0]}</AvatarFallback></Avatar>
                               <div className="flex-1 min-w-0">
-                                <p className="font-black text-sm md:text-base truncate">{c.name}</p>
-                                <Badge variant="outline" className="text-[8px] font-black uppercase px-2">{c.role}</Badge>
+                                <p className="font-black text-sm md:text-lg truncate uppercase tracking-tight">{c.name}</p>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-[8px] font-black uppercase px-2 py-0.5 border-muted/50 text-muted-foreground">{c.role}</Badge>
+                                  <span className="text-[8px] font-bold text-primary uppercase">{c.sub}</span>
+                                </div>
                               </div>
                             </button>
                           ))}
@@ -279,39 +281,50 @@ export default function MessagingPage() {
               </Dialog>
             </div>
 
-            <div className="space-y-4">
-               <div className="relative group">
+            <div className="space-y-5 mb-6">
+              <div className="relative group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                <Input placeholder="Rechercher..." className="pl-12 h-12 bg-muted/30 border-none rounded-2xl font-bold text-sm shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Input placeholder="Rechercher une discussion..." className="pl-12 h-13 bg-muted/30 border-none rounded-2xl font-bold text-sm shadow-inner" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="w-full bg-muted/30 p-1 rounded-2xl h-11">
-                  <TabsTrigger value="all" className="flex-1 rounded-xl font-black text-[9px] uppercase tracking-widest">Toutes</TabsTrigger>
-                  <TabsTrigger value="unread" className="flex-1 rounded-xl font-black text-[9px] uppercase tracking-widest">Non lus</TabsTrigger>
+                <TabsList className="w-full bg-muted/30 p-1 rounded-2xl h-11 md:h-13">
+                  <TabsTrigger value="all" className="flex-1 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">TOUT</TabsTrigger>
+                  <TabsTrigger value="unread" className="flex-1 rounded-xl font-black text-[9px] md:text-[10px] uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-sm">NON LUS</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 no-scrollbar bg-muted/5">
+          <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 no-scrollbar bg-muted/5">
             {loadingConvs ? (
-              <div className="flex justify-center py-20"><Loader2 className="size-8 animate-spin text-primary/30" /></div>
+              <div className="flex justify-center py-20 animate-pulse opacity-20"><Loader2 className="size-10 animate-spin text-primary" /></div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-20 text-center space-y-4 opacity-30">
+                 <MessageCircle className="size-12 mx-auto" />
+                 <p className="text-[10px] font-black uppercase tracking-widest">Aucune discussion</p>
+              </div>
             ) : filteredConversations.map((chat: any) => {
               const otherId = chat.participants.find((p: string) => p !== currentUserId)
               const name = chat.participantNames?.[otherId] || (chat.type === 'class' ? chat.id : "Utilisateur")
               const unread = chat.unreadCount?.[currentUserId] || 0
+              const isActive = selectedChat?.id === chat.id
               return (
-                <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={`flex items-center gap-3 md:gap-4 p-4 rounded-[1.8rem] cursor-pointer transition-all ${selectedChat?.id === chat.id ? 'bg-primary text-white shadow-xl scale-[1.02]' : 'bg-white hover:bg-muted/5 border border-muted/20'}`}>
-                  <div className="relative">
-                    <Avatar className={`size-12 border-4 ${selectedChat?.id === chat.id ? 'border-white/20' : 'border-white'}`}><AvatarFallback className="font-black text-lg">{name?.[0]}</AvatarFallback></Avatar>
-                    {unread > 0 && <div className="absolute -top-1 -right-1 size-5 bg-amber-400 text-black font-black text-[9px] rounded-full flex items-center justify-center border-2 border-white">{unread}</div>}
+                <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={cn(
+                  "flex items-center gap-4 p-4 md:p-5 rounded-[2rem] cursor-pointer transition-all border-2",
+                  isActive ? "bg-primary text-white border-primary shadow-xl scale-[1.02]" : "bg-white hover:bg-muted/5 border-transparent shadow-sm"
+                )}>
+                  <div className="relative shrink-0">
+                    <Avatar className={cn("size-12 md:size-15 border-4 transition-all", isActive ? "border-white/20" : "border-white")}>
+                      <AvatarFallback className={cn("font-black text-lg", isActive ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>{name?.[0]}</AvatarFallback>
+                    </Avatar>
+                    {unread > 0 && <div className="absolute -top-1 -right-1 size-5 md:size-6 bg-amber-400 text-black font-black text-[10px] rounded-full flex items-center justify-center border-4 border-white animate-bounce-slow">{unread}</div>}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <h4 className="font-black truncate text-sm">{name}</h4>
-                      <span className="text-[8px] font-black uppercase opacity-60">{formatTime(chat.lastMessageTime)}</span>
+                    <div className="flex justify-between items-center mb-1">
+                      <h4 className="font-black truncate text-sm md:text-base uppercase tracking-tight">{name}</h4>
+                      <span className={cn("text-[8px] font-black uppercase", isActive ? "text-white/60" : "opacity-40")}>{formatTime(chat.lastMessageTime)}</span>
                     </div>
-                    <p className={`text-[10px] md:text-[11px] truncate font-medium ${selectedChat?.id === chat.id ? 'text-white/80' : 'text-muted-foreground'}`}>{chat.lastMessage}</p>
+                    <p className={cn("text-[10px] md:text-xs truncate font-medium", isActive ? "text-white/80" : "text-muted-foreground")}>{chat.lastMessage}</p>
                   </div>
                 </div>
               )
@@ -319,39 +332,52 @@ export default function MessagingPage() {
           </div>
         </Card>
 
-        {/* Chat Area - Full screen on mobile when active */}
-        <Card className={`flex-1 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] flex-col overflow-hidden relative ${!selectedChat ? 'hidden md:flex' : 'fixed inset-0 z-50 md:relative md:flex'}`}>
+        {/* Chat Area - Full screen transition on mobile */}
+        <Card className={cn(
+          "flex-1 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] flex-col overflow-hidden relative transition-all",
+          !selectedChat ? "hidden md:flex" : "fixed inset-0 z-50 md:relative md:flex"
+        )}>
           {!selectedChat ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-muted/5">
-              <div className="size-24 bg-white rounded-[3rem] flex items-center justify-center shadow-xl mb-6">
-                <ShieldCheck className="size-12 text-primary" />
+            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-[#F8FAFC]/50 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-1000"><Zap className="size-64" /></div>
+              <div className="size-24 md:size-32 bg-white rounded-[3rem] flex items-center justify-center shadow-xl mb-8 relative z-10">
+                <ShieldCheck className="size-12 md:size-16 text-primary" />
               </div>
-              <h3 className="text-2xl font-black mb-2">Canal Sécurisé</h3>
-              <p className="text-xs font-medium text-muted-foreground max-w-xs">Espace de communication crypté. Vos échanges sont confidentiels.</p>
+              <h3 className="text-2xl md:text-4xl font-black mb-3 uppercase tracking-tight relative z-10">Espace Crypté</h3>
+              <p className="text-[10px] md:text-sm font-bold text-muted-foreground max-w-xs uppercase tracking-widest relative z-10">Communications certifiées ACADEX • AES-256</p>
             </div>
           ) : (
             <>
-              <div className="p-4 md:p-6 border-b flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-20">
-                <div className="flex items-center gap-3 md:gap-6">
-                  <Button variant="ghost" size="icon" className="md:hidden rounded-xl bg-muted/50 mobile-touch-target" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-6" /></Button>
-                  <Avatar className="size-10 md:size-12 border-2 border-muted/20"><AvatarFallback className="font-black text-lg">{selectedChat.otherName?.[0]}</AvatarFallback></Avatar>
+              <div className="p-4 md:p-8 border-b flex items-center justify-between bg-white/95 backdrop-blur-md sticky top-0 z-20">
+                <div className="flex items-center gap-3 md:gap-8">
+                  <Button variant="ghost" size="icon" className="md:hidden rounded-xl bg-muted/50 size-10 mobile-touch-target" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-6" /></Button>
+                  <Avatar className="size-11 md:size-16 border-4 border-muted/20 shadow-sm"><AvatarFallback className="font-black text-xl bg-primary/5 text-primary">{selectedChat.otherName?.[0]}</AvatarFallback></Avatar>
                   <div>
-                    <h3 className="text-base md:text-xl font-black tracking-tight">{selectedChat.otherName}</h3>
-                    <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">En ligne</span>
+                    <h3 className="text-base md:text-2xl font-black tracking-tight uppercase">{selectedChat.otherName}</h3>
+                    <div className="flex items-center gap-2">
+                       <div className="size-2 bg-emerald-500 rounded-full animate-pulse" />
+                       <span className="text-[8px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest">En ligne scellé</span>
+                    </div>
                   </div>
                 </div>
+                <Button variant="ghost" size="icon" className="size-12 rounded-2xl hover:bg-muted mobile-touch-target">
+                  <MoreVertical className="size-6 text-muted-foreground" />
+                </Button>
               </div>
 
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 bg-[#F8FAFC]/30 scroll-smooth no-scrollbar">
+              <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 md:p-14 space-y-6 md:space-y-10 bg-[#F8FAFC]/50 scroll-smooth no-scrollbar">
                 {messages?.map((msg: any, i: number) => {
                   const isMe = msg.senderId === currentUserId
                   return (
-                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-2`}>
-                      <div className={`group relative p-4 rounded-[1.8rem] text-sm md:text-base font-medium shadow-sm leading-relaxed max-w-[85%] md:max-w-[70%] ${isMe ? 'bg-primary text-white rounded-br-none' : 'bg-white text-foreground rounded-bl-none border border-muted/30'}`}>
+                    <div key={msg.id || i} className={cn("flex animate-in slide-in-from-bottom-2", isMe ? "justify-end" : "justify-start")}>
+                      <div className={cn(
+                        "group relative p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] text-sm md:text-lg font-medium shadow-sm leading-relaxed max-w-[88%] md:max-w-[75%]",
+                        isMe ? "bg-primary text-white rounded-br-none shadow-primary/20" : "bg-white text-foreground rounded-bl-none border border-muted/30"
+                      )}>
                         {msg.text}
-                        <div className="flex justify-end gap-1 opacity-40 mt-1">
-                           <span className="text-[8px] font-black">{formatTime(msg.timestamp)}</span>
-                           {isMe && <CheckCheck className="size-2" />}
+                        <div className="flex justify-end gap-1.5 opacity-40 mt-2">
+                           <span className="text-[8px] md:text-[10px] font-black uppercase">{formatTime(msg.timestamp)}</span>
+                           {isMe && <CheckCheck className="size-2 md:size-3" />}
                         </div>
                       </div>
                     </div>
@@ -359,10 +385,20 @@ export default function MessagingPage() {
                 })}
               </div>
 
-              <div className="p-4 md:p-8 pt-4 bg-white border-t border-muted/10">
-                <form onSubmit={handleSendMessage} className="flex items-center gap-2 md:gap-4 bg-muted/30 p-2 pl-4 rounded-[2rem] border-2 border-transparent focus-within:border-primary/10 transition-all shadow-inner">
-                  <Input placeholder="Message..." className="flex-1 bg-transparent border-none shadow-none h-12 font-bold focus-visible:ring-0 text-sm placeholder:text-muted-foreground/40" value={messageText} onChange={(e) => setMessageText(e.target.value)} />
-                  <Button type="submit" disabled={!messageText.trim()} className="bg-primary text-white size-12 rounded-2xl shadow-xl transition-all active:scale-90 mobile-touch-target"><Send className="size-5" /></Button>
+              <div className="p-4 md:p-10 pt-4 bg-white border-t border-muted/10">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-3 md:gap-6 bg-muted/40 p-2 md:p-3 pl-5 md:pl-10 rounded-[2rem] md:rounded-[3rem] border-2 border-transparent focus-within:border-primary/10 transition-all shadow-inner">
+                  <Input 
+                    placeholder="Votre message scellé..." 
+                    className="flex-1 bg-transparent border-none shadow-none h-12 md:h-16 font-bold focus-visible:ring-0 text-sm md:text-xl placeholder:text-muted-foreground/30" 
+                    value={messageText} 
+                    onChange={(e) => setMessageText(e.target.value)} 
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="ghost" className="size-11 md:size-14 rounded-2xl text-muted-foreground hidden sm:flex"><Paperclip className="size-5 md:size-7" /></Button>
+                    <Button type="submit" disabled={!messageText.trim()} className="bg-primary text-white size-12 md:size-16 rounded-[1.2rem] md:rounded-3xl shadow-xl transition-all active:scale-90 mobile-touch-target">
+                      <Send className="size-5 md:size-8" />
+                    </Button>
+                  </div>
                 </form>
               </div>
             </>
