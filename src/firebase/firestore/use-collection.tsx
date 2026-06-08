@@ -6,6 +6,7 @@ import {
   onSnapshot,
   QuerySnapshot,
   DocumentData,
+  FirestoreError,
 } from 'firebase/firestore';
 import { errorEmitter } from '../error-emitter';
 import { FirestorePermissionError } from '../errors';
@@ -13,7 +14,7 @@ import { FirestorePermissionError } from '../errors';
 export function useCollection<T = DocumentData>(query: Query<T> | null) {
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
     if (!query) {
@@ -24,6 +25,7 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
     setLoading(true);
     const unsubscribe = onSnapshot(
       query,
+      { includeMetadataChanges: true },
       (snapshot: QuerySnapshot<T>) => {
         const docs = snapshot.docs.map((doc) => ({
           ...doc.data(),
@@ -32,12 +34,17 @@ export function useCollection<T = DocumentData>(query: Query<T> | null) {
         setData(docs);
         setLoading(false);
       },
-      async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: 'collection', // Generic path as query path is complex
-          operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
+      async (serverError: FirestoreError) => {
+        // Gestion spécifique des erreurs de permission pour l'agent de correction
+        if (serverError.code === 'permission-denied') {
+          const permissionError = new FirestorePermissionError({
+            path: 'collection',
+            operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        }
+        
+        console.warn('Firestore Hook Info:', serverError.message);
         setError(serverError);
         setLoading(false);
       }
