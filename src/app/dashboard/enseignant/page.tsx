@@ -12,7 +12,10 @@ import {
   Loader2,
   Calendar,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  ChevronRight,
+  Zap,
+  BookMarked
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -22,6 +25,7 @@ import { collection, query, where, getDocs, doc, onSnapshot } from "firebase/fir
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import placeholderData from "@/app/lib/placeholder-images.json"
+import { cn } from "@/lib/utils"
 
 export default function TeacherDashboard() {
   const db = useFirestore()
@@ -30,6 +34,7 @@ export default function TeacherDashboard() {
   const [teacherClasses, setTeacherClasses] = useState<string[]>([])
   const [teacherSubject, setTeacherSubject] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [activeYear, setActiveYear] = useState("2026-2027")
 
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "login-education")
 
@@ -38,18 +43,20 @@ export default function TeacherDashboard() {
     const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
     const subject = localStorage.getItem('acadex_user_subject') || ""
     const name = localStorage.getItem('acadex_user_name') || "Monsieur"
+    const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     
     setTeacherId(id)
     setTeacherClasses(classes)
     setTeacherSubject(subject)
     setTeacherName(name)
+    setActiveYear(year)
     setMounted(true)
   }, [])
 
   const studentsQuery = useMemo(() => {
     if (!db || teacherClasses.length === 0) return null
-    return query(collection(db, "students"), where("classId", "in", teacherClasses))
-  }, [db, teacherClasses])
+    return query(collection(db, "students"), where("classId", "in", teacherClasses), where("academicYear", "==", activeYear))
+  }, [db, teacherClasses, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
@@ -58,10 +65,10 @@ export default function TeacherDashboard() {
     const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 
     return [
-      { title: "Mes Classes", value: teacherClasses.length.toString(), label: "Attribuées", icon: Users, color: "text-blue-600" },
-      { title: "Mes Élèves", value: (students?.length || 0).toString(), label: "Effectif total", icon: BookOpen, color: "text-primary" },
-      { title: "Notes Saisies", value: "0", label: "Ce trimestre", icon: PenTool, color: "text-amber-500" },
-      { title: "Pointage", value: "---", label: today, icon: UserCheck, color: "text-emerald-600" },
+      { title: "Mes Classes", value: teacherClasses.length.toString(), label: "Assignées", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
+      { title: "Mes Élèves", value: (students?.length || 0).toString(), label: "Effectif Total", icon: BookOpen, color: "text-primary", bg: "bg-emerald-50" },
+      { title: "Saisie Notes", value: "---", label: "T1 - En cours", icon: PenTool, color: "text-amber-500", bg: "bg-amber-50" },
+      { title: "Statut Présence", value: "OK", label: today, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
     ]
   }, [students, teacherClasses, mounted])
 
@@ -69,103 +76,118 @@ export default function TeacherDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-10 animate-in fade-in duration-500">
+      <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Immersive Teacher Banner */}
-        <div className="relative min-h-[300px] rounded-[3.5rem] overflow-hidden shadow-2xl group">
+        {/* Immersive Teacher Banner - Premium Mobile */}
+        <div className="relative min-h-[300px] md:min-h-[360px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group border-4 border-white">
           <Image 
             src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-teacher/1920/1080"}
             alt="Teacher Cockpit Background"
             fill
-            className="object-cover grayscale-[0.3] brightness-75 group-hover:scale-105 transition-transform duration-1000"
+            className="object-cover grayscale-[0.2] brightness-75 group-hover:scale-105 transition-transform duration-[2000ms]"
             priority
             data-ai-hint={heroImage?.imageHint || "school library"}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-foreground/95 via-foreground/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-br from-foreground/95 via-foreground/60 to-transparent" />
           
-          <div className="absolute inset-0 p-12 flex flex-col md:flex-row md:items-center justify-between gap-8">
-            <div className="space-y-4 max-w-xl">
-              <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg">
-                Bonjour Monsieur <span className="text-primary italic">{teacherName}</span>,
+          <div className="absolute inset-0 p-6 md:p-12 flex flex-col justify-end md:justify-center gap-6">
+            <div className="space-y-3 md:space-y-5 max-w-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[9px] font-black uppercase tracking-[0.2em]">
+                <Zap className="size-3 text-primary fill-primary" /> Espace Pédagogique Acadex
+              </div>
+              <h1 className="text-3xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
+                Bonjour <span className="text-primary italic">M. {teacherName.split(' ')[0]}</span>,
               </h1>
-              <div className="flex flex-wrap items-center gap-4">
-                <Badge className="bg-primary text-white border-none font-black px-6 py-2 uppercase tracking-widest text-xs">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge className="bg-primary text-white border-none font-black px-5 py-2 rounded-full shadow-lg shadow-primary/30 uppercase tracking-widest text-[9px] md:text-xs">
                   {teacherSubject}
                 </Badge>
-                <div className="flex items-center gap-2 font-bold text-sm bg-white/10 backdrop-blur-md text-white/90 px-6 py-2 rounded-full border border-white/10">
-                  <ShieldCheck className="size-4 text-emerald-400" /> Espace Pédagogique Sécurisé
+                <div className="flex items-center gap-2 font-bold text-[10px] md:text-sm bg-white/10 backdrop-blur-md text-white/90 px-5 py-2 rounded-full border border-white/10">
+                  <ShieldCheck className="size-3 md:size-4 text-emerald-400" /> Année {activeYear}
                 </div>
               </div>
             </div>
-            <Button asChild className="bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/30 rounded-2xl h-16 px-10 font-black text-lg transition-all active:scale-95">
-              <Link href="/notes">
-                <PenTool className="mr-3 size-6" /> Saisir les Notes
-              </Link>
-            </Button>
+            <div className="md:absolute md:right-12 md:bottom-12 mt-4 md:mt-0">
+               <Button asChild className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-2xl shadow-primary/30 rounded-2xl h-14 md:h-16 px-10 font-black text-base transition-all active:scale-95">
+                 <Link href="/notes">
+                   <PenTool className="mr-3 size-5" /> Saisir les Notes Trimestrielles
+                 </Link>
+               </Button>
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat) => (
-            <Card key={stat.title} className="p-8 rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between bg-white hover:shadow-lg transition-all group">
-              <div className="flex items-center justify-between mb-6">
-                <div className={`p-4 bg-muted rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
-                  <stat.icon className="size-7" />
+        {/* Stats Grid - optimized 2x2 for Mobile */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+          {stats.map((stat, i) => (
+            <Card key={stat.title} className="p-5 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between bg-white hover:shadow-lg transition-all group relative overflow-hidden h-full">
+              <div className={cn("absolute -top-4 -right-4 size-16 md:size-20 rounded-full opacity-[0.05]", stat.bg)} />
+              <div className="flex items-center justify-between mb-4 md:mb-8">
+                <div className={`p-3 md:p-4 bg-muted rounded-xl md:rounded-2xl ${stat.color} group-hover:bg-primary group-hover:text-white transition-all`}>
+                  <stat.icon className="size-5 md:size-7" />
                 </div>
-                <Badge variant="outline" className="border-none text-[8px] font-black uppercase bg-muted/50">{stat.label}</Badge>
+                <Badge variant="outline" className="border-none text-[7px] md:text-[9px] font-black uppercase bg-muted/50 px-2">{stat.label}</Badge>
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{stat.title}</p>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-black text-foreground">
-                    {loadingStudents && stat.title === "Mes Élèves" ? <Loader2 className="animate-spin size-5" /> : stat.value}
-                  </span>
+                <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{stat.title}</p>
+                <div className="text-xl md:text-3xl font-black text-foreground">
+                  {loadingStudents && stat.title === "Mes Élèves" ? <Loader2 className="animate-spin size-5" /> : stat.value}
                 </div>
               </div>
             </Card>
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-8">
-           <div className="lg:col-span-8 space-y-8">
-              <Card className="border-none shadow-sm bg-white rounded-[3rem] overflow-hidden p-10 flex flex-col items-center justify-center text-center space-y-6">
-                 <div className="size-20 bg-muted rounded-full flex items-center justify-center opacity-30">
-                    <Calendar className="size-10" />
+        <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
+           <div className="lg:col-span-8 space-y-6 md:space-y-10">
+              <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3rem] overflow-hidden p-8 md:p-14 flex flex-col items-center justify-center text-center space-y-6">
+                 <div className="size-20 md:size-28 bg-muted/40 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-center shadow-inner group">
+                    <Calendar className="size-10 md:size-14 text-muted-foreground opacity-30 group-hover:scale-110 transition-transform" />
                  </div>
-                 <div className="space-y-2">
-                    <h3 className="text-2xl font-black">Mon Emploi du Temps</h3>
-                    <p className="text-muted-foreground font-medium max-w-sm">Consultez et modifiez votre programme hebdomadaire.</p>
+                 <div className="space-y-3">
+                    <h3 className="text-xl md:text-3xl font-black tracking-tight">Mon Emploi du Temps</h3>
+                    <p className="text-sm md:text-lg font-medium text-muted-foreground max-w-sm">Consultez votre programme officiel scellé pour {activeYear}.</p>
                  </div>
-                 <Button asChild variant="outline" className="rounded-xl font-black h-12 px-10 border-2">
-                    <Link href="/disponibilites">Voir planning complet</Link>
+                 <Button asChild variant="outline" className="rounded-xl font-black h-12 md:h-14 px-8 md:px-12 border-2 text-xs md:text-sm hover:bg-primary hover:text-white hover:border-primary transition-all">
+                    <Link href="/disponibilites">Ouvrir le Planning Complet</Link>
                  </Button>
               </Card>
            </div>
 
-           <div className="lg:col-span-4 space-y-8">
-              <Link href="/eleves" className="block">
-                <Card className="p-8 rounded-[2.5rem] bg-white border-none shadow-sm hover:shadow-xl transition-all group">
-                   <div className="flex items-center justify-between mb-6">
-                      <div className="size-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Users className="size-7" />
+           <div className="lg:col-span-4 space-y-6 md:space-y-8">
+              <Link href="/eleves" className="block group">
+                <Card className="p-8 md:p-10 rounded-[2rem] md:rounded-[2.5rem] bg-white border-none shadow-sm hover:shadow-2xl transition-all relative overflow-hidden">
+                   <div className="flex items-center justify-between mb-8 md:mb-10">
+                      <div className="size-14 md:size-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
+                        <Users className="size-7 md:size-8" />
                       </div>
-                      <ArrowRight className="size-5 text-muted-foreground opacity-30 group-hover:opacity-100 transition-all" />
+                      <div className="size-10 md:size-12 rounded-xl flex items-center justify-center bg-muted/30 opacity-40 group-hover:opacity-100 transition-all">
+                        <ChevronRight className="size-5 md:size-6" />
+                      </div>
                    </div>
-                   <h3 className="text-xl font-black mb-2">Mes Élèves</h3>
-                   <p className="text-sm font-medium text-muted-foreground">Accès aux fiches et carnets de notes.</p>
+                   <h3 className="text-xl md:text-2xl font-black mb-2">Répertoire Élèves</h3>
+                   <p className="text-xs md:text-sm font-medium text-muted-foreground">Accès rapide aux fiches pédagogiques.</p>
+                   <div className="absolute -bottom-6 -right-6 opacity-[0.03] group-hover:scale-150 transition-transform duration-1000">
+                     <BookMarked className="size-32" />
+                   </div>
                 </Card>
               </Link>
 
-              <Card className="p-8 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all">
-                <div className="flex items-center gap-4 mb-6">
-                  <Sparkles className="size-6 text-primary animate-pulse" />
-                  <h4 className="font-black text-lg">Assistant IA</h4>
+              <Card className="p-8 md:p-10 rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all relative">
+                <div className="flex items-center gap-4 mb-6 md:mb-8">
+                  <div className="size-12 md:size-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5 animate-pulse-slow">
+                    <Sparkles className="size-6 md:size-8 text-primary fill-primary/10" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-lg md:text-xl">Assistant IA</h4>
+                    <p className="text-[8px] md:text-[9px] font-black text-primary uppercase tracking-widest">Support Pédagogique</p>
+                  </div>
                 </div>
-                <p className="text-sm font-medium text-muted-foreground italic leading-relaxed mb-6">
-                  "Utilisez l'IA pour générer les observations de fin de trimestre."
+                <p className="text-xs md:text-sm font-medium text-muted-foreground italic leading-relaxed mb-8 md:mb-10">
+                  "Utilisez l'IA pour générer les observations de fin de trimestre en analysant la progression de vos élèves."
                 </p>
-                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 border border-primary/10 rounded-xl font-black h-11">
-                  <Link href="/assistant">Ouvrir l'Assistant</Link>
+                <Button asChild className="w-full bg-white text-primary hover:bg-primary/90 border border-primary/10 rounded-xl font-black h-12 md:h-14 shadow-sm active:scale-95 transition-all">
+                  <Link href="/assistant">Lancer l'Analyse IA</Link>
                 </Button>
               </Card>
            </div>
