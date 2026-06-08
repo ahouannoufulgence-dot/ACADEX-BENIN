@@ -2,10 +2,10 @@
 {
   "placeholderImages": [
     {
-      "id": "hero-students",
-      "description": "Smiling African students studying together in a modern bright classroom",
-      "imageUrl": "https://picsum.photos/seed/acadex-hero-smiling/1920/1080",
-      "imageHint": "smiling students"
+      "id": "hero-students-class",
+      "description": "African students in green uniforms writing in notebooks in a bright classroom",
+      "imageUrl": "https://picsum.photos/seed/acadex-green-uniforms/1920/1080",
+      "imageHint": "students green uniforms"
     },
     {
       "id": "registration-green",

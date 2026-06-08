@@ -34,7 +34,7 @@ export default function StudentDashboard() {
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
   useEffect(() => {
     setStudentId(localStorage.getItem('acadex_user_id') || "")
@@ -89,14 +89,15 @@ export default function StudentDashboard() {
 
   return (
     <DashboardLayout>
-      {/* Background Image with Professional Overlay - Only for Dashboard */}
+      {/* Immersive Background Image - Exact green uniform students */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
+          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
           alt="ACADEX Background"
           fill
-          className="object-cover opacity-10 grayscale-[0.3]"
+          className="object-cover opacity-15"
           priority
+          data-ai-hint="students green uniforms"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/40 to-transparent" />
       </div>
@@ -106,11 +107,12 @@ export default function StudentDashboard() {
         {/* Student Banner */}
         <div className="relative min-h-[280px] md:min-h-[380px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-student-dashboard/1920/1080"}
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
             alt="Student Cockpit"
             fill
             className="object-cover brightness-[0.7] group-hover:scale-105 transition-transform duration-[3000ms]"
             priority
+            data-ai-hint="students green uniforms"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           

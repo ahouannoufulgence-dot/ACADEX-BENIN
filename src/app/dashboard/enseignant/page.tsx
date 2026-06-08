@@ -34,7 +34,7 @@ export default function TeacherDashboard() {
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students")
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
   useEffect(() => {
     const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
@@ -72,14 +72,15 @@ export default function TeacherDashboard() {
 
   return (
     <DashboardLayout>
-      {/* Background Image with Professional Overlay - Only for Dashboard */}
+      {/* Immersive Background Image */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
+          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
           alt="ACADEX Background"
           fill
-          className="object-cover opacity-10 grayscale-[0.3]"
+          className="object-cover opacity-15"
           priority
+          data-ai-hint="students green uniforms"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/40 to-transparent" />
       </div>
@@ -89,11 +90,12 @@ export default function TeacherDashboard() {
         {/* Hero Banner */}
         <div className="relative min-h-[250px] md:min-h-[350px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-teacher/1920/1080"}
+            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
             alt="Teacher Cockpit"
             fill
             className="object-cover brightness-[0.7] group-hover:scale-105 transition-transform duration-[3000ms]"
             priority
+            data-ai-hint="students green uniforms"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
           
@@ -192,7 +194,7 @@ export default function TeacherDashboard() {
                 <p className="text-xs md:text-base font-medium text-muted-foreground italic leading-relaxed mb-8 md:mb-12 relative z-10">
                   "Générez automatiquement les observations de fin de trimestre en analysant la progression réelle de vos élèves."
                 </p>
-                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 border border-primary/10 rounded-xl md:rounded-2xl font-black h-12 md:h-16 shadow-sm active:scale-95 transition-all relative z-10 mobile-touch-target">
+                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 border border-primary/10 rounded-xl md:rounded-2xl font-black h-11 md:h-16 shadow-sm active:scale-95 transition-all relative z-10 mobile-touch-target">
                   <Link href="/assistant">Lancer l'Analyse IA</Link>
                 </Button>
               </Card>

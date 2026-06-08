@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function Home() {
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students");
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
 
   const roles = [
     {
@@ -40,17 +40,17 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* Professional Background Image with Dark Overlay */}
+      {/* Immersive Background Image exactly as requested */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
+          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
           alt="ACADEX Excellence"
           fill
-          className="object-cover opacity-20 transition-transform duration-[10000ms] hover:scale-110"
+          className="object-cover opacity-20"
           priority
-          data-ai-hint="smiling students"
+          data-ai-hint="students green uniforms"
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-black/60 to-primary/40" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/40 to-primary/30" />
       </div>
 
       <div className="relative z-10 w-full max-w-4xl space-y-12 animate-in fade-in zoom-in-95 duration-700">

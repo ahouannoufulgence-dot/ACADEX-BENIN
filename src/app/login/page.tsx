@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [schoolName, setSchoolName] = useState("ACADEX")
   const [schoolLogo, setSchoolLogo] = useState("")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students");
+  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -94,15 +94,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
-      {/* Professional Background Image with Professional Dark Overlay */}
+      {/* Background Image exactly as requested */}
       <div className="absolute inset-0 z-0">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students/1920/1080"}
+          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
           alt="Login Background"
           fill
-          className="object-cover opacity-30 grayscale-[0.2]"
+          className="object-cover opacity-30"
           priority
-          data-ai-hint="smiling students"
+          data-ai-hint="students green uniforms"
         />
         <div className="absolute inset-0 bg-gradient-to-br from-black/95 via-background/90 to-primary/40" />
       </div>
