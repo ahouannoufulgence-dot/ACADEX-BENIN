@@ -77,6 +77,7 @@ const navigationConfig = {
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
+    { name: "Années Scolaires", href: "/archives", icon: History },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
   Enseignant: [
@@ -142,6 +143,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setActiveYear(year)
     localStorage.setItem('acadex_active_year', year)
     window.dispatchEvent(new CustomEvent('acadex_year_changed', { detail: year }))
+    toast({ title: `Passage en ${year}`, description: "L'univers scolaire a été mis à jour." })
     router.refresh()
   }
 
@@ -272,4 +274,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
     </SidebarProvider>
   )
+}
+
+function toast(arg0: { title: string; description: string }) {
+  // Simple toast fallback if needed, but we should use the hook version in pages
+  console.log(arg0.title, arg0.description);
 }
