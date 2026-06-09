@@ -305,12 +305,12 @@ export default function TreasuryModule() {
                     ) : (
                       <div className="grid gap-3">
                         {[...(payments || []), ...(expenses || [])]
-                          .sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds)
+                          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
                           .slice(0, 6)
                           .map((tx: any, idx) => {
                             const isExpense = !!tx.category
                             return (
-                              <div key={tx.id} className="p-4 md:p-7 bg-muted/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/10 hover:bg-white hover:shadow-xl transition-all group flex items-center justify-between">
+                              <div key={tx.id || idx} className="p-4 md:p-7 bg-muted/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/10 hover:bg-white hover:shadow-xl transition-all group flex items-center justify-between">
                                 <div className="flex items-center gap-4 md:gap-8">
                                    <div className={cn("size-10 md:size-14 rounded-xl md:rounded-[1.2rem] flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", isExpense ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600")}>
                                      {isExpense ? <PiggyBank className="size-4.5 md:size-6" /> : <Banknote className="size-4.5 md:size-6" />}
@@ -433,7 +433,7 @@ export default function TreasuryModule() {
                                <div className="flex items-center gap-6">
                                   <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">{(p.studentName || "?")[0]}</div>
                                   <div>
-                                    <p className="font-black text-xl text-foreground uppercase tracking-tight">{p.studentName}</p>
+                                    <p className="font-black text-xl text-foreground uppercase tracking-tight group-hover:text-primary transition-colors">{p.studentName}</p>
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.studentId}</p>
                                   </div>
                                </div>

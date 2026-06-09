@@ -8,25 +8,23 @@ import {
   Layers, 
   ChevronRight, 
   Users, 
-  FileText, 
-  ShieldCheck, 
-  ChevronLeft, 
-  Loader2, 
-  GraduationCap,
-  Award,
-  Zap,
-  BookOpen,
-  ClipboardList,
-  Search,
-  Download,
-  Filter,
-  TrendingUp,
-  TrendingDown,
-  Sparkles,
-  User,
-  Star,
-  Info,
-  ArrowRight
+  Award, 
+  Zap, 
+  BookOpen, 
+  ClipboardList, 
+  Search, 
+  Download, 
+  TrendingUp, 
+  TrendingDown, 
+  Sparkles, 
+  User, 
+  Star, 
+  Info, 
+  ArrowRight,
+  ChevronLeft,
+  Loader2,
+  CheckCircle2,
+  ShieldCheck
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
@@ -66,7 +64,8 @@ export default function PromotionsPage() {
   const [aiReport, setAiReport] = useState<string | null>(null)
 
   useEffect(() => {
-    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
+    const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+    setActiveYear(year)
     const updateYear = (e: any) => setActiveYear(e.detail)
     window.addEventListener('acadex_year_changed', updateYear as any)
     return () => window.removeEventListener('acadex_year_changed', updateYear as any)
@@ -184,10 +183,10 @@ export default function PromotionsPage() {
   }, [students, grades, lifeEvents, coefs])
 
   const currentClassStudents = useMemo(() => {
-    if (!academicData.studentsProcessed || academicData.studentsProcessed.length === 0) return []
+    if (!academicData.studentsProcessed) return []
     return academicData.studentsProcessed
       .filter((s: any) => s.classId === selectedClass)
-      .sort((a: any, b: any) => a.rank - b.rank)
+      .sort((a: any, b: any) => (a.rank || 0) - (b.rank || 0))
   }, [academicData, selectedClass])
 
   const handleAnalyzeClass = async () => {
@@ -195,8 +194,7 @@ export default function PromotionsPage() {
     setAnalyzing(true)
     try {
       const prompt = `Analysez la performance de la classe ${selectedClass}. 
-      Statistiques : Moyenne ${academicData.classStats[selectedClass]?.avg}, Taux réussite ${academicData.classStats[selectedClass]?.successRate}%.
-      Données élèves : ${JSON.stringify(currentClassStudents.map((s: any) => ({ nom: s.lastName, moy: s.generalAvg })))}`
+      Statistiques : Moyenne ${academicData.classStats[selectedClass]?.avg}, Taux réussite ${academicData.classStats[selectedClass]?.successRate}%.`
       
       const res = await askAcadexBrain({
         question: prompt,
@@ -220,7 +218,6 @@ export default function PromotionsPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Responsive Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">
@@ -238,7 +235,6 @@ export default function PromotionsPage() {
           )}
         </div>
 
-        {/* 1. VUE DES PROMOTIONS */}
         {!selectedLevel && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {levels.map((level) => {
@@ -273,7 +269,6 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {/* 2. VUE DES CLASSES */}
         {selectedLevel && !selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
             <div className="flex items-center gap-4">
@@ -311,11 +306,8 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {/* 3. TABLEAU SCOLAIRE INTELLIGENT */}
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
-            
-            {/* Stats de tête - Responsive Scroll on Mobile */}
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
@@ -334,7 +326,6 @@ export default function PromotionsPage() {
                ))}
             </div>
 
-            {/* Outils & Filtres */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-[2rem] shadow-sm border-2 border-primary/5">
                <div className="flex items-center justify-between w-full md:w-auto">
                  <Button variant="ghost" onClick={goBackToClasses} className="rounded-xl font-black text-[10px] md:text-xs uppercase mobile-touch-target"><ChevronLeft className="size-4 mr-1 md:mr-2" /> Retour</Button>
@@ -369,7 +360,6 @@ export default function PromotionsPage() {
             )}
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
-               {/* Mobile Cards View - Ultra Premium */}
                <div className="md:hidden p-4 space-y-4 bg-muted/5">
                   {currentClassStudents.map((s: any) => (
                     <div key={s.id} className="p-5 bg-white rounded-[2rem] border border-muted/50 shadow-sm flex flex-col gap-4 active:scale-[0.98] transition-all">
@@ -388,7 +378,7 @@ export default function PromotionsPage() {
                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-muted/30">
                           <div className="p-3 bg-muted/30 rounded-xl">
                              <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">{selectedSubject}</p>
-                             <p className="font-black text-xs">{s.subjects[selectedSubject]?.avg?.toFixed(2) || "---"}</p>
+                             <p className="font-black text-xs">{s.subjects?.[selectedSubject]?.avg?.toFixed(2) || "---"}</p>
                           </div>
                           <div className="p-3 bg-muted/30 rounded-xl">
                              <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">Conduite</p>
@@ -402,7 +392,6 @@ export default function PromotionsPage() {
                   ))}
                </div>
 
-               {/* Desktop Table View */}
                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
@@ -422,7 +411,7 @@ export default function PromotionsPage() {
                     </thead>
                     <tbody className="divide-y divide-muted/20">
                       {currentClassStudents.map((s: any) => {
-                        const sub = s.subjects[selectedSubject]
+                        const sub = s.subjects?.[selectedSubject]
                         return (
                           <tr key={s.id} className="hover:bg-muted/5 transition-all group">
                             <td className="px-8 py-6">
