@@ -24,7 +24,8 @@ import {
   ChevronLeft,
   Loader2,
   CheckCircle2,
-  ShieldCheck
+  ShieldCheck,
+  GraduationCap
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
@@ -83,7 +84,11 @@ export default function PromotionsPage() {
 
   const lifeQuery = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "student_life"), where("academicYear", "==", activeYear))
+    return query(
+      collection(db, "student_life"), 
+      where("academicYear", "==", activeYear),
+      where("category", "in", ["presence", "discipline", "conduite"])
+    )
   }, [db, activeYear])
 
   const coefsQuery = useMemo(() => {
@@ -183,7 +188,7 @@ export default function PromotionsPage() {
   }, [students, grades, lifeEvents, coefs])
 
   const currentClassStudents = useMemo(() => {
-    if (!academicData.studentsProcessed) return []
+    if (!academicData.studentsProcessed || !selectedClass) return []
     return academicData.studentsProcessed
       .filter((s: any) => s.classId === selectedClass)
       .sort((a: any, b: any) => (a.rank || 0) - (b.rank || 0))
@@ -308,6 +313,7 @@ export default function PromotionsPage() {
 
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
+            {/* Stats Horizontales pour mobile */}
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
@@ -360,6 +366,7 @@ export default function PromotionsPage() {
             )}
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
+               {/* Mobile View: Cards */}
                <div className="md:hidden p-4 space-y-4 bg-muted/5">
                   {currentClassStudents.map((s: any) => (
                     <div key={s.id} className="p-5 bg-white rounded-[2rem] border border-muted/50 shadow-sm flex flex-col gap-4 active:scale-[0.98] transition-all">
@@ -392,6 +399,7 @@ export default function PromotionsPage() {
                   ))}
                </div>
 
+               {/* Desktop View: Table */}
                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
@@ -421,7 +429,7 @@ export default function PromotionsPage() {
                                <Link href={`/eleves/${s.id}`} className="block hover:translate-x-1 transition-transform">
                                   <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
                                   <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
-                               </Link>
+                                </Link>
                             </td>
                             <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int1 ?? "---"}</td>
                             <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int2 ?? "---"}</td>
