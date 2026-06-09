@@ -16,7 +16,8 @@ import {
   BarChart3,
   ChevronDown,
   History,
-  ClipboardList
+  ClipboardList,
+  Layers
 } from "lucide-react"
 import {
   Sidebar,
@@ -55,6 +56,7 @@ import placeholderData from "@/app/lib/placeholder-images.json"
 const navigationConfig = {
   Directeur: [
     { name: "Dashboard", href: "/dashboard/directeur", icon: LayoutDashboard },
+    { name: "Promotions", href: "/promotions", icon: Layers },
     { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
     { name: "Vie de l’Élève", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Élèves", href: "/eleves", icon: Users },
@@ -98,7 +100,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
-  const showBackground = pathname.includes('/dashboard/') || pathname === '/dashboard'
+  const showBackground = pathname.includes('/dashboard/') || pathname === '/dashboard' || pathname === '/login' || pathname === '/'
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
@@ -106,7 +108,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const id = localStorage.getItem('acadex_user_id')
     const savedYear = localStorage.getItem('acadex_active_year')
     
-    if (!role) {
+    if (!role && pathname !== '/login' && pathname !== '/' && !pathname.startsWith('/register')) {
       router.replace("/login")
       return
     }
@@ -125,7 +127,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       }
     })
     return () => unsub()
-  }, [router, db])
+  }, [router, db, pathname])
 
   const handleYearChange = (year: string) => {
     setActiveYear(year)
@@ -144,7 +146,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     router.replace("/login")
   }
 
-  if (!mounted || !userRole) return null
+  if (!mounted) return null
+
+  // Layout public (Login, Register, etc.)
+  if (!userRole && (pathname === '/login' || pathname === '/' || pathname.startsWith('/register'))) {
+    return <>{children}</>
+  }
 
   return (
     <SidebarProvider>
@@ -156,7 +163,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
               alt="Professional Background"
               fill
-              className="object-cover opacity-40"
+              className="object-cover"
               priority
             />
             <div className="absolute inset-0 bg-black/65" />
@@ -180,7 +187,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-2 py-4 md:py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.25em] text-[9px] group-data-[collapsible=icon]:hidden">
-                  MENU {userRole.toUpperCase()}
+                  MENU {userRole?.toUpperCase()}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-1 md:gap-2">
