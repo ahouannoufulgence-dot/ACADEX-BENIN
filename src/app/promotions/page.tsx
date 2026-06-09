@@ -25,7 +25,8 @@ import {
   Loader2,
   CheckCircle2,
   ShieldCheck,
-  GraduationCap
+  GraduationCap,
+  Clock
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
@@ -67,9 +68,6 @@ export default function PromotionsPage() {
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     setActiveYear(year)
-    const updateYear = (e: any) => setActiveYear(e.detail)
-    window.addEventListener('acadex_year_changed', updateYear as any)
-    return () => window.removeEventListener('acadex_year_changed', updateYear as any)
   }, [])
 
   const studentsQuery = useMemo(() => {
@@ -127,7 +125,6 @@ export default function PromotionsPage() {
           const config = coefs?.find(c => c.id === configId)
           subjects[g.subject] = { vals: [], coef: config?.coef || Number(g.coefficient) || 1, details: {} }
         }
-        subjects[g.subject].vals.push(Number(g.value))
         subjects[g.subject].details[g.type] = Number(g.value)
       })
 
@@ -135,8 +132,21 @@ export default function PromotionsPage() {
       let totalCoef = 0
       
       Object.entries(subjects).forEach(([name, s]: [string, any]) => {
-        const avg = s.vals.length > 0 ? s.vals.reduce((a:number, b:number) => a+b, 0) / s.vals.length : 0
+        // CALCUL PROGRESSIF
+        const d = s.details
+        const interros = [d.int1, d.int2, d.int3].filter(v => v !== undefined)
+        const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : null
+        
+        const pillars = []
+        if (avgInt !== null) pillars.push(avgInt)
+        if (d.dev1 !== undefined) pillars.push(d.dev1)
+        if (d.dev2 !== undefined) pillars.push(d.dev2)
+        if (d.comp !== undefined) pillars.push(d.comp)
+
+        const avg = pillars.length > 0 ? (pillars.reduce((a:number, b:number) => a+b, 0) / pillars.length) : 0
         s.avg = avg
+        s.isProvisional = pillars.length < 4
+        
         totalWeighted += avg * s.coef
         totalCoef += s.coef
       })
@@ -199,7 +209,8 @@ export default function PromotionsPage() {
     setAnalyzing(true)
     try {
       const prompt = `Analysez la performance de la classe ${selectedClass}. 
-      Statistiques : Moyenne ${academicData.classStats[selectedClass]?.avg}, Taux réussite ${academicData.classStats[selectedClass]?.successRate}%.`
+      Statistiques actuelles : Moyenne ${academicData.classStats[selectedClass]?.avg}, Taux réussite ${academicData.classStats[selectedClass]?.successRate}%. 
+      Certaines notes sont encore en attente (calcul progressif).`
       
       const res = await askAcadexBrain({
         question: prompt,
@@ -208,7 +219,7 @@ export default function PromotionsPage() {
         contextData: { schoolName: "ACADEX", year: activeYear, stats: academicData.classStats[selectedClass] }
       })
       setAiReport(res.answer)
-      toast({ title: "Analyse Scellée" })
+      toast({ title: "Audit IA Terminé" })
     } catch (e) {
       toast({ title: "Erreur IA", variant: "destructive" })
     } finally {
@@ -229,8 +240,8 @@ export default function PromotionsPage() {
               Centre <span className="text-primary italic">Promotions</span>
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[9px] md:text-sm">
-              <Layers className="size-3.5 md:size-4 text-primary" />
-              <span>Pilotage Académique • {activeYear}</span>
+              <Clock className="size-3.5 md:size-4 text-amber-500" />
+              <span>Analyse Progressive • Année {activeYear}</span>
             </div>
           </div>
           {selectedLevel && (
@@ -262,11 +273,7 @@ export default function PromotionsPage() {
                   </div>
                   <div className="space-y-1 relative z-10">
                     <h3 className="text-xl md:text-3xl font-black text-foreground uppercase tracking-tight">{level.label}</h3>
-                    <p className="text-[10px] md:text-sm font-black text-primary/60 uppercase tracking-widest">MOY : {levelAvg}/20</p>
-                  </div>
-                  <div className="mt-8 pt-6 border-t border-muted/30 flex justify-between items-center relative z-10">
-                    <span className="text-[10px] md:text-xs font-black text-muted-foreground uppercase">{data?.count || 0} Élèves</span>
-                    <ChevronRight className="size-3.5 md:size-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    <p className="text-[10px] md:text-sm font-black text-primary/60 uppercase tracking-widest">MOY PROV : {levelAvg}/20</p>
                   </div>
                 </Card>
               )
@@ -274,53 +281,15 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {selectedLevel && !selectedClass && (
-          <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
-            <div className="flex items-center gap-4">
-               <Badge className="bg-primary text-white text-base md:text-2xl font-black px-6 py-2 rounded-full uppercase shadow-lg shadow-primary/20">{selectedLevel}</Badge>
-               <div className="h-0.5 flex-1 bg-muted/30" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
-              {Array.from(academicData.levelsMap[selectedLevel]?.classes || []).sort().map((cls: any) => {
-                const stats = academicData.classStats[cls]
-                return (
-                  <Card 
-                    key={cls}
-                    onClick={() => setSelectedClass(cls)}
-                    className="p-8 md:p-12 rounded-[2.5rem] bg-white border-none shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden active:scale-95"
-                  >
-                    <div className="absolute top-0 right-0 p-6 opacity-[0.02]"><Zap className="size-16 md:size-20" /></div>
-                    <div className="size-16 md:size-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-                      <BookOpen className="size-6 md:size-10" />
-                    </div>
-                    <h3 className="text-2xl md:text-4xl font-black mb-4 uppercase text-center">{cls}</h3>
-                    <div className="space-y-3 pt-4 border-t border-muted/30">
-                       <div className="flex justify-between text-[9px] md:text-[10px] font-black uppercase">
-                          <span className="text-muted-foreground">Moyenne</span>
-                          <span className="text-primary">{stats?.avg || "0.00"}/20</span>
-                       </div>
-                       <div className="flex justify-between text-[9px] md:text-[10px] font-black uppercase">
-                          <span className="text-muted-foreground">Réussite</span>
-                          <span className="text-emerald-600">{stats?.successRate || "0"}%</span>
-                       </div>
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
-            {/* Stats Horizontales - Scroll Mobile */}
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
-                 { label: "Moyenne", val: (academicData.classStats[selectedClass]?.avg || "0.00") + "/20", icon: TrendingUp, color: "text-primary" },
+                 { label: "Moyenne Prov.", val: (academicData.classStats[selectedClass]?.avg || "0.00") + "/20", icon: TrendingUp, color: "text-primary" },
                  { label: "Major", val: (academicData.classStats[selectedClass]?.max || "0.00") + "/20", icon: Star, color: "text-amber-500" },
-                 { label: "Faible", val: (academicData.classStats[selectedClass]?.min || "0.00") + "/20", icon: TrendingDown, color: "text-red-500" },
-                 { label: "Réussite", val: (academicData.classStats[selectedClass]?.successRate || "0") + "%", icon: CheckCircle2, color: "text-emerald-600" },
+                 { label: "Réussite Prov.", val: (academicData.classStats[selectedClass]?.successRate || "0") + "%", icon: CheckCircle2, color: "text-emerald-600" },
+                 { label: "Année", val: activeYear, icon: Clock, color: "text-muted-foreground" },
                ].map((s, i) => (
                  <Card key={i} className="min-w-[130px] md:min-w-0 p-5 md:p-7 rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between shrink-0 lg:shrink">
                     <div className={cn("p-2 rounded-xl bg-muted w-fit mb-4", s.color)}><s.icon className="size-4 md:size-6" /></div>
@@ -332,89 +301,16 @@ export default function PromotionsPage() {
                ))}
             </div>
 
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-[2rem] shadow-sm border-2 border-primary/5">
-               <div className="flex items-center justify-between w-full md:w-auto">
-                 <Button variant="ghost" onClick={goBackToClasses} className="rounded-xl font-black text-[9px] md:text-xs uppercase mobile-touch-target"><ChevronLeft className="size-3.5 mr-1.5" /> Retour</Button>
-                 <Badge className="bg-primary text-white text-xs md:text-lg font-black px-4 md:px-6 h-10 md:h-12 rounded-2xl">{selectedClass}</Badge>
-               </div>
-               
-               <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
-                  <div className="flex-1 md:w-64">
-                    <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                       <SelectTrigger className="h-11 md:h-12 rounded-xl border-2 font-black text-[10px] md:text-sm"><SelectValue /></SelectTrigger>
-                       <SelectContent className="rounded-xl border-2 p-1.5">
-                          {BENIN_SUBJECTS.map(s => <SelectItem key={s} value={s} className="font-bold p-3 rounded-lg">{s}</SelectItem>)}
-                       </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleAnalyzeClass} disabled={analyzing} className="bg-primary hover:bg-primary/90 rounded-xl h-11 md:h-12 px-4 md:px-8 font-black shadow-xl shadow-primary/20 text-[9px] md:text-sm mobile-touch-target">
-                     {analyzing ? <Loader2 className="animate-spin size-3.5" /> : <Sparkles className="size-3.5 md:size-4 mr-2" />}
-                     <span className="hidden sm:inline">Analyser Classe</span>
-                     <span className="sm:hidden">IA</span>
-                  </Button>
-               </div>
-            </div>
-
-            {aiReport && (
-              <Card className="p-8 rounded-[2.5rem] bg-foreground text-white shadow-2xl relative overflow-hidden animate-in zoom-in-95">
-                 <div className="relative z-10 space-y-4">
-                    <h3 className="text-lg md:text-xl font-black flex items-center gap-3 uppercase"><Zap className="text-primary fill-primary size-4 md:size-6" /> Diagnostic Brain v1</h3>
-                    <p className="text-white/80 italic font-medium leading-relaxed border-l-4 border-primary pl-6 text-xs md:text-base">{aiReport}</p>
-                 </div>
-                 <Sparkles className="absolute -bottom-10 -right-10 size-40 md:size-48 text-white/[0.03]" />
-              </Card>
-            )}
-
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
-               {/* Mobile View: Cards Bijou */}
-               <div className="md:hidden p-4 space-y-4 bg-muted/5">
-                  {currentClassStudents.map((s: any) => (
-                    <div key={s.id} className="p-5 bg-white rounded-[2rem] border border-muted/50 shadow-sm flex flex-col gap-4 active:scale-[0.98] transition-all">
-                       <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-3">
-                             <div className={cn("size-9 rounded-xl flex items-center justify-center font-black shadow-sm text-[10px]", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary")}>
-                               {s.rank}e
-                             </div>
-                             <div className="min-w-0">
-                                <p className="font-black text-xs uppercase truncate max-w-[140px]">{s.lastName} {s.firstName}</p>
-                                <p className="text-[8px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
-                             </div>
-                          </div>
-                          <Badge className="bg-primary h-7 px-2.5 rounded-lg font-black text-xs shadow-sm">{s.generalAvg.toFixed(2)}</Badge>
-                       </div>
-                       <div className="grid grid-cols-2 gap-2 pt-2 border-t border-muted/30">
-                          <div className="p-3 bg-muted/20 rounded-xl">
-                             <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">{selectedSubject.substring(0, 10)}...</p>
-                             <p className="font-black text-xs">{s.subjects?.[selectedSubject]?.avg?.toFixed(2) || "---"}</p>
-                          </div>
-                          <div className="p-3 bg-muted/20 rounded-xl">
-                             <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">Conduite</p>
-                             <p className="font-black text-xs">{s.conduct.toFixed(1)}/20</p>
-                          </div>
-                       </div>
-                       <Button variant="ghost" asChild className="w-full font-black text-primary text-[9px] uppercase h-9 hover:bg-primary/5 rounded-xl mobile-touch-target">
-                         <Link href={`/eleves/${s.id}`}>Détails Dossier <ArrowRight className="ml-1.5 size-3" /></Link>
-                       </Button>
-                    </div>
-                  ))}
-               </div>
-
-               {/* Desktop View: Table Royale */}
-               <div className="hidden md:block overflow-x-auto">
+               <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-muted/30 text-[9px] font-black uppercase text-muted-foreground border-b border-muted/30">
                       <tr>
                         <th className="px-8 py-6 text-left">Rang</th>
                         <th className="px-8 py-6 text-left">Élève</th>
-                        <th className="px-4 py-6 text-center">Int 1</th>
-                        <th className="px-4 py-6 text-center">Int 2</th>
-                        <th className="px-4 py-6 text-center">Int 3</th>
-                        <th className="px-4 py-6 text-center">Dev 1</th>
-                        <th className="px-4 py-6 text-center">Dev 2</th>
                         <th className="px-6 py-6 text-center bg-primary/5 text-primary">Moy Mat.</th>
-                        <th className="px-4 py-6 text-center">Coef</th>
                         <th className="px-6 py-6 text-center">Conduite</th>
-                        <th className="px-8 py-6 text-right bg-primary text-white">Moy Générale</th>
+                        <th className="px-8 py-6 text-right bg-primary text-white">Moy Générale Prov.</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/20">
@@ -426,18 +322,13 @@ export default function PromotionsPage() {
                                <div className={cn("size-10 rounded-xl flex items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}e</div>
                             </td>
                             <td className="px-8 py-6">
-                               <Link href={`/eleves/${s.id}`} className="block hover:translate-x-1 transition-transform">
-                                  <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
-                                  <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
-                                </Link>
+                               <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
+                               <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
                             </td>
-                            <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int1 ?? "---"}</td>
-                            <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int2 ?? "---"}</td>
-                            <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int3 ?? "---"}</td>
-                            <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.dev1 ?? "---"}</td>
-                            <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.dev2 ?? "---"}</td>
-                            <td className="px-6 py-6 text-center font-black text-primary bg-primary/5">{sub?.avg?.toFixed(2) ?? "0.00"}</td>
-                            <td className="px-4 py-6 text-center font-bold">{sub?.coef || 1}</td>
+                            <td className="px-6 py-6 text-center font-black text-primary bg-primary/5">
+                              {sub?.avg?.toFixed(2) ?? "0.00"}
+                              {sub?.isProvisional && <span className="ml-1 text-[8px] text-amber-500 animate-pulse">⏳</span>}
+                            </td>
                             <td className="px-6 py-6 text-center font-black text-emerald-600">{s.conduct.toFixed(1)}</td>
                             <td className="px-8 py-6 text-right">
                                <span className="font-black text-2xl text-foreground tabular-nums">{s.generalAvg.toFixed(2)}</span>
@@ -449,20 +340,6 @@ export default function PromotionsPage() {
                   </table>
                </div>
             </Card>
-
-            <div className="p-6 md:p-8 bg-muted/20 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-dashed border-muted-foreground/10">
-               <div className="flex items-center gap-4 text-center md:text-left">
-                  <div className="size-10 md:size-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                    <ShieldCheck className="text-primary size-5 md:size-6" />
-                  </div>
-                  <p className="text-[10px] md:text-sm font-medium text-muted-foreground max-w-xl italic">
-                    "Toutes les moyennes et les rangs affichés sont scellés et synchronisés avec le module de Vie Scolaire (Note de Conduite) et les Coefficients Officiels."
-                  </p>
-               </div>
-               <Button className="w-full md:w-auto rounded-xl font-black bg-foreground text-white h-12 md:h-14 px-8 shadow-lg active:scale-95 transition-all text-[10px] md:text-sm mobile-touch-target">
-                 <Download className="mr-2 size-3.5 md:size-4" /> EXPORTER CLASSEMENT
-               </Button>
-            </div>
           </div>
         )}
       </div>

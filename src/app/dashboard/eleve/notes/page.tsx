@@ -18,7 +18,8 @@ import {
   ClipboardList,
   Calculator,
   CheckCircle2,
-  Calendar
+  Calendar,
+  Clock
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -42,13 +43,11 @@ export default function StudentGradesPage() {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
-  // 1. MES NOTES RÉELLES
   const myGradesQuery = useMemo(() => {
     if (!db || !studentId) return null
     return query(collection(db, "grades"), where("studentId", "==", studentId), where("academicYear", "==", activeYear))
   }, [db, studentId, activeYear])
 
-  // 2. VIE SCOLAIRE POUR LA CONDUITE
   const myLifeEventsQuery = useMemo(() => {
     if (!db || !studentId) return null
     return query(collection(db, "student_life"), where("studentId", "==", studentId), where("academicYear", "==", activeYear))
@@ -62,7 +61,6 @@ export default function StudentGradesPage() {
     
     const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
 
-    // CALCUL DE LA CONDUITE
     let conductValue = 20
     if (myLifeEvents) {
       myLifeEvents.forEach((e: any) => { if (e.pointsImpact) conductValue += Number(e.pointsImpact) })
@@ -75,11 +73,9 @@ export default function StudentGradesPage() {
         subjects[g.subject] = { 
           name: g.subject, 
           coef: Number(g.coefficient) || 1, 
-          vals: [],
           details: { int1: null, int2: null, int3: null, dev1: null, dev2: null, comp: null } 
         }
       }
-      subjects[g.subject].vals.push(Number(g.value))
       subjects[g.subject].details[g.type] = Number(g.value)
     })
 
@@ -87,25 +83,32 @@ export default function StudentGradesPage() {
     let totalCoef = 0
 
     const subjectList = Object.values(subjects).map((s: any) => {
-      // CALCUL MOYENNE MATIÈRE BENIN (Interros + Devoirs + Composition)
+      // CALCUL PROGRESSIF INTELLIGENT
       const interros = [s.details.int1, s.details.int2, s.details.int3].filter(v => v !== null)
-      const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : 0
+      const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : null
       
-      const devoirs = [s.details.dev1, s.details.dev2].filter(v => v !== null)
-      const avgDev = devoirs.length > 0 ? devoirs.reduce((a:number, b:number) => a+b, 0) / devoirs.length : 0
+      const dev1 = s.details.dev1 !== null ? s.details.dev1 : null
+      const dev2 = s.details.dev2 !== null ? s.details.dev2 : null
+      const comp = s.details.comp !== null ? s.details.comp : null
       
-      const comp = s.details.comp !== null ? s.details.comp : 0
+      // Collecte des "piliers" disponibles pour la moyenne
+      const pillars = []
+      if (avgInt !== null) pillars.push(avgInt)
+      if (dev1 !== null) pillars.push(dev1)
+      if (dev2 !== null) pillars.push(dev2)
+      if (comp !== null) pillars.push(comp)
       
-      // Formule de calcul simplifiée : (MoyInt + Devoir + Comp) / 3 ou selon scellage
-      const avgSub = (avgInt + avgDev + comp) / ( (interros.length?1:0) + (devoirs.length?1:0) + (s.details.comp!==null?1:0) || 1 )
+      const avgSub = pillars.length > 0 ? (pillars.reduce((a:number, b:number) => a+b, 0) / pillars.length) : 0
       
       s.myAverage = Number(avgSub.toFixed(2))
+      s.isProvisional = pillars.length < 4 // On considère provisoire s'il manque au moins une note majeure
+      s.count = pillars.length
+      
       totalWeighted += s.myAverage * s.coef
       totalCoef += s.coef
       return s
     })
 
-    // AJOUT CONDUITE
     totalWeighted += conductValue * 1
     totalCoef += 1
     const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
@@ -119,14 +122,19 @@ export default function StudentGradesPage() {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
-            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">Mon Carnet <span className="text-primary italic">Scellé</span></h1>
-            <Badge variant="outline" className="border-primary/20 text-primary font-black px-4 rounded-full uppercase text-[9px] md:text-sm bg-primary/5 h-8">
-              ANNÉE SCOLAIRE {activeYear}
-            </Badge>
+            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">Mon Carnet <span className="text-primary italic">Live</span></h1>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="border-primary/20 text-primary font-black px-4 rounded-full uppercase text-[9px] md:text-sm bg-primary/5 h-8">
+                {activeYear}
+              </Badge>
+              <div className="flex items-center gap-2 text-muted-foreground font-bold text-[10px]">
+                <Clock className="size-3 text-amber-500" /> Calcul Progressif Activé
+              </div>
+            </div>
           </div>
-          <div className="bg-primary text-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl shadow-primary/20 flex items-center gap-6 md:gap-12 transition-all hover:scale-105">
+          <div className="bg-primary text-white p-6 md:p-10 rounded-[2rem] md:rounded-[3.5rem] shadow-2xl shadow-primary/20 flex items-center gap-6 md:gap-12 transition-all hover:scale-105">
              <div className="text-center">
-                <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-widest mb-1">Moyenne Générale</p>
+                <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-widest mb-1">Moyenne Provisoire</p>
                 <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
              </div>
              <div className="size-12 md:size-20 bg-white/10 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-inner"><TrendingUp className="size-6 md:size-10" /></div>
@@ -148,28 +156,11 @@ export default function StudentGradesPage() {
              ) : (!analysis || analysis.subjects.length === 0) ? (
                 <Card className="p-20 md:p-40 text-center border-4 border-dashed rounded-[3rem] bg-white/50 opacity-40">
                    <Zap className="size-16 mx-auto mb-6 text-muted-foreground" />
-                   <h3 className="text-2xl font-black uppercase">Carnet en attente</h3>
-                   <p className="text-muted-foreground font-medium">Les notes scellées par vos professeurs apparaîtront ici.</p>
+                   <h3 className="text-2xl font-black uppercase">En attente de scellage</h3>
+                   <p className="text-muted-foreground font-medium">Dès que vos professeurs scelleront vos premières interrogations, votre moyenne s'affichera ici.</p>
                 </Card>
              ) : (
                 <div className="grid gap-6 md:gap-10">
-                   {/* Summary Conduite Card */}
-                   <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-amber-50 border-2 border-amber-100 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm overflow-hidden relative group">
-                      <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform">
-                         <Award className="size-20 md:size-32 text-amber-600" />
-                      </div>
-                      <div className="flex items-center gap-6 relative z-10">
-                         <div className="size-12 md:size-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm"><CheckCircle2 className="size-6 md:size-10" /></div>
-                         <div>
-                            <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Discipline & Conduite</h3>
-                            <p className="text-[9px] md:text-xs font-bold text-amber-800 uppercase tracking-widest opacity-60">Scellage automatique Vie Scolaire • Coef 1</p>
-                         </div>
-                      </div>
-                      <div className="text-center md:text-right relative z-10">
-                         <h4 className="text-3xl md:text-5xl font-black text-amber-600 tabular-nums">{analysis.conductValue.toFixed(1)}<span className="text-xs md:text-lg opacity-40 ml-1">/20</span></h4>
-                      </div>
-                   </Card>
-
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                       {analysis.subjects.map((sub: any, idx: number) => (
                         <Card key={idx} className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden group hover:shadow-2xl transition-all duration-500">
@@ -178,10 +169,15 @@ export default function StudentGradesPage() {
                               <div className="flex justify-between items-start">
                                  <div className="space-y-1">
                                     <h4 className="text-lg md:text-2xl font-black text-foreground uppercase tracking-tight truncate group-hover:text-primary transition-colors">{sub.name}</h4>
-                                    <Badge variant="outline" className="text-[8px] md:text-[10px] font-black uppercase border-primary/10 text-primary/60">COEF {sub.coef}</Badge>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="outline" className="text-[8px] md:text-[10px] font-black uppercase border-primary/10 text-primary/60">COEF {sub.coef}</Badge>
+                                      <Badge className={cn("text-[7px] font-black uppercase rounded-sm h-4 px-1.5", sub.isProvisional ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600")}>
+                                        {sub.isProvisional ? "Évaluation en cours" : "Complet"}
+                                      </Badge>
+                                    </div>
                                  </div>
                                  <div className={cn("size-14 md:size-20 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center shadow-inner border-2 transition-transform group-hover:scale-110", sub.myAverage >= 10 ? "bg-primary/5 border-primary/5 text-primary" : "bg-red-50 border-red-50 text-red-600")}>
-                                    <p className="text-[8px] md:text-[10px] font-black uppercase opacity-40">Moy</p>
+                                    <p className="text-[8px] md:text-[10px] font-black uppercase opacity-40">{sub.isProvisional ? 'Prov' : 'Moy'}</p>
                                     <p className="text-xl md:text-3xl font-black tabular-nums">{sub.myAverage.toFixed(1)}</p>
                                  </div>
                               </div>
@@ -203,7 +199,7 @@ export default function StudentGradesPage() {
                               </div>
 
                               <div className="pt-6 border-t border-muted/30 flex justify-between items-center">
-                                 <p className="text-[9px] md:text-[11px] font-black uppercase text-muted-foreground tracking-widest">Moyenne Pondérée</p>
+                                 <p className="text-[9px] md:text-[11px] font-black uppercase text-muted-foreground tracking-widest">Pondération Scellée</p>
                                  <p className="text-base md:text-2xl font-black text-primary tabular-nums">{(sub.myAverage * sub.coef).toFixed(1)}</p>
                               </div>
                            </CardContent>

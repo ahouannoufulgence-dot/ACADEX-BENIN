@@ -5,7 +5,7 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck, RefreshCw, Info, ArrowRight, User, CheckCircle2 } from "lucide-react"
+import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck, RefreshCw, Info, ArrowRight, User, CheckCircle2, Clock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
   Select, 
@@ -63,6 +63,7 @@ export default function GradesPage() {
   const [saving, setSaving] = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
+  const [completionStats, setCompletionStats] = useState<Record<string, boolean>>({})
   const [classCoefficient, setClassCoefficient] = useState<number>(1)
 
   const isDirector = userRole === "Directeur"
@@ -81,7 +82,6 @@ export default function GradesPage() {
       
       setLoadingExisting(true)
       try {
-        // 1. Récupération automatique du coefficient configuré
         const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
         const configSnap = await getDoc(doc(db, "subject_configs", configId))
         if (configSnap.exists()) {
@@ -90,22 +90,30 @@ export default function GradesPage() {
           setClassCoefficient(2)
         }
 
-        // 2. Récupération des notes existantes pour l'évaluation choisie
-        const q = query(
-          collection(db, "grades"),
-          where("classId", "==", selectedClass),
-          where("subject", "==", userSubject),
-          where("term", "==", selectedTrimestre),
-          where("type", "==", selectedEvalType),
-          where("academicYear", "==", activeYear)
-        )
-        const notesSnap = await getDocs(q)
-        const existing: Record<string, string> = {}
-        notesSnap.docs.forEach(d => {
-          const data = d.data()
-          existing[data.studentId] = data.value.toString()
-        })
-        setGradesData(existing)
+        // Vérification de la complétion pour chaque type d'évaluation
+        const stats: Record<string, boolean> = {}
+        for (const type of evalTypes) {
+           const q = query(
+             collection(db, "grades"),
+             where("classId", "==", selectedClass),
+             where("subject", "==", userSubject),
+             where("term", "==", selectedTrimestre),
+             where("type", "==", type.id),
+             where("academicYear", "==", activeYear)
+           )
+           const snap = await getDocs(q)
+           stats[type.id] = !snap.empty
+           
+           if (type.id === selectedEvalType) {
+              const existing: Record<string, string> = {}
+              snap.docs.forEach(d => {
+                const data = d.data()
+                existing[data.studentId] = data.value.toString()
+              })
+              setGradesData(existing)
+           }
+        }
+        setCompletionStats(stats)
       } catch (e) {
         console.warn("Erreur synchro", e)
       } finally {
@@ -143,7 +151,10 @@ export default function GradesPage() {
 
     try {
       students?.forEach((student: any) => {
-        const val = parseFloat(gradesData[student.matricule] || "0")
+        const valStr = gradesData[student.matricule]
+        if (valStr === undefined || valStr === "") return // Ne pas enregistrer les vides pour permettre le progressif
+
+        const val = parseFloat(valStr)
         const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}_${activeYear}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
         
@@ -163,7 +174,9 @@ export default function GradesPage() {
       })
 
       await batch.commit()
-      toast({ title: "Notes scellées !", description: `Le registre ${selectedClass} est à jour.` })
+      toast({ title: "Note scellée avec succès", description: `Le registre de ${selectedClass} est mis à jour.` })
+      // Mise à jour locale de la complétion
+      setCompletionStats(prev => ({ ...prev, [selectedEvalType]: true }))
     } catch (e) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'grades', operation: 'write' }))
     } finally {
@@ -180,11 +193,11 @@ export default function GradesPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
-              Gestion <span className="text-primary italic">Notes</span>
+              Saisie <span className="text-primary italic">Progressive</span>
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
-              <ShieldCheck className="size-3 md:size-4 text-emerald-500" />
-              <span>{isDirector ? "Supervision Globale" : "Espace Pédagogique"} • {activeYear}</span>
+              <Clock className="size-3.5 text-amber-500" />
+              <span>Mode Trimestriel • Moyenne Provisoire Activée</span>
             </div>
           </div>
           <Button 
@@ -192,24 +205,20 @@ export default function GradesPage() {
             disabled={saving || !selectedClass || students?.length === 0} 
             className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-13 md:h-16 px-8 md:px-12 rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
           >
-            {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <Save className="mr-2 size-4 md:size-5" />} 
-            {saving ? "Scellage..." : "Enregistrer Notes"}
+            {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} 
+            {saving ? "Scellage..." : "Sceller Évaluation"}
           </Button>
         </div>
 
-        {/* Header Config Block */}
         <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[10px] md:border-l-[15px] border-primary relative overflow-hidden">
-           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
-              <Calculator className="size-32" />
-           </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 relative z-10">
               <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière & Coefficient</label>
-                 <div className="flex items-center gap-4 bg-muted/20 p-4 rounded-2xl border-2 border-transparent">
-                    <div className="size-10 md:size-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm"><Calculator className="size-5 md:size-6" /></div>
+                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière & Coef</label>
+                 <div className="flex items-center gap-4 bg-muted/20 p-4 rounded-2xl">
+                    <div className="size-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm"><Calculator className="size-5" /></div>
                     <div>
-                       <p className="font-black text-xs md:text-lg uppercase text-foreground truncate max-w-[150px]">{userSubject || "Sujet non défini"}</p>
-                       <p className="text-[9px] font-black text-primary uppercase">Coef: {classCoefficient}</p>
+                       <p className="font-black text-xs md:text-lg uppercase text-foreground truncate">{userSubject || "Non défini"}</p>
+                       <p className="text-[9px] font-black text-primary">COEF {classCoefficient}</p>
                     </div>
                  </div>
               </div>
@@ -225,7 +234,7 @@ export default function GradesPage() {
               </div>
 
               <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Période</label>
+                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Trimestre</label>
                  <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
                     <SelectTrigger className="h-14 md:h-18 rounded-2xl border-2 font-black text-sm md:text-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-2 p-1">
@@ -235,19 +244,37 @@ export default function GradesPage() {
               </div>
 
               <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Type d'Évaluation</label>
+                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Évaluation à sceller</label>
                  <Select value={selectedEvalType} onValueChange={setSelectedEvalType}>
                     <SelectTrigger className="h-14 md:h-18 rounded-2xl border-2 font-black text-sm md:text-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-2 p-1">
-                      {evalTypes.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-3 rounded-xl">{t.label}</SelectItem>)}
+                      {evalTypes.map(t => (
+                        <SelectItem key={t.id} value={t.id} className="font-bold p-3 rounded-xl flex items-center justify-between">
+                          {t.label} {completionStats[t.id] && "✓"}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                  </Select>
               </div>
            </div>
         </Card>
 
-        <div className="grid lg:grid-cols-1 gap-6 md:gap-10">
-          {selectedClass && (
+        {selectedClass && (
+          <div className="grid gap-6">
+            {/* Progression Bar */}
+            <div className="flex flex-wrap gap-2 md:gap-4 p-4 bg-white rounded-3xl shadow-sm border border-muted/50">
+               {evalTypes.map(t => (
+                 <div key={t.id} className={cn(
+                   "flex-1 min-w-[100px] p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all",
+                   completionStats[t.id] ? "bg-emerald-50 border-emerald-100" : "bg-muted/10 border-transparent opacity-40",
+                   selectedEvalType === t.id && "border-primary ring-2 ring-primary/10 opacity-100 scale-105"
+                 )}>
+                    <span className="text-[7px] md:text-[9px] font-black uppercase">{t.label}</span>
+                    {completionStats[t.id] ? <CheckCircle2 className="size-3 text-emerald-600" /> : <Clock className="size-3 text-muted-foreground" />}
+                 </div>
+               ))}
+            </div>
+
             <Card className="border-none shadow-sm bg-white rounded-[2.2rem] md:rounded-[3.5rem] overflow-hidden min-h-[500px]">
               <div className="p-6 md:p-12 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 md:gap-6">
@@ -256,108 +283,67 @@ export default function GradesPage() {
                    </div>
                    <div>
                      <h3 className="text-lg md:text-2xl font-black text-foreground uppercase tracking-tight">Registre {selectedClass}</h3>
-                     <Badge className="bg-primary text-white font-black px-4 h-7 rounded-full text-[8px] md:text-[10px] uppercase mt-1">Saisie en cours : {evalTypes.find(e => e.id === selectedEvalType)?.label}</Badge>
+                     <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-1">Saisie de : {evalTypes.find(e => e.id === selectedEvalType)?.label}</p>
                    </div>
                 </div>
                 {loadingExisting && <div className="flex items-center gap-2 text-[9px] md:text-[11px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 md:size-4 animate-spin" /> Synchronisation...</div>}
               </div>
               
-              {/* Mobile Card Entry View */}
-              <div className="block md:hidden p-4 space-y-3 bg-[#F8FAFC]/50">
-                 {loadingStudents ? (
-                   <div className="py-20 text-center animate-pulse"><Loader2 className="size-10 animate-spin mx-auto text-primary/20" /></div>
-                 ) : students?.map((student: any) => {
-                   const val = parseFloat(gradesData[student.matricule] || "0")
-                   const impact = (val * classCoefficient).toFixed(2)
-                   return (
-                      <div key={student.id} className="p-5 bg-white rounded-[1.8rem] border border-muted/50 shadow-sm flex flex-col gap-4 animate-in slide-in-from-bottom-2">
-                         <div className="flex justify-between items-start">
-                            <div className="min-w-0">
-                               <p className="font-black text-sm uppercase truncate">{student.lastName} {student.firstName}</p>
-                               <p className="text-[9px] font-bold text-muted-foreground uppercase">{student.matricule}</p>
-                            </div>
-                            <Badge className="bg-primary/5 text-primary border-primary/20 font-black text-[9px] h-6 px-2.5 rounded-full">IMPACT: {impact}</Badge>
-                         </div>
-                         <div className="relative group">
+              <CardContent className="p-0 overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
+                    <tr>
+                      <th className="px-12 py-8 text-left tracking-widest">Identifiant & Élève</th>
+                      <th className="px-12 py-8 text-center tracking-widest">Note / 20</th>
+                      <th className="px-12 py-8 text-right bg-primary text-white tracking-widest">Moyenne Provisoire</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-muted/20">
+                    {students?.map((student: any) => {
+                      return (
+                        <tr key={student.id} className="hover:bg-muted/5 transition-all group">
+                          <td className="px-12 py-8">
+                             <div className="flex items-center gap-4">
+                                <span className="font-black text-foreground tabular-nums">{student.matricule}</span>
+                                <p className="font-black text-lg text-foreground uppercase truncate">{student.lastName} {student.firstName}</p>
+                             </div>
+                          </td>
+                          <td className="px-12 py-8 text-center">
                             <Input 
                               type="number" 
                               step="0.25" 
-                              placeholder="0.00" 
+                              placeholder="--.--"
                               value={gradesData[student.matricule] || ""} 
                               onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
-                              className="h-16 rounded-[1.2rem] text-center text-4xl font-black border-2 border-primary/10 bg-[#F8FAFC] focus:bg-white focus:ring-primary shadow-inner" 
+                              className="w-40 h-16 mx-auto rounded-3xl text-center text-3xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-[#F8FAFC] group-hover:bg-white transition-all" 
                             />
-                         </div>
-                      </div>
-                   )
-                 })}
-              </div>
-
-              {/* Desktop Table Entry View */}
-              <CardContent className="hidden md:block p-0">
-                {loadingStudents ? (
-                  <div className="p-32 text-center animate-pulse"><Loader2 className="size-14 animate-spin mx-auto text-primary/10" /></div>
-                ) : (
-                  <table className="w-full">
-                    <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
-                      <tr>
-                        <th className="px-12 py-8 text-left tracking-widest">Identifiant & Sexe</th>
-                        <th className="px-12 py-8 text-left tracking-widest">Élève</th>
-                        <th className="px-12 py-8 text-center tracking-widest">Note / 20</th>
-                        <th className="px-12 py-8 text-right bg-primary text-white tracking-widest">Pondération ({classCoefficient})</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-muted/20">
-                      {students?.map((student: any) => {
-                        const val = parseFloat(gradesData[student.matricule] || "0")
-                        const impact = (val * classCoefficient).toFixed(2)
-                        return (
-                          <tr key={student.id} className="hover:bg-muted/5 transition-all group">
-                            <td className="px-12 py-8">
-                               <div className="flex items-center gap-4">
-                                  <span className="font-black text-foreground tabular-nums">{student.matricule}</span>
-                                  <Badge variant="outline" className="h-6 w-6 justify-center p-0 rounded-md font-black">{student.gender?.[0]}</Badge>
-                               </div>
-                            </td>
-                            <td className="px-12 py-8">
-                               <p className="font-black text-xl text-foreground uppercase tracking-tight group-hover:text-primary transition-colors">{student.lastName} {student.firstName}</p>
-                            </td>
-                            <td className="px-12 py-8 text-center">
-                              <Input 
-                                type="number" 
-                                step="0.25" 
-                                value={gradesData[student.matricule] || ""} 
-                                onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
-                                className="w-40 h-16 mx-auto rounded-3xl text-center text-3xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-[#F8FAFC] group-hover:bg-white transition-all" 
-                              />
-                            </td>
-                            <td className="px-12 py-8 text-right">
-                               <Badge className="h-14 w-40 justify-center rounded-[1.5rem] bg-primary/5 text-primary border-2 border-primary/10 text-2xl font-black">
-                                 {impact}
-                               </Badge>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                )}
+                          </td>
+                          <td className="px-12 py-8 text-right">
+                             <Badge className="h-14 w-40 justify-center rounded-[1.5rem] bg-primary/5 text-primary border-2 border-primary/10 text-2xl font-black">
+                                {Number(gradesData[student.matricule] || 0).toFixed(1)}
+                             </Badge>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </CardContent>
             </Card>
-          )}
+          </div>
+        )}
 
-          {!selectedClass && (
-             <Card className="p-20 md:p-40 text-center border-4 border-dashed rounded-[3rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-8">
-                <div className="size-24 md:size-32 bg-muted rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center shadow-inner">
-                  <RefreshCw className="size-10 md:size-16 text-muted-foreground" />
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-2xl md:text-4xl font-black uppercase">Sélectionner une classe</h3>
-                  <p className="text-sm md:text-xl font-medium max-w-sm mx-auto">Veuillez choisir une division pour charger le registre des notes scellées.</p>
-                </div>
-             </Card>
-          )}
-        </div>
+        {!selectedClass && (
+           <Card className="p-20 md:p-40 text-center border-4 border-dashed rounded-[3rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-8">
+              <div className="size-24 md:size-32 bg-muted rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center shadow-inner">
+                <RefreshCw className="size-10 md:size-16 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl md:text-4xl font-black uppercase">Sélectionner une classe</h3>
+                <p className="text-sm md:text-xl font-medium max-w-sm mx-auto">Veuillez choisir une division pour charger le registre progressif.</p>
+              </div>
+           </Card>
+        )}
       </div>
     </DashboardLayout>
   )
