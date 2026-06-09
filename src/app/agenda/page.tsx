@@ -84,6 +84,7 @@ export default function GlobalSchedulePage() {
     return allSchedules
   }, [allSchedules, activeTab, selectedClass, selectedTeacher])
 
+  // Détection automatique de conflits (doublons de prof sur le même créneau)
   const detectConflicts = useMemo(() => {
     if (!allSchedules) return []
     const conflicts: any[] = []
@@ -104,10 +105,10 @@ export default function GlobalSchedulePage() {
     setAnalyzing(true)
     try {
       const res = await askAcadexBrain({
-        question: `Analyse l'emploi du temps de l'école. Conflits détectés : ${detectConflicts.length}. Classes orphelines ? Surcharges profs ?`,
+        question: `Analyse l'emploi du temps global de l'établissement. Conflits détectés : ${detectConflicts.length}. Classes orphelines (sans cours) ? Surcharges professeurs ? Donne un diagnostic stratégique.`,
         userRole: "Directeur",
         userId: "DIR-001",
-        contextData: { schoolName: "ACADEX", year: activeYear, schedulesCount: allSchedules?.length }
+        contextData: { schoolName: "ACADEX", year: activeYear, schedulesCount: allSchedules?.length, conflictsCount: detectConflicts.length }
       })
       setAiReport(res.answer)
       toast({ title: "Audit IA Scellé" })
@@ -125,19 +126,19 @@ export default function GlobalSchedulePage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">
-              Pilotage <span className="text-primary italic">Emplois du Temps</span>
+              Omni-Vision <span className="text-primary italic">Plannings</span>
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
               <Layers className="size-3.5 md:size-4 text-primary" />
-              <span>Tableau Centralisé • Année {activeYear}</span>
+              <span>Tableau Centralisé de l'Établissement • Année {activeYear}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
             <Button variant="outline" className="flex-1 md:flex-none h-11 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm transition-all active:scale-95">
-              <FileDown className="mr-2 size-4 md:size-5" /> Imprimer Tout
+              <FileDown className="mr-2 size-4 md:size-5" /> Imprimer Rapport
             </Button>
             <Badge className="bg-primary text-white h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-[1.8rem] flex items-center gap-3 font-black text-[10px] md:text-lg shadow-xl shadow-primary/20">
-               <ShieldCheck className="size-4 md:size-6" /> OMNI-VISION
+               <ShieldCheck className="size-4 md:size-6" /> SYSTÈME SCELLÉ
             </Badge>
           </div>
         </div>
@@ -147,7 +148,7 @@ export default function GlobalSchedulePage() {
             {[
               { id: "classe", label: "Par Classe", icon: BookOpen },
               { id: "professeur", label: "Par Enseignant", icon: User },
-              { id: "global", label: "Tableau Global", icon: Grid3X3 },
+              { id: "global", label: "Matrice Globale", icon: Grid3X3 },
             ].map(t => (
               <TabsTrigger key={t.id} value={t.id} className="rounded-xl md:rounded-[2rem] font-black px-6 md:px-10 text-[9px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex items-center gap-2 shrink-0">
                 <t.icon className="size-3.5 md:size-4" /> {t.label}
@@ -157,7 +158,7 @@ export default function GlobalSchedulePage() {
 
           <Card className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col md:flex-row items-center gap-6">
              <div className="flex-1 w-full space-y-2">
-                <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Navigation Semaine</Label>
+                <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Choisir Jour de la Semaine</Label>
                 <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                    {days.map(d => (
                      <button 
@@ -176,11 +177,11 @@ export default function GlobalSchedulePage() {
              
              {activeTab === 'classe' && (
                 <div className="w-full md:w-72 space-y-2">
-                   <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Choisir classe</Label>
+                   <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Filtrer par Classe</Label>
                    <Select value={selectedClass} onValueChange={setSelectedClass}>
                       <SelectTrigger className="h-12 md:h-14 rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent className="rounded-2xl border-2 p-1.5">
-                         {OFFICIAL_CLASSES.map(c => <SelectItem key={c} value={c} className="font-bold p-3 rounded-xl">{c}</SelectItem>)}
+                         {OFFICIAL_CLASSES.map(c => <SelectItem key={c} value={c} className="font-bold p-3 rounded-xl cursor-pointer">{c}</SelectItem>)}
                       </SelectContent>
                    </Select>
                 </div>
@@ -188,11 +189,11 @@ export default function GlobalSchedulePage() {
 
              {activeTab === 'professeur' && (
                 <div className="w-full md:w-72 space-y-2">
-                   <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Choisir enseignant</Label>
+                   <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Filtrer par Enseignant</Label>
                    <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                      <SelectTrigger className="h-12 md:h-14 rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue placeholder="Choisir prof..." /></SelectTrigger>
+                      <SelectTrigger className="h-12 md:h-14 rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue placeholder="Choisir un professeur" /></SelectTrigger>
                       <SelectContent className="rounded-2xl border-2 p-1.5">
-                         {teachers?.map((t:any) => <SelectItem key={t.id} value={t.officialId} className="font-bold p-3 rounded-xl">{t.fullName}</SelectItem>)}
+                         {teachers?.map((t:any) => <SelectItem key={t.id} value={t.officialId} className="font-bold p-3 rounded-xl cursor-pointer">{t.fullName}</SelectItem>)}
                       </SelectContent>
                    </Select>
                 </div>
@@ -204,33 +205,36 @@ export default function GlobalSchedulePage() {
                 <div className="lg:col-span-8">
                    <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[4rem] overflow-hidden min-h-[500px]">
                       <div className="p-8 md:p-12 border-b bg-muted/5 flex items-center justify-between">
-                         <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">{selectedClass}</h3>
+                         <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">{selectedClass} — Planning Officiel</h3>
                          <Badge className="bg-primary/10 text-primary border-none font-black px-4 h-10 rounded-full">{selectedDay.toUpperCase()}</Badge>
                       </div>
                       <div className="p-6 md:p-10 space-y-4">
                          {loadingSchedules ? (
                            <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary/10 size-10" /></div>
                          ) : filteredSchedules.filter((s:any) => s.day === selectedDay).length === 0 ? (
-                           <div className="py-20 text-center opacity-30 italic font-medium">Aucun cours scellé pour ce jour.</div>
+                           <div className="py-24 text-center opacity-30 italic font-medium flex flex-col items-center gap-4">
+                              <CalendarDays className="size-12" />
+                              Aucun cours scellé pour ce jour dans cette classe.
+                           </div>
                          ) : (
                            filteredSchedules.filter((s:any) => s.day === selectedDay).map((course: any) => (
                              <div key={course.id} className="p-5 md:p-8 bg-muted/5 rounded-[1.8rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all group flex flex-col md:flex-row items-center justify-between gap-6">
-                                <div className="flex items-center gap-4 md:gap-8">
+                                <div className="flex items-center gap-4 md:gap-8 w-full">
                                    <div className="size-12 md:size-20 bg-white rounded-2xl flex flex-col items-center justify-center shadow-inner group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                                       <Clock className="size-4 md:size-6" />
                                       <span className="text-[8px] md:text-sm font-black uppercase">{course.startTime.split(':')[0]}H</span>
                                    </div>
-                                   <div className="space-y-1 text-center md:text-left">
-                                      <h4 className="text-base md:text-3xl font-black text-foreground uppercase tracking-tight">{course.subject}</h4>
-                                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                   <div className="space-y-1 flex-1 min-w-0">
+                                      <h4 className="text-base md:text-3xl font-black text-foreground uppercase tracking-tight truncate">{course.subject}</h4>
+                                      <div className="flex flex-wrap items-center gap-4 text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                          <span className="flex items-center gap-2"><User className="size-2.5 md:size-3.5 text-primary" /> {course.teacherName}</span>
-                                         <span className="flex items-center gap-2"><MapPin className="size-2.5 md:size-3.5 text-primary" /> {course.room || '---'}</span>
+                                         <span className="flex items-center gap-2"><MapPin className="size-2.5 md:size-3.5 text-primary" /> {course.room || 'Salle libre'}</span>
                                          <Badge variant="outline" className="border-primary/20 text-primary font-black px-2 py-0 h-5">SÉANCE SCELLÉE</Badge>
                                       </div>
                                    </div>
                                 </div>
-                                <div className="text-center md:text-right">
-                                   <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Durée</p>
+                                <div className="text-center md:text-right shrink-0">
+                                   <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Volume Horaire</p>
                                    <p className="text-sm md:text-2xl font-black text-primary tabular-nums">{course.duration}</p>
                                 </div>
                              </div>
@@ -245,14 +249,14 @@ export default function GlobalSchedulePage() {
                       <div className="relative z-10 space-y-8">
                          <div className="flex items-center gap-4">
                             <div className="size-12 md:size-16 bg-primary/20 rounded-2xl flex items-center justify-center shadow-inner"><Sparkles className="size-6 md:size-8 text-primary animate-pulse" /></div>
-                            <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">Audit IA Brain</h3>
+                            <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight">Audit IA Brain v1</h3>
                          </div>
                          <div className="p-5 md:p-8 bg-white/5 rounded-2xl md:rounded-[2rem] border border-white/10 italic text-[10px] md:text-lg font-medium leading-relaxed text-white/80">
-                           {aiReport ? `"${aiReport}"` : `"Prêt pour l'audit. Je peux détecter les conflits et les salles surchargées pour l'année ${activeYear}."`}
+                           {aiReport ? `"${aiReport}"` : `"Prêt pour l'audit stratégique. Je peux détecter les conflits horaires et les classes sans professeurs pour l'année ${activeYear}."`}
                          </div>
                          <Button onClick={handleAiAudit} disabled={analyzing} className="w-full h-12 md:h-16 rounded-xl bg-primary hover:bg-primary/90 text-white font-black text-xs md:text-sm transition-all shadow-xl shadow-primary/20 active:scale-95">
                            {analyzing ? <Loader2 className="animate-spin size-4" /> : <Zap className="size-4 mr-2" />}
-                           Lancer Diagnostic
+                           Lancer Diagnostic IA
                          </Button>
                       </div>
                       <Zap className="absolute -bottom-10 -right-10 size-40 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-[3000ms]" />
@@ -262,14 +266,14 @@ export default function GlobalSchedulePage() {
                       <Card className="p-7 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-red-50 border-2 border-red-100 flex flex-col gap-6 group">
                          <div className="flex items-center gap-4 text-red-700">
                             <div className="size-10 md:size-12 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:rotate-12 transition-transform"><AlertTriangle className="size-5 md:size-7" /></div>
-                            <h4 className="font-black text-[10px] md:text-sm uppercase tracking-[0.2em]">Conflits Critique</h4>
+                            <h4 className="font-black text-[10px] md:text-sm uppercase tracking-[0.2em]">Conflits Détectés</h4>
                          </div>
                          <div className="space-y-3">
                             {detectConflicts.slice(0, 3).map((c, i) => (
                               <div key={i} className="text-[9px] md:text-sm font-bold text-red-800 leading-tight border-l-4 border-red-300 pl-4 py-1">
                                 {c.type === 'Enseignant' 
-                                  ? `${c.t1.teacherName} a deux cours en même temps en ${c.t1.classId} et ${c.t2.classId}.` 
-                                  : `La classe ${c.t1.classId} est occupée par deux professeurs simultanément.`}
+                                  ? `${c.t1.teacherName} est scellé deux fois sur le même créneau (Classes : ${c.t1.classId} & ${c.t2.classId}).` 
+                                  : `La classe ${c.t1.classId} a deux professeurs assignés en même temps.`}
                               </div>
                             ))}
                          </div>
@@ -284,7 +288,7 @@ export default function GlobalSchedulePage() {
                 <div className="p-8 md:p-14 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-10">
                    <div className="space-y-1">
                       <h3 className="text-2xl md:text-4xl font-black tracking-tight uppercase">Matrice <span className="text-primary italic">Omni-Vision</span></h3>
-                      <p className="text-[8px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Interconnexion totale des flux horaires</p>
+                      <p className="text-[8px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Interconnexion totale des flux horaires hebdomadaires</p>
                    </div>
                    <div className="flex items-center gap-4 bg-primary/5 p-4 rounded-3xl border-2 border-primary/10">
                       <div className="size-10 md:size-14 bg-primary rounded-2xl flex items-center justify-center text-white shadow-lg"><Grid3X3 className="size-5 md:size-7" /></div>
@@ -298,7 +302,7 @@ export default function GlobalSchedulePage() {
                          <tr>
                             <th className="p-4 md:p-8 bg-muted/30 rounded-2xl text-[8px] md:text-xs font-black uppercase text-muted-foreground tracking-widest">Heure \ Classe</th>
                             {OFFICIAL_CLASSES.map(c => (
-                              <th key={c} className="p-4 md:p-8 bg-primary/5 rounded-2xl text-[9px] md:text-lg font-black uppercase text-primary border-2 border-primary/10 min-w-[120px]">{c}</th>
+                              <th key={c} className="p-4 md:p-8 bg-primary/5 rounded-2xl text-[9px] md:text-lg font-black uppercase text-primary border-2 border-primary/10 min-w-[140px]">{c}</th>
                             ))}
                          </tr>
                       </thead>
@@ -310,13 +314,14 @@ export default function GlobalSchedulePage() {
                                 const course = allSchedules?.find((s:any) => s.day === selectedDay && s.classId === cls && s.startTime <= time && s.endTime > time)
                                 return (
                                   <td key={`${cls}-${time}`} className={cn(
-                                    "p-3 md:p-6 rounded-2xl transition-all border-2",
+                                    "p-3 md:p-6 rounded-2xl transition-all border-2 h-24",
                                     course ? "bg-white border-primary/20 shadow-xl scale-[1.02]" : "bg-[#F8FAFC]/50 border-transparent opacity-20"
                                   )}>
                                      {course ? (
                                        <div className="text-center space-y-1 md:space-y-2">
                                           <p className="text-[8px] md:text-lg font-black text-foreground uppercase tracking-tight truncate">{course.subject}</p>
                                           <p className="text-[6px] md:text-xs font-bold text-muted-foreground uppercase truncate opacity-60">{course.teacherName.split(' ')[0]}</p>
+                                          <Badge className="bg-primary/5 text-primary text-[6px] h-4 rounded-sm border-none uppercase">{course.room || '---'}</Badge>
                                        </div>
                                      ) : (
                                        <div className="flex items-center justify-center"><Plus className="size-3 md:size-5 text-muted-foreground/10" /></div>
@@ -340,7 +345,7 @@ export default function GlobalSchedulePage() {
                       </p>
                    </div>
                    <Button className="w-full md:w-auto h-12 md:h-16 rounded-xl md:rounded-2xl font-black bg-foreground text-white px-10 md:px-14 shadow-2xl active:scale-95 transition-all text-[10px] md:text-sm">
-                      TÉLÉCHARGER MATRICE COMPLÈTE
+                      TÉLÉCHARGER MATRICE COMPLÈTE PDF
                    </Button>
                 </div>
              </Card>
