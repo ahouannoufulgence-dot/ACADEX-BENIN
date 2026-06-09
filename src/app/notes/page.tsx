@@ -36,6 +36,18 @@ const evalTypes = [
   { id: "dev2", label: "Devoir 2" }
 ]
 
+const OFFICIAL_CLASSES = [
+  "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
+  "2NDE A", "2NDE B", "2NDE C", "2NDE D",
+  "1ERE A", "1ERE B", "1ERE C", "1ERE D",
+  "TLE A", "TLE B", "TLE C", "TLE D"
+]
+
+const BENIN_SUBJECTS = [
+  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", 
+  "Allemand", "Espagnol", "Économie", "Informatique", "EPS"
+]
+
 export default function GradesPage() {
   const db = useFirestore()
   const [userRole, setUserRole] = useState<string | null>(null)
@@ -51,6 +63,8 @@ export default function GradesPage() {
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
   const [classCoefficient, setClassCoefficient] = useState<number>(1)
+
+  const isDirector = userRole === "Directeur"
 
   useEffect(() => {
     setUserRole(localStorage.getItem('acadex_user_role'))
@@ -70,6 +84,9 @@ export default function GradesPage() {
         const configSnap = await getDoc(doc(db, "subject_configs", configId))
         if (configSnap.exists()) {
           setClassCoefficient(Number(configSnap.data().coef) || 1)
+        } else {
+          // Default coefficients if not set
+          setClassCoefficient(userSubject === 'Mathématiques' || userSubject === 'Français' ? 4 : 2)
         }
 
         const q = query(
@@ -115,7 +132,10 @@ export default function GradesPage() {
   }
 
   const handleSaveGrades = async () => {
-    if (!selectedClass || !selectedTrimestre || !selectedEvalType) return
+    if (!selectedClass || !selectedTrimestre || !selectedEvalType || !userSubject) {
+      toast({ title: "Données manquantes", description: "Veuillez choisir une classe et une matière.", variant: "destructive" })
+      return
+    }
     setSaving(true)
     const batch = writeBatch(db)
 
@@ -141,7 +161,7 @@ export default function GradesPage() {
       })
 
       await batch.commit()
-      toast({ title: "Notes scellées !", description: `Registre ${selectedClass} publié.` })
+      toast({ title: "Notes scellées !", description: `Registre ${selectedClass} publié pour ${userSubject}.` })
     } catch (e) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'grades', operation: 'write' }))
     } finally {
@@ -149,11 +169,12 @@ export default function GradesPage() {
     }
   }
 
+  const classesToShow = isDirector ? OFFICIAL_CLASSES : userClasses
+
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header - Refined for Mobile */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
@@ -161,7 +182,7 @@ export default function GradesPage() {
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
               <ShieldCheck className="size-3 md:size-4 text-emerald-500" />
-              <span>Année Scolaire {activeYear}</span>
+              <span>Année Scolaire {activeYear} • {isDirector ? "Accès Direction" : "Accès Enseignant"}</span>
             </div>
           </div>
           <Button 
@@ -169,25 +190,37 @@ export default function GradesPage() {
             disabled={saving || !selectedClass || students?.length === 0} 
             className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-13 md:h-16 px-8 md:px-12 rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95 mobile-touch-target"
           >
-            {saving ? <Loader2 className="mr-2 size-4 md:size-5 animate-spin" /> : <UserCheck className="mr-2 size-4 md:size-5" />} 
+            {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <UserCheck className="mr-2 size-4 md:size-5" />} 
             {saving ? "Scellage..." : "Sceller & Publier"}
           </Button>
         </div>
 
         <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
           <div className="lg:col-span-9 space-y-6 md:space-y-10">
-            {/* Filter Card - Premium Glass */}
             <Card className="border-none shadow-sm bg-white/80 backdrop-blur-sm rounded-[2rem] md:rounded-[2.5rem] p-5 md:p-10 border-l-[8px] md:border-l-[15px] border-primary group">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+              <div className={cn("grid gap-4 md:gap-8", isDirector ? "grid-cols-2 lg:grid-cols-5" : "grid-cols-2 md:grid-cols-4")}>
                 <div className="space-y-1.5">
                   <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Classe</label>
                   <Select onValueChange={setSelectedClass} value={selectedClass}>
                     <SelectTrigger className="h-11 md:h-14 rounded-[1rem] md:rounded-2xl border-2 border-primary/5 font-black text-xs md:text-base focus:ring-primary shadow-sm"><SelectValue placeholder="Choisir" /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-2 p-1">
-                      {userClasses.map(c => <SelectItem key={c} value={c} className="font-bold p-3 rounded-xl">{c}</SelectItem>)}
+                      {classesToShow.map(c => <SelectItem key={c} value={c} className="font-bold p-3 rounded-xl">{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {isDirector && (
+                  <div className="space-y-1.5">
+                    <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière</label>
+                    <Select value={userSubject} onValueChange={setUserSubject}>
+                       <SelectTrigger className="h-11 md:h-14 rounded-[1rem] md:rounded-2xl border-2 border-primary/5 font-black text-xs md:text-base focus:ring-primary shadow-sm"><SelectValue placeholder="Sujet" /></SelectTrigger>
+                       <SelectContent className="rounded-2xl border-2 p-1">
+                          {BENIN_SUBJECTS.map(s => <SelectItem key={s} value={s} className="font-bold p-3 rounded-xl">{s}</SelectItem>)}
+                       </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Trimestre</label>
                   <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
@@ -225,13 +258,12 @@ export default function GradesPage() {
                      </div>
                      <div>
                        <h3 className="text-lg md:text-2xl font-black text-foreground uppercase tracking-tight">Promotion {selectedClass}</h3>
-                       <Badge className="bg-primary text-white font-black px-3 py-0.5 uppercase text-[7px] md:text-[10px] rounded-sm mt-1">{userSubject}</Badge>
+                       <Badge className="bg-primary text-white font-black px-3 py-0.5 uppercase text-[7px] md:text-[10px] rounded-sm mt-1">{userSubject || "Choisir matière"}</Badge>
                      </div>
                   </div>
                   {loadingExisting && <div className="flex items-center gap-2 text-[9px] md:text-[11px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-2.5 md:size-4 animate-spin" /> Synchro...</div>}
                 </div>
                 
-                {/* Mobile View: Dynamic Cards */}
                 <div className="block md:hidden p-4 space-y-3 bg-[#F8FAFC]/50">
                    {loadingStudents ? (
                      <div className="p-20 text-center animate-pulse"><Loader2 className="size-10 animate-spin mx-auto text-primary/20" /></div>
@@ -263,7 +295,6 @@ export default function GradesPage() {
                    {students?.length === 0 && !loadingStudents && <div className="p-10 text-center text-[10px] font-black text-muted-foreground uppercase italic opacity-40">Aucun élève actif détecté.</div>}
                 </div>
 
-                {/* Desktop View: Solid Table */}
                 <CardContent className="hidden md:block p-0">
                   {loadingStudents ? (
                     <div className="p-32 text-center animate-pulse"><Loader2 className="size-14 animate-spin mx-auto text-primary/10" /></div>
@@ -312,7 +343,6 @@ export default function GradesPage() {
           </div>
 
           <div className="lg:col-span-3 space-y-6 md:space-y-10">
-            {/* Conduct Side Card */}
             <Card className="p-7 md:p-9 rounded-[2rem] md:rounded-[2.5rem] bg-amber-50 border-2 border-amber-100 flex flex-col gap-6 relative overflow-hidden group">
               <div className="absolute -top-6 -right-6 p-10 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform">
                 <ShieldCheck className="size-24 text-amber-700" />
@@ -329,7 +359,6 @@ export default function GradesPage() {
               </Button>
             </Card>
 
-            {/* Certification Badge */}
             <Card className="p-8 rounded-[2.5rem] bg-foreground text-white border-none shadow-2xl relative overflow-hidden flex flex-col items-center text-center gap-4">
                <Zap className="text-primary size-8 fill-primary/20" />
                <div>
