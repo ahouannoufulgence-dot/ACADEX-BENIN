@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -14,7 +15,10 @@ import {
   TrendingDown,
   ArrowUpRight,
   ArrowDownRight,
-  ClipboardList
+  ClipboardList,
+  Calculator,
+  CheckCircle2,
+  Calendar
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -22,15 +26,6 @@ import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where } from "firebase/firestore"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Cell, 
-  ResponsiveContainer, 
-  Tooltip as RechartsTooltip 
-} from "recharts"
 
 export default function StudentGradesPage() {
   const db = useFirestore()
@@ -59,156 +54,83 @@ export default function StudentGradesPage() {
     return query(collection(db, "student_life"), where("studentId", "==", studentId), where("academicYear", "==", activeYear))
   }, [db, studentId, activeYear])
 
-  // 3. TOUTES LES NOTES (Pour calcul moyenne promotion et classe min/max)
-  const allGradesQuery = useMemo(() => {
-    if (!db) return null
-    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
-  }, [db, activeYear])
-
   const { data: myGrades, loading: loadingMyGrades } = useCollection(myGradesQuery)
-  const { data: allGrades } = useCollection(allGradesQuery)
   const { data: myLifeEvents } = useCollection(myLifeEventsQuery)
 
-  // LOGIQUE DE CALCUL AVEC CONDUITE AUTOMATISÉE
   const analysis = useMemo(() => {
-    if (!myGrades || !allGrades) return null
+    if (!myGrades) return null
     
-    const myTermGrades = myGrades.filter((g: any) => g.term === activeTerm)
-    const allTermGrades = allGrades.filter((g: any) => g.term === activeTerm)
+    const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
 
-    // CALCUL DE LA NOTE DE CONDUITE RÉELLE (Base 20)
-    let conductGradeValue = 20
+    // CALCUL DE LA CONDUITE
+    let conductValue = 20
     if (myLifeEvents) {
-      myLifeEvents.forEach((e: any) => {
-        if (e.pointsImpact) conductGradeValue += Number(e.pointsImpact)
-      })
+      myLifeEvents.forEach((e: any) => { if (e.pointsImpact) conductValue += Number(e.pointsImpact) })
     }
-    conductGradeValue = Math.max(0, Math.min(20, conductGradeValue))
-
-    const calcAvg = (gradeList: any[], isMe: boolean = false) => {
-      const subs: Record<string, any> = {}
-      gradeList.forEach((g: any) => {
-        const sub = g.subject
-        if (!subs[sub]) subs[sub] = { vals: [], coef: Number(g.coefficient) || 1 }
-        subs[sub].vals.push(Number(g.value))
-      })
-      
-      let totalW = 0, totalC = 0
-      Object.values(subs).forEach((s: any) => {
-        const avgSub = s.vals.reduce((a:number, b:number)=>a+b, 0) / s.vals.length
-        totalW += avgSub * s.coef
-        totalC += s.coef
-      })
-
-      // INJECTION DE LA CONDUITE (COEF 1)
-      totalW += (isMe ? conductGradeValue : 15) * 1
-      totalC += 1
-
-      return totalC > 0 ? (totalW / totalC) : 0
-    }
-
-    const myAvg = calcAvg(myTermGrades, true)
-    const classAvg = calcAvg(allTermGrades.filter((g: any) => g.classId === studentClass))
+    conductValue = Math.max(0, Math.min(20, conductValue))
 
     const subjects: Record<string, any> = {}
-    myTermGrades.forEach((g: any) => {
-      const sub = g.subject
-      if (!subjects[sub]) subjects[sub] = { name: sub, coef: Number(g.coefficient) || 1, vals: [] }
-      subjects[sub].vals.push(Number(g.value))
+    termGrades.forEach((g: any) => {
+      if (!subjects[g.subject]) {
+        subjects[g.subject] = { 
+          name: g.subject, 
+          coef: Number(g.coefficient) || 1, 
+          vals: [],
+          details: { int1: null, int2: null, int3: null, dev1: null, dev2: null, comp: null } 
+        }
+      }
+      subjects[g.subject].vals.push(Number(g.value))
+      subjects[g.subject].details[g.type] = Number(g.value)
     })
 
+    let totalWeighted = 0
+    let totalCoef = 0
+
     const subjectList = Object.values(subjects).map((s: any) => {
-      s.myAverage = s.vals.reduce((a:number, b:number)=>a+b, 0) / s.vals.length
-      const classSubGrades = allTermGrades.filter((g: any) => g.subject === s.name && g.classId === studentClass)
-      const classVals = classSubGrades.map((g:any) => Number(g.value))
-      s.classMax = classVals.length > 0 ? Math.max(...classVals) : 20
-      s.classMin = classVals.length > 0 ? Math.min(...classVals) : 0
+      // CALCUL MOYENNE MATIÈRE BENIN (Interros + Devoirs + Composition)
+      const interros = [s.details.int1, s.details.int2, s.details.int3].filter(v => v !== null)
+      const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : 0
       
-      s.chartData = [
-        { name: "Min", val: Number(s.classMin.toFixed(2)), fill: "#ef4444" },
-        { name: "Moi", val: Number(s.myAverage.toFixed(2)), fill: "#14532d" },
-        { name: "Max", val: Number(s.classMax.toFixed(2)), fill: "#10b981" },
-      ]
+      const devoirs = [s.details.dev1, s.details.dev2].filter(v => v !== null)
+      const avgDev = devoirs.length > 0 ? devoirs.reduce((a:number, b:number) => a+b, 0) / devoirs.length : 0
+      
+      const comp = s.details.comp !== null ? s.details.comp : 0
+      
+      // Formule de calcul simplifiée : (MoyInt + Devoir + Comp) / 3 ou selon scellage
+      const avgSub = (avgInt + avgDev + comp) / ( (interros.length?1:0) + (devoirs.length?1:0) + (s.details.comp!==null?1:0) || 1 )
+      
+      s.myAverage = Number(avgSub.toFixed(2))
+      totalWeighted += s.myAverage * s.coef
+      totalCoef += s.coef
       return s
     })
 
-    // AJOUTER LA CONDUITE EN TÊTE DE LISTE
-    subjectList.unshift({
-      name: "CONDUITE (Cahier de Vie)",
-      coef: 1,
-      myAverage: conductGradeValue,
-      classMin: 12,
-      classMax: 20,
-      chartData: [
-        { name: "Min", val: 12, fill: "#ef4444" },
-        { name: "Moi", val: Number(conductGradeValue.toFixed(2)), fill: "#14532d" },
-        { name: "Max", val: 20, fill: "#10b981" },
-      ]
-    })
+    // AJOUT CONDUITE
+    totalWeighted += conductValue * 1
+    totalCoef += 1
+    const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
 
-    return { myAvg, classAvg, subjects: subjectList }
-  }, [myGrades, allGrades, myLifeEvents, activeTerm, studentClass, activeYear])
+    return { generalAvg, subjects: subjectList, conductValue }
+  }, [myGrades, myLifeEvents, activeTerm])
 
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header - Immersive */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
-            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">Mon Carnet <span className="text-primary italic">Acadex</span></h1>
-            <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
-              <ShieldCheck className="size-3.5 text-emerald-500" />
-              <span>Notes incluant la <b>Conduite</b></span>
-            </div>
+            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">Mon Carnet <span className="text-primary italic">Scellé</span></h1>
+            <Badge variant="outline" className="border-primary/20 text-primary font-black px-4 rounded-full uppercase text-[9px] md:text-sm bg-primary/5 h-8">
+              ANNÉE SCOLAIRE {activeYear}
+            </Badge>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="bg-primary text-white p-5 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] shadow-2xl shadow-primary/20 flex flex-col items-center justify-center min-w-[160px] md:min-w-[240px] group transition-all hover:scale-105 active:scale-95">
-              <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-1">Moyenne Générale</p>
-              <h2 className="text-3xl md:text-5xl font-black tabular-nums">{analysis?.myAvg.toFixed(2) || "0.00"}</h2>
-            </div>
-            <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mr-2">Année Scolaire {activeYear}</p>
+          <div className="bg-primary text-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl shadow-primary/20 flex items-center gap-6 md:gap-12 transition-all hover:scale-105">
+             <div className="text-center">
+                <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-widest mb-1">Moyenne Générale</p>
+                <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
+             </div>
+             <div className="size-12 md:size-20 bg-white/10 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-inner"><TrendingUp className="size-6 md:size-10" /></div>
           </div>
-        </div>
-
-        {/* Quick Stats Grid - Micro Icons */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
-           <Card className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all relative overflow-hidden h-full">
-              <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform">
-                <ClipboardList className="size-20 md:size-32" />
-              </div>
-              <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-6 relative z-10">Note de Conduite</p>
-              <div className="flex items-center justify-between relative z-10">
-                <h3 className="text-3xl md:text-5xl font-black text-primary tabular-nums">{analysis?.subjects[0]?.myAverage.toFixed(2) || "20.00"}</h3>
-                <div className="size-10 md:size-14 bg-primary/5 text-primary rounded-xl md:rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-sm"><ClipboardList className="size-5 md:size-7" /></div>
-              </div>
-           </Card>
-
-           <Card className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-xl transition-all border-l-[10px] md:border-l-[15px] border-amber-400 relative overflow-hidden h-full">
-              <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-6 relative z-10">Position Classe</p>
-              <div className="flex items-center justify-between relative z-10">
-                <div className="space-y-1">
-                  <h3 className="text-3xl md:text-5xl font-black text-foreground tabular-nums">{analysis?.classAvg.toFixed(2) || "0.00"}</h3>
-                  <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase opacity-40">Moyenne Classe</p>
-                </div>
-                {analysis && analysis.myAvg >= analysis.classAvg ? (
-                   <Badge className="bg-emerald-50 text-emerald-600 border-none font-black px-4 py-1.5 rounded-full text-[9px] md:text-xs"><ArrowUpRight className="size-3 md:size-4 mr-1.5" /> AU-DESSUS</Badge>
-                ) : (
-                   <Badge className="bg-red-50 text-red-600 border-none font-black px-4 py-1.5 rounded-full text-[9px] md:text-xs"><ArrowDownRight className="size-3 md:size-4 mr-1.5" /> EN-DESSOUS</Badge>
-                )}
-              </div>
-           </Card>
-
-           <Card className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3rem] bg-foreground text-white border-none shadow-2xl flex flex-col justify-between overflow-hidden relative h-full">
-              <div className="relative z-10">
-                <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-widest mb-6">Certification</p>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xl md:text-3xl font-black text-primary uppercase tracking-tight">Scellement Live</h3>
-                  <div className="size-10 md:size-14 bg-white/5 rounded-xl md:rounded-2xl flex items-center justify-center text-primary shadow-inner border border-white/10"><ShieldCheck className="size-5 md:size-7" /></div>
-                </div>
-              </div>
-              <Zap className="absolute -bottom-10 -right-10 size-40 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-           </Card>
         </div>
 
         <Tabs value={activeTerm} onValueChange={setActiveTab} className="space-y-8 md:space-y-12">
@@ -220,89 +142,76 @@ export default function StudentGradesPage() {
             ))}
           </TabsList>
 
-          <TabsContent value={activeTerm} className="space-y-10 animate-in slide-in-from-bottom-6 duration-700">
-            <div className="grid gap-6 md:gap-10 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {loadingMyGrades ? (
-                <div className="col-span-full py-40 text-center animate-pulse flex flex-col items-center gap-6 opacity-30">
-                  <Loader2 className="size-14 md:size-20 animate-spin text-primary" />
-                  <p className="font-black text-xs md:text-sm uppercase tracking-[0.4em] text-muted-foreground">Appel de vos résultats...</p>
-                </div>
-              ) : !analysis || analysis.subjects.length === 0 ? (
-                <Card className="col-span-full p-24 md:p-40 text-center border-4 border-dashed rounded-[3rem] md:rounded-[4rem] bg-white/50 border-muted/50 flex flex-col items-center justify-center space-y-8">
-                  <div className="size-20 md:size-32 bg-muted rounded-full flex items-center justify-center opacity-30 shadow-inner">
-                    <FileText className="size-10 md:size-16" />
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="text-2xl md:text-4xl font-black text-foreground/40 uppercase tracking-tight">Carnet en attente</h3>
-                    <p className="font-medium text-muted-foreground/60 max-w-sm mx-auto text-sm md:text-lg">Tes résultats apparaîtront dès le premier scellage officiel par tes professeurs.</p>
-                  </div>
+          <TabsContent value={activeTerm} className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-6 duration-700">
+             {loadingMyGrades ? (
+                <div className="py-40 text-center animate-pulse opacity-20"><Loader2 className="animate-spin text-primary size-12 mx-auto" /></div>
+             ) : (!analysis || analysis.subjects.length === 0) ? (
+                <Card className="p-20 md:p-40 text-center border-4 border-dashed rounded-[3rem] bg-white/50 opacity-40">
+                   <Zap className="size-16 mx-auto mb-6 text-muted-foreground" />
+                   <h3 className="text-2xl font-black uppercase">Carnet en attente</h3>
+                   <p className="text-muted-foreground font-medium">Les notes scellées par vos professeurs apparaîtront ici.</p>
                 </Card>
-              ) : (
-                analysis.subjects.map((subject: any, i: number) => (
-                  <Card key={i} className="border-none shadow-sm bg-white rounded-[2.2rem] md:rounded-[3.2rem] overflow-hidden group hover:shadow-2xl transition-all duration-500 active:scale-[0.98] md:active:scale-100">
-                    <div className={cn(
-                      "h-3 w-full", 
-                      subject.name.includes('CONDUITE') ? 'bg-amber-400' : 
-                      (subject.myAverage >= 14 ? "bg-emerald-500" : subject.myAverage >= 10 ? "bg-primary" : "bg-destructive")
-                    )} />
-                    <CardContent className="p-7 md:p-10 space-y-6 md:space-y-10">
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-1.5 flex-1 min-w-0 mr-4">
-                          <h4 className="text-lg md:text-2xl font-black text-foreground group-hover:text-primary transition-colors uppercase tracking-tight truncate">{subject.name}</h4>
-                          <div className="flex items-center gap-2">
-                             <Badge variant="outline" className="text-[7px] md:text-[9px] font-black uppercase border-primary/10 text-primary/60 rounded-sm">Coefficient {subject.coef}</Badge>
-                          </div>
-                        </div>
-                        <div className={cn(
-                          "size-14 md:size-20 flex flex-col items-center justify-center rounded-2xl md:rounded-3xl shadow-inner border-2 transition-transform group-hover:scale-110", 
-                          subject.myAverage >= 10 ? "bg-primary/5 border-primary/5 text-primary" : "bg-red-50 border-red-50 text-red-600"
-                        )}>
-                           <p className="text-[7px] md:text-[9px] font-black uppercase opacity-40">Moy</p>
-                           <p className="text-xl md:text-3xl font-black tabular-nums">{subject.myAverage.toFixed(1)}</p>
-                        </div>
+             ) : (
+                <div className="grid gap-6 md:gap-10">
+                   {/* Summary Conduite Card */}
+                   <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-amber-50 border-2 border-amber-100 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm overflow-hidden relative group">
+                      <div className="absolute top-0 right-0 p-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform">
+                         <Award className="size-20 md:size-32 text-amber-600" />
                       </div>
-
-                      <div className="h-32 md:h-44 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={subject.chartData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-                            <XAxis 
-                              dataKey="name" 
-                              axisLine={false} 
-                              tickLine={false} 
-                              tick={{ fontSize: 9, fontWeight: '900', fill: '#64748b' }} 
-                              dy={10}
-                            />
-                            <YAxis domain={[0, 20]} axisLine={false} tickLine={false} hide />
-                            <RechartsTooltip 
-                              cursor={{ fill: 'transparent' }} 
-                              contentStyle={{ borderRadius: '1.2rem', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '10px', fontWeight: 'bold' }} 
-                            />
-                            <Bar dataKey="val" radius={[8, 8, 8, 8]} barSize={window?.innerWidth < 768 ? 30 : 45}>
-                              {subject.chartData.map((entry: any, index: number) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      <div className="flex items-start gap-4 p-5 md:p-7 bg-muted/10 rounded-[1.5rem] md:rounded-[2rem] border border-muted/30 group-hover:bg-primary/5 group-hover:border-primary/10 transition-colors shadow-inner">
-                         <div className="size-8 md:size-11 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm shrink-0">
-                           {subject.myAverage >= subject.classMax ? <Award className="size-4 md:size-6 text-emerald-500" /> : 
-                            subject.myAverage >= 10 ? <ShieldCheck className="size-4 md:size-6 text-primary" /> : 
-                            <TrendingDown className="size-4 md:size-6 text-red-500" />}
+                      <div className="flex items-center gap-6 relative z-10">
+                         <div className="size-12 md:size-16 bg-white rounded-2xl flex items-center justify-center text-amber-600 shadow-sm"><CheckCircle2 className="size-6 md:size-10" /></div>
+                         <div>
+                            <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Discipline & Conduite</h3>
+                            <p className="text-[9px] md:text-xs font-bold text-amber-800 uppercase tracking-widest opacity-60">Scellage automatique Vie Scolaire • Coef 1</p>
                          </div>
-                         <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground italic leading-relaxed uppercase tracking-tight group-hover:text-foreground transition-colors">
-                           {subject.name.includes('CONDUITE') 
-                             ? "Ta discipline est le miroir de ton excellence académique." 
-                             : (subject.myAverage >= subject.classMax ? "Excellence absolue ! Tu es major de ta classe." : "Continue tes efforts, la réussite est proche.")}
-                         </p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
+                      <div className="text-center md:text-right relative z-10">
+                         <h4 className="text-3xl md:text-5xl font-black text-amber-600 tabular-nums">{analysis.conductValue.toFixed(1)}<span className="text-xs md:text-lg opacity-40 ml-1">/20</span></h4>
+                      </div>
+                   </Card>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+                      {analysis.subjects.map((sub: any, idx: number) => (
+                        <Card key={idx} className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden group hover:shadow-2xl transition-all duration-500">
+                           <div className={cn("h-3 w-full", sub.myAverage >= 10 ? "bg-primary" : "bg-destructive")} />
+                           <CardContent className="p-7 md:p-10 space-y-8">
+                              <div className="flex justify-between items-start">
+                                 <div className="space-y-1">
+                                    <h4 className="text-lg md:text-2xl font-black text-foreground uppercase tracking-tight truncate group-hover:text-primary transition-colors">{sub.name}</h4>
+                                    <Badge variant="outline" className="text-[8px] md:text-[10px] font-black uppercase border-primary/10 text-primary/60">COEF {sub.coef}</Badge>
+                                 </div>
+                                 <div className={cn("size-14 md:size-20 rounded-2xl md:rounded-3xl flex flex-col items-center justify-center shadow-inner border-2 transition-transform group-hover:scale-110", sub.myAverage >= 10 ? "bg-primary/5 border-primary/5 text-primary" : "bg-red-50 border-red-50 text-red-600")}>
+                                    <p className="text-[8px] md:text-[10px] font-black uppercase opacity-40">Moy</p>
+                                    <p className="text-xl md:text-3xl font-black tabular-nums">{sub.myAverage.toFixed(1)}</p>
+                                 </div>
+                              </div>
+
+                              <div className="grid grid-cols-3 gap-3 md:gap-4">
+                                 {[
+                                   { label: "Int 1", val: sub.details.int1 },
+                                   { label: "Int 2", val: sub.details.int2 },
+                                   { label: "Int 3", val: sub.details.int3 },
+                                   { label: "Dev 1", val: sub.details.dev1 },
+                                   { label: "Dev 2", val: sub.details.dev2 },
+                                   { label: "Comp", val: sub.details.comp, premium: true },
+                                 ].map((it, i) => (
+                                   <div key={i} className={cn("p-2 md:p-4 rounded-xl md:rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition-all", it.premium ? "bg-primary text-white border-primary shadow-lg" : "bg-muted/10 border-transparent hover:border-primary/10")}>
+                                      <span className={cn("text-[7px] md:text-[9px] font-black uppercase", it.premium ? "text-white/60" : "text-muted-foreground")}>{it.label}</span>
+                                      <span className="font-black text-xs md:text-xl tabular-nums">{it.val !== null ? it.val : "---"}</span>
+                                   </div>
+                                 ))}
+                              </div>
+
+                              <div className="pt-6 border-t border-muted/30 flex justify-between items-center">
+                                 <p className="text-[9px] md:text-[11px] font-black uppercase text-muted-foreground tracking-widest">Moyenne Pondérée</p>
+                                 <p className="text-base md:text-2xl font-black text-primary tabular-nums">{(sub.myAverage * sub.coef).toFixed(1)}</p>
+                              </div>
+                           </CardContent>
+                        </Card>
+                      ))}
+                   </div>
+                </div>
+             )}
           </TabsContent>
         </Tabs>
       </div>
