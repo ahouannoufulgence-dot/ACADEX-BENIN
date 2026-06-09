@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -91,7 +90,8 @@ export default function PromotionsPage() {
 
   // LOGIQUE DE CALCUL DES MOYENNES ET RANGS
   const academicData = useMemo(() => {
-    if (!students || !grades) return { levelsMap: {}, classStats: {}, studentsRanked: [] }
+    const defaultData = { levelsMap: {}, classStats: {}, studentsProcessed: [] }
+    if (!students || !grades) return defaultData
 
     const levelsMap: any = {}
     const classStats: any = {}
@@ -160,7 +160,7 @@ export default function PromotionsPage() {
         count: avgs.length,
         max: Math.max(...avgs),
         min: Math.min(...avgs),
-        successRate: (avgs.filter(v => v >= 10).length / avgs.length * 100).toFixed(0)
+        successRate: avgs.length > 0 ? (avgs.filter(v => v >= 10).length / avgs.length * 100).toFixed(0) : "0"
       }
     })
 
@@ -179,13 +179,13 @@ export default function PromotionsPage() {
   }, [students, grades, lifeEvents, activeYear])
 
   const handleAnalyzeClass = async () => {
-    if (!selectedClass || academicData.studentsProcessed.length === 0) return
+    if (!selectedClass || !academicData.studentsProcessed || academicData.studentsProcessed.length === 0) return
     setAnalyzing(true)
     try {
-      const classStudents = academicData.studentsProcessed.filter(s => s.classId === selectedClass)
+      const classStudents = academicData.studentsProcessed.filter((s: any) => s.classId === selectedClass)
       const prompt = `Analysez la performance de la classe ${selectedClass}. 
       Statistiques : Moyenne ${academicData.classStats[selectedClass]?.avg}, Taux réussite ${academicData.classStats[selectedClass]?.successRate}%.
-      Données élèves : ${JSON.stringify(classStudents.map(s => ({ nom: s.lastName, moy: s.generalAvg })))}`
+      Données élèves : ${JSON.stringify(classStudents.map((s: any) => ({ nom: s.lastName, moy: s.generalAvg })))}`
       
       const res = await askAcadexBrain({
         question: prompt,
@@ -203,9 +203,10 @@ export default function PromotionsPage() {
   }
 
   const currentClassStudents = useMemo(() => {
+    if (!academicData.studentsProcessed) return []
     return academicData.studentsProcessed
-      .filter(s => s.classId === selectedClass)
-      .sort((a, b) => a.rank - b.rank)
+      .filter((s: any) => s.classId === selectedClass)
+      .sort((a: any, b: any) => a.rank - b.rank)
   }, [academicData, selectedClass])
 
   const goBackToLevels = () => { setSelectedLevel(null); setSelectedClass(null); setAiReport(null); }
@@ -252,7 +253,7 @@ export default function PromotionsPage() {
                     <div className="size-12 md:size-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
                       <Award className="size-6 md:size-8" />
                     </div>
-                    <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] md:text-xs px-3">{data?.classes.size || 0} CLASSES</Badge>
+                    <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] md:text-xs px-3">{data?.classes?.size || 0} CLASSES</Badge>
                   </div>
                   <div className="space-y-1 relative z-10">
                     <h3 className="text-xl md:text-3xl font-black text-foreground uppercase tracking-tight">{level.label}</h3>
@@ -317,11 +318,11 @@ export default function PromotionsPage() {
             {/* Statistiques de tête */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                {[
-                 { label: "Effectif", val: academicData.classStats[selectedClass]?.count, icon: Users, color: "text-blue-600" },
-                 { label: "Moyenne", val: academicData.classStats[selectedClass]?.avg + "/20", icon: TrendingUp, color: "text-primary" },
-                 { label: "Major", val: academicData.classStats[selectedClass]?.max + "/20", icon: Star, color: "text-amber-500" },
-                 { label: "Plus faible", val: academicData.classStats[selectedClass]?.min + "/20", icon: TrendingDown, color: "text-red-500" },
-                 { label: "Réussite", val: academicData.classStats[selectedClass]?.successRate + "%", icon: CheckCircle2, color: "text-emerald-600" },
+                 { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
+                 { label: "Moyenne", val: (academicData.classStats[selectedClass]?.avg || "0.00") + "/20", icon: TrendingUp, color: "text-primary" },
+                 { label: "Major", val: (academicData.classStats[selectedClass]?.max || "0.00") + "/20", icon: Star, color: "text-amber-500" },
+                 { label: "Plus faible", val: (academicData.classStats[selectedClass]?.min || "0.00") + "/20", icon: TrendingDown, color: "text-red-500" },
+                 { label: "Réussite", val: (academicData.classStats[selectedClass]?.successRate || "0") + "%", icon: CheckCircle2, color: "text-emerald-600" },
                ].map((s, i) => (
                  <Card key={i} className="p-5 md:p-7 rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between">
                     <div className={cn("p-2 rounded-xl bg-muted w-fit mb-4", s.color)}><s.icon className="size-4 md:size-5" /></div>
