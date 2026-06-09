@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, addDoc, query, where, deleteDoc, doc, serverTimestamp, getDocs } from "firebase/firestore"
+import { cn } from "@/lib/utils"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
@@ -271,7 +272,9 @@ export default function AvailabilityPage() {
                     </div>
                     <div className="space-y-2">
                        <h3 className="text-xl md:text-3xl font-black uppercase text-foreground">Agenda Vierge</h3>
-                       <p className="text-[10px] md:text-xl font-medium text-muted-foreground max-w-sm">Commencez à planifier vos cours pour l'année {activeYear}.</p>
+                       <p className="text-[10px] md:text-xl font-medium text-muted-foreground max-sm mx-auto leading-relaxed">
+                         Commencez à planifier vos cours pour l'année {activeYear}.
+                       </p>
                     </div>
                   </div>
                 ) : (

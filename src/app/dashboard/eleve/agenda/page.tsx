@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where, orderBy } from "firebase/firestore"
+import { cn } from "@/lib/utils"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
@@ -22,10 +23,14 @@ export default function StudentAgendaPage() {
   useEffect(() => {
     const fetchStudentData = async () => {
       const matricule = localStorage.getItem('acadex_user_id')
+      const role = localStorage.getItem('acadex_user_role')
+      
+      // Si c'est un élève, on essaie de deviner sa classe par son matricule ou on le récupère du profil
       if (matricule) {
         const parts = matricule.split('-')
         if (parts.length >= 2) setStudentClass(parts[1])
       }
+      
       setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
       setMounted(true)
     }
