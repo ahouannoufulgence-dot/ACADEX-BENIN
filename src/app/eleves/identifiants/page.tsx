@@ -25,8 +25,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
-// Nomenclature Unifiée ACADEX
-const officialClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"]
+// Nomenclature Unifiée ACADEX - Mise à jour avec Séries A, B, C, D
+const officialClasses = [
+  "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
+  "2NDE A", "2NDE B", "2NDE C", "2NDE D",
+  "1ERE A", "1ERE B", "1ERE C", "1ERE D",
+  "TLE A", "TLE B", "TLE C", "TLE D"
+]
 
 export default function GenIdentifiersPage() {
   const db = useFirestore()
@@ -35,7 +40,6 @@ export default function GenIdentifiersPage() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
-  // Mémorisation de la requête pour éviter les rechargements infinis
   const idsQuery = useMemo(() => query(collection(db, "registration_ids"), orderBy("matricule", "asc")), [db])
   const { data: identifiers, loading: loadingIds } = useCollection(idsQuery)
 
@@ -56,11 +60,6 @@ export default function GenIdentifiersPage() {
     const batchSize = parseInt(count)
     if (isNaN(batchSize) || batchSize <= 0) {
       toast({ title: "Quantité invalide", variant: "destructive" })
-      return
-    }
-
-    if (batchSize > 500) {
-      toast({ title: "Limite dépassée", description: "Maximum 500 identifiants par lot.", variant: "destructive" })
       return
     }
 
@@ -85,7 +84,6 @@ export default function GenIdentifiersPage() {
       await batch.commit()
       toast({ title: "Génération terminée", description: `${batchSize} identifiants créés pour la classe ${selectedClass}.` })
     } catch (err) {
-      console.error(err)
       const error = new FirestorePermissionError({
         path: 'registration_ids',
         operation: 'write',
@@ -153,7 +151,7 @@ export default function GenIdentifiersPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Quantité à générer</Label>
+              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Quantité</Label>
               <Input type="number" min="1" max="500" value={count} onChange={(e) => setCount(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg" />
             </div>
             <div className="md:col-span-2">
@@ -191,7 +189,7 @@ export default function GenIdentifiersPage() {
                   {loadingIds ? (
                     <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
                   ) : filteredIds.length === 0 ? (
-                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun code généré pour le moment.</td></tr>
+                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun code généré.</td></tr>
                   ) : (
                     filteredIds.map((id: any) => (
                       <tr key={id.id} className="hover:bg-muted/5 transition-colors group">

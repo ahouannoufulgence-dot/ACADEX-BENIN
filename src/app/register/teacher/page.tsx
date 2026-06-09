@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from "react";
@@ -10,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, Loader2, BookOpen, Eye, EyeOff } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { useFirestore } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
@@ -31,17 +31,19 @@ export default function RegisterTeacherPage() {
     phone: "",
     subject: "",
     classes: [] as string[],
-    isFormTeacher: false,
-    formClass: "",
     password: "",
-    confirmPassword: "",
-    secretQuestion: "teacher",
-    secretAnswer: ""
+    confirmPassword: ""
   });
 
   const regImage = placeholderData.placeholderImages.find(img => img.id === "registration-green");
-  const subjects = ["Mathématiques", "Français", "Anglais", "Physique-Chimie", "SVT", "Histoire-Géographie", "Philosophie", "Informatique", "EPS"];
-  const availableClasses = ["6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "4EME C", "3EME D1", "3EME D2", "2NDE C", "2NDE D", "1ERE D", "TLE D1", "TLE D2"];
+  const subjects = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"];
+  
+  const availableClasses = [
+    "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
+    "2NDE A", "2NDE B", "2NDE C", "2NDE D",
+    "1ERE A", "1ERE B", "1ERE C", "1ERE D",
+    "TLE A", "TLE B", "TLE C", "TLE D"
+  ];
 
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
@@ -74,8 +76,6 @@ export default function RegisterTeacherPage() {
       phone: form.phone,
       subject: form.subject,
       classes: form.classes,
-      isFormTeacher: form.isFormTeacher,
-      formClass: form.formClass,
       status: "En attente",
       registeredAt: new Date().toISOString()
     };
@@ -108,7 +108,6 @@ export default function RegisterTeacherPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* Background with Vibrant Green Overlay */}
       <div className="absolute inset-0 z-0">
         <Image 
           src={regImage?.imageUrl || "https://picsum.photos/seed/green/1920/1080"}
@@ -116,7 +115,6 @@ export default function RegisterTeacherPage() {
           fill
           className="object-cover"
           priority
-          data-ai-hint={regImage?.imageHint || "green nature"}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-emerald-600/80 to-primary/60" />
       </div>
@@ -152,11 +150,11 @@ export default function RegisterTeacherPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="font-bold">Nom</Label>
-                    <Input placeholder="Dossou" className="h-12 rounded-xl" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
+                    <Input placeholder="Nom" className="h-12 rounded-xl" value={form.lastName} onChange={e => setForm({...form, lastName: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold">Prénom</Label>
-                    <Input placeholder="Marc" className="h-12 rounded-xl" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
+                    <Input placeholder="Prénom" className="h-12 rounded-xl" value={form.firstName} onChange={e => setForm({...form, firstName: e.target.value})} />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -178,14 +176,14 @@ export default function RegisterTeacherPage() {
                   <BookOpen className="size-8" />
                 </div>
                 <CardTitle className="text-3xl font-black">Profil Pédagogique</CardTitle>
-                <CardDescription className="text-lg font-medium">Définissez vos classes réelles.</CardDescription>
+                <CardDescription className="text-lg font-medium">Assignez vos classes et matières.</CardDescription>
               </CardHeader>
               <CardContent className="p-10 pt-0 space-y-6">
                 <div className="space-y-2">
-                  <Label className="font-bold">Matière Principale</Label>
+                  <Label className="font-bold">Matière</Label>
                   <Select value={form.subject} onValueChange={v => setForm({...form, subject: v})}>
                     <SelectTrigger className="h-12 rounded-xl">
-                      <SelectValue placeholder="Sélectionner votre matière" />
+                      <SelectValue placeholder="Choisir" />
                     </SelectTrigger>
                     <SelectContent>
                       {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
@@ -193,13 +191,13 @@ export default function RegisterTeacherPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="font-bold block mb-4">Classes Enseignées (Nomenclature Officielle)</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <Label className="font-bold block mb-4 uppercase text-[10px] tracking-widest text-muted-foreground">Classes (Cochez pour assigner)</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                     {availableClasses.map(cls => (
                       <div 
                         key={cls}
                         onClick={() => toggleClass(cls)}
-                        className={`cursor-pointer p-3 rounded-xl border-2 text-center text-[10px] font-black transition-all ${form.classes.includes(cls) ? 'bg-foreground text-white border-foreground shadow-md' : 'bg-muted/50 border-transparent hover:border-muted'}`}
+                        className={`cursor-pointer p-3 rounded-xl border-2 text-center text-[9px] font-black transition-all ${form.classes.includes(cls) ? 'bg-foreground text-white border-foreground shadow-md' : 'bg-muted/50 border-transparent hover:border-muted'}`}
                       >
                         {cls}
                       </div>
@@ -259,7 +257,7 @@ export default function RegisterTeacherPage() {
                 <Button variant="ghost" onClick={prevStep} className="font-bold rounded-xl h-12 flex gap-2"><ArrowLeft className="size-4" /> Retour</Button>
                 <Button onClick={handleRegister} disabled={loading} className="bg-foreground text-white rounded-xl font-black px-10 h-12">
                   {loading ? <Loader2 className="size-5 animate-spin mr-2" /> : <ShieldCheck className="size-5 mr-2" />}
-                  Finaliser l'inscription
+                  Finaliser
                 </Button>
               </CardFooter>
             </>
@@ -272,10 +270,10 @@ export default function RegisterTeacherPage() {
               </div>
               <div className="space-y-3">
                 <h2 className="text-3xl font-black">Inscription Réussie !</h2>
-                <p className="text-muted-foreground font-medium text-lg">Votre compte est en attente de validation par la direction.</p>
+                <p className="text-muted-foreground font-medium text-lg">Votre compte est en attente de validation.</p>
               </div>
               <div className="bg-muted/50 p-8 rounded-[2rem] border-2 border-dashed border-foreground space-y-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant Cockpit</p>
+                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Votre Identifiant</p>
                 <p className="text-4xl font-black text-foreground tracking-tighter">{generatedId}</p>
                 <Button onClick={copyId} variant="outline" size="sm" className="rounded-full border-foreground/20 text-foreground font-bold h-10 px-6">
                   <Copy className="size-4 mr-2" /> Copier l'identifiant

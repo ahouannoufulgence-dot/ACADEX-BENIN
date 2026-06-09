@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Layers, 
@@ -22,7 +22,7 @@ import {
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -34,9 +34,9 @@ const levels = [
   { id: "5EME", label: "5ème", desc: "Premier Cycle - Observation" },
   { id: "4EME", label: "4ème", desc: "Premier Cycle - Orientation" },
   { id: "3EME", label: "3ème", desc: "Premier Cycle - Brevet" },
-  { id: "2NDE", label: "Seconde", desc: "Second Cycle - Détermination" },
-  { id: "1ERE", label: "Première", desc: "Second Cycle - Épreuves anticipées" },
-  { id: "TERMINALE", label: "Terminale", desc: "Second Cycle - Baccalauréat" }
+  { id: "2NDE", label: "Seconde", desc: "Second Cycle - Séries A, B, C, D" },
+  { id: "1ERE", label: "Première", desc: "Second Cycle - Séries A, B, C, D" },
+  { id: "TERMINALE", label: "Terminale", desc: "Second Cycle - Séries A, B, C, D" }
 ]
 
 export default function PromotionsPage() {
@@ -54,7 +54,6 @@ export default function PromotionsPage() {
     return () => window.removeEventListener('acadex_year_changed', updateYear as any)
   }, [])
 
-  // 1. Fetch Students for the year
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear) return null
     return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
@@ -62,12 +61,10 @@ export default function PromotionsPage() {
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
-  // 2. Logic to group students by level and class
   const dataMap = useMemo(() => {
     if (!students) return {}
     const map: any = {}
     students.forEach((s: any) => {
-      // Find which level the student belongs to based on classId (ex: 6EME A -> 6EME)
       const level = levels.find(l => s.classId?.startsWith(l.id))?.id || "AUTRE"
       if (!map[level]) map[level] = { students: [], classes: new Set() }
       map[level].students.push(s)
@@ -85,7 +82,6 @@ export default function PromotionsPage() {
     )
   }, [students, selectedClass, searchTerm])
 
-  // Reset levels when navigating back
   const goBackToLevels = () => { setSelectedLevel(null); setSelectedClass(null); setSelectedStudent(null); }
   const goBackToClasses = () => { setSelectedClass(null); setSelectedStudent(null); }
   const goBackToClassList = () => { setSelectedStudent(null); }
@@ -94,7 +90,6 @@ export default function PromotionsPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
@@ -112,7 +107,6 @@ export default function PromotionsPage() {
           )}
         </div>
 
-        {/* STEP 1: Level Grid */}
         {!selectedLevel && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {levels.map((level) => {
@@ -138,7 +132,7 @@ export default function PromotionsPage() {
                     <p className="text-[10px] md:text-sm font-medium text-muted-foreground uppercase tracking-widest">{level.desc}</p>
                   </div>
                   <div className="mt-8 pt-6 border-t border-muted/30 flex justify-between items-center relative z-10">
-                    <span className="text-[10px] md:text-xs font-black text-primary/60 uppercase">{count} Élèves inscrits</span>
+                    <span className="text-[10px] md:text-xs font-black text-primary/60 uppercase">{count} Élèves</span>
                     <ChevronRight className="size-4 md:size-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
@@ -147,7 +141,6 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {/* STEP 2: Classes for Level */}
         {selectedLevel && !selectedClass && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
             <div className="flex items-center gap-4">
@@ -167,21 +160,19 @@ export default function PromotionsPage() {
                       <BookOpen className="size-8 md:size-10" />
                     </div>
                     <h3 className="text-2xl md:text-4xl font-black mb-2 uppercase">{cls}</h3>
-                    <p className="text-[10px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">{count} DOSSIERS ÉLÈVES</p>
+                    <p className="text-[10px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">{count} DOSSIERS</p>
                   </Card>
                 )
               })}
               {(!dataMap[selectedLevel]?.classes || dataMap[selectedLevel]?.classes.size === 0) && (
-                <div className="col-span-full py-20 text-center opacity-30 italic font-medium">Aucune classe n'est encore configurée pour ce niveau.</div>
+                <div className="col-span-full py-20 text-center opacity-30 italic font-medium">Aucune classe pour ce niveau.</div>
               )}
             </div>
           </div>
         )}
 
-        {/* STEP 3 & 4: Students List & Dossier */}
         {selectedClass && (
           <div className="grid lg:grid-cols-12 gap-8 animate-in slide-in-from-right-4">
-            {/* Student List Sidebar */}
             <div className={cn("lg:col-span-4 space-y-6", selectedStudent && "hidden lg:block")}>
               <Card className="p-6 md:p-8 rounded-[2.5rem] bg-white border-none shadow-sm h-fit">
                 <div className="flex items-center justify-between mb-8">
@@ -226,27 +217,24 @@ export default function PromotionsPage() {
               </Card>
             </div>
 
-            {/* Dossier Content Area */}
             <div className={cn("lg:col-span-8", !selectedStudent && "hidden lg:flex")}>
                {!selectedStudent ? (
                  <Card className="flex-1 p-20 md:p-40 text-center rounded-[3rem] md:rounded-[4rem] border-4 border-dashed border-muted/50 bg-white/50 flex flex-col items-center justify-center space-y-8">
-                    <div className="size-20 md:size-28 bg-muted rounded-[2rem] flex items-center justify-center opacity-30 shadow-inner">
+                    <div className="size-20 md:size-28 bg-muted rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center opacity-30 shadow-inner">
                       <FileText className="size-10 md:size-14 text-muted-foreground" />
                     </div>
                     <div className="space-y-2">
                       <h3 className="text-2xl md:text-4xl font-black text-foreground/40 uppercase">Dossier Académique</h3>
-                      <p className="text-sm md:text-xl font-medium text-muted-foreground/60 max-w-sm mx-auto">Sélectionnez un élève pour visualiser son historique et ses bulletins scellés.</p>
+                      <p className="text-sm md:text-xl font-medium text-muted-foreground/60 max-w-sm mx-auto">Sélectionnez un élève pour visualiser son historique.</p>
                     </div>
                  </Card>
                ) : (
                  <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-6 w-full">
-                    {/* Mobile Back to List */}
                     <div className="flex items-center gap-4 lg:hidden">
                        <Button variant="ghost" size="icon" onClick={goBackToClassList} className="size-10 rounded-xl bg-white shadow-sm border border-muted/20"><ChevronLeft className="size-6" /></Button>
                        <h4 className="font-black uppercase text-xs">Fiche Élève</h4>
                     </div>
 
-                    {/* Student Hero Card */}
                     <Card className="p-6 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] bg-white border-none shadow-sm relative overflow-hidden group">
                        <div className="absolute top-0 right-0 p-12 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000"><ShieldCheck className="size-64" /></div>
                        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 relative z-10">
@@ -275,9 +263,8 @@ export default function PromotionsPage() {
                        </div>
                     </Card>
 
-                    {/* Bulletins Section */}
                     <div className="grid md:grid-cols-3 gap-4 md:gap-8">
-                       {["Trimestre 1", "Trimestre 2", "Trimestre 3"].map((term, i) => (
+                       {["Trimestre 1", "Trimestre 2", "Trimestre 3"].map((term) => (
                          <Card key={term} className="p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] bg-white border-none shadow-sm flex flex-col items-center text-center space-y-6 group hover:shadow-xl transition-all">
                             <div className="size-14 md:size-16 bg-muted/40 rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
                                <ClipboardList className="size-6 md:size-8" />
@@ -293,7 +280,6 @@ export default function PromotionsPage() {
                        ))}
                     </div>
 
-                    {/* Summary Info */}
                     <Card className="p-8 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] bg-foreground text-white border-none shadow-2xl relative overflow-hidden group">
                        <div className="relative z-10 flex flex-col md:flex-row justify-between gap-10">
                           <div className="space-y-6 flex-1">
@@ -301,12 +287,12 @@ export default function PromotionsPage() {
                                 <Zap className="text-primary fill-primary size-5 md:size-7" /> Intelligence Dossier
                              </h3>
                              <p className="text-xs md:text-lg font-medium text-white/70 italic leading-relaxed border-l-4 border-primary pl-6">
-                                "L'analyse du dossier montre une progression constante. L'élève excelle dans les matières scientifiques et maintient une conduite exemplaire certifiée."
+                                "L'analyse du dossier montre une progression constante. L'élève excelle dans les matières scientifiques et maintient une conduite exemplaire."
                              </p>
                           </div>
                           <div className="flex flex-col justify-end">
                              <Button variant="outline" className="rounded-xl border-white/10 text-white font-black text-[9px] md:text-xs hover:bg-white/5 h-11 md:h-14 px-8">
-                                OUVRIR ANALYSE IA COMPLÈTE
+                                ANALYSE IA COMPLÈTE
                              </Button>
                           </div>
                        </div>
