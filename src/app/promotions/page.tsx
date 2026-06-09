@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -24,7 +25,8 @@ import {
   Sparkles,
   User,
   Star,
-  Info
+  Info,
+  ArrowRight
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
@@ -37,6 +39,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
 import { toast } from "@/hooks/use-toast"
+import Link from "next/link"
 
 const levels = [
   { id: "6EME", label: "6EME", desc: "Premier Cycle" },
@@ -49,7 +52,7 @@ const levels = [
 ]
 
 const BENIN_SUBJECTS = [
-  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie"
+  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"
 ]
 
 export default function PromotionsPage() {
@@ -68,7 +71,7 @@ export default function PromotionsPage() {
     return () => window.removeEventListener('acadex_year_changed', updateYear as any)
   }, [])
 
-  // REQUÊTES RÉELLES
+  // REQUÊTES RÉELLES - INTERCONNEXION TOTALE
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear) return null
     return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
@@ -84,11 +87,17 @@ export default function PromotionsPage() {
     return query(collection(db, "student_life"), where("academicYear", "==", activeYear))
   }, [db, activeYear])
 
+  const coefsQuery = useMemo(() => {
+    if (!db) return null
+    return collection(db, "subject_configs")
+  }, [db])
+
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
   const { data: lifeEvents } = useCollection(lifeQuery)
+  const { data: coefs } = useCollection(coefsQuery)
 
-  // LOGIQUE DE CALCUL DES MOYENNES ET RANGS
+  // LOGIQUE DE CALCUL MAÎTRE (Notes + Coefs + Conduite)
   const academicData = useMemo(() => {
     const defaultData = { levelsMap: {}, classStats: {}, studentsProcessed: [] }
     if (!students || !grades) return defaultData
@@ -96,25 +105,28 @@ export default function PromotionsPage() {
     const levelsMap: any = {}
     const classStats: any = {}
     
-    // Initialisation
     levels.forEach(l => {
       levelsMap[l.id] = { students: [], classes: new Set(), totalAvg: 0, count: 0 }
     })
 
-    // Calcul par élève
     const studentsProcessed = students.map((student: any) => {
       const studentGrades = grades.filter((g: any) => g.studentId === student.matricule)
       const studentLife = lifeEvents?.filter((e: any) => e.studentId === student.matricule) || []
       
-      // Note de conduite
+      // 1. Calcul Note de Conduite (Base 20)
       let conduct = 20
       studentLife.forEach((e: any) => { if (e.pointsImpact) conduct += Number(e.pointsImpact) })
       conduct = Math.max(0, Math.min(20, conduct))
 
-      // Moyennes par matière
+      // 2. Moyennes par matière avec coefficients réels
       const subjects: Record<string, any> = {}
       studentGrades.forEach((g: any) => {
-        if (!subjects[g.subject]) subjects[g.subject] = { vals: [], coef: Number(g.coefficient) || 1, details: {} }
+        if (!subjects[g.subject]) {
+          // Chercher le coef configuré pour cette classe/matière
+          const configId = `${student.classId}_${g.subject}`.replace(/\s/g, '_')
+          const config = coefs?.find(c => c.id === configId)
+          subjects[g.subject] = { vals: [], coef: config?.coef || Number(g.coefficient) || 1, details: {} }
+        }
         subjects[g.subject].vals.push(Number(g.value))
         subjects[g.subject].details[g.type] = Number(g.value)
       })
@@ -129,7 +141,7 @@ export default function PromotionsPage() {
         totalCoef += s.coef
       })
 
-      // Ajout Conduite (Coef 1)
+      // 3. Injection Conduite (Coefficient 1 par défaut)
       totalWeighted += conduct * 1
       totalCoef += 1
 
@@ -143,7 +155,7 @@ export default function PromotionsPage() {
       }
     })
 
-    // Calcul des Rangs par classe
+    // 4. Calcul des Rangs par classe
     const classGroups: Record<string, any[]> = {}
     studentsProcessed.forEach(s => {
       if (!classGroups[s.classId]) classGroups[s.classId] = []
@@ -164,7 +176,7 @@ export default function PromotionsPage() {
       }
     })
 
-    // Mise à jour de la carte des niveaux
+    // 5. Agrégation par Promotions (Niveaux)
     studentsProcessed.forEach(s => {
       const levelId = levels.find(l => s.classId?.startsWith(l.id))?.id
       if (levelId && levelsMap[levelId]) {
@@ -176,7 +188,7 @@ export default function PromotionsPage() {
     })
 
     return { levelsMap, classStats, studentsProcessed }
-  }, [students, grades, lifeEvents, activeYear])
+  }, [students, grades, lifeEvents, coefs, activeYear])
 
   const handleAnalyzeClass = async () => {
     if (!selectedClass || !academicData.studentsProcessed || academicData.studentsProcessed.length === 0) return
@@ -216,7 +228,6 @@ export default function PromotionsPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Dynamique */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
@@ -234,7 +245,7 @@ export default function PromotionsPage() {
           )}
         </div>
 
-        {/* 1. VUE DES PROMOTIONS (Niveaux) */}
+        {/* 1. VUE DES PROMOTIONS */}
         {!selectedLevel && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {levels.map((level) => {
@@ -269,7 +280,7 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {/* 2. VUE DES CLASSES D'UN NIVEAU */}
+        {/* 2. VUE DES CLASSES */}
         {selectedLevel && !selectedClass && (
           <div className="space-y-8 animate-in slide-in-from-right-4">
             <div className="flex items-center gap-4">
@@ -311,11 +322,11 @@ export default function PromotionsPage() {
           </div>
         )}
 
-        {/* 3. VUE DÉTAILLÉE DE LA CLASSE (TABLEAU INTELLIGENT) */}
+        {/* 3. TABLEAU SCOLAIRE INTELLIGENT */}
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
             
-            {/* Statistiques de tête */}
+            {/* Stats de tête */}
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
@@ -334,7 +345,7 @@ export default function PromotionsPage() {
                ))}
             </div>
 
-            {/* Barre d'outils et Filtre */}
+            {/* Outils & Filtres */}
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-[2rem] shadow-sm border-2 border-primary/5">
                <div className="flex items-center gap-4 w-full md:w-auto">
                  <Button variant="ghost" onClick={goBackToClasses} className="rounded-xl font-black text-xs uppercase"><ChevronLeft className="size-4 mr-2" /> Retour</Button>
@@ -362,13 +373,11 @@ export default function PromotionsPage() {
                  <div className="relative z-10 space-y-4">
                     <h3 className="text-xl font-black flex items-center gap-3 uppercase"><Zap className="text-primary fill-primary" /> Diagnostic Brain v1</h3>
                     <p className="text-white/80 italic font-medium leading-relaxed border-l-4 border-primary pl-6">{aiReport}</p>
-                    <Button variant="ghost" size="sm" onClick={() => setAiReport(null)} className="text-white/40 font-bold uppercase text-[9px] hover:text-white">Masquer l'analyse</Button>
                  </div>
                  <Sparkles className="absolute -bottom-10 -right-10 size-48 text-white/[0.03]" />
               </Card>
             )}
 
-            {/* TABLEAU DES NOTES (Desktop) / CARTES (Mobile) */}
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
                {/* Mobile Cards */}
                <div className="md:hidden p-4 space-y-4 bg-muted/5">
@@ -394,7 +403,9 @@ export default function PromotionsPage() {
                              <p className="font-black text-sm">{s.conduct.toFixed(1)}/20</p>
                           </div>
                        </div>
-                       <Button variant="ghost" className="w-full font-black text-primary text-[10px] uppercase h-10 hover:bg-primary/5">Détails Dossier <ArrowRight className="ml-2 size-3" /></Button>
+                       <Button variant="ghost" asChild className="w-full font-black text-primary text-[10px] uppercase h-10 hover:bg-primary/5">
+                         <Link href={`/eleves/${s.id}`}>Détails Dossier <ArrowRight className="ml-2 size-3" /></Link>
+                       </Button>
                     </div>
                   ))}
                </div>
@@ -405,7 +416,7 @@ export default function PromotionsPage() {
                     <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
                       <tr>
                         <th className="px-8 py-6 text-left">Rang</th>
-                        <th className="px-8 py-6 text-left">Identifiant / Nom & Prénoms</th>
+                        <th className="px-8 py-6 text-left">Élève</th>
                         <th className="px-4 py-6 text-center">Int 1</th>
                         <th className="px-4 py-6 text-center">Int 2</th>
                         <th className="px-4 py-6 text-center">Int 3</th>
@@ -426,10 +437,10 @@ export default function PromotionsPage() {
                                <div className={cn("size-10 rounded-xl flex items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}e</div>
                             </td>
                             <td className="px-8 py-6">
-                               <div>
-                                  <p className="font-black text-lg text-foreground uppercase tracking-tight truncate max-w-[200px] group-hover:text-primary transition-colors">{s.lastName} {s.firstName}</p>
+                               <Link href={`/eleves/${s.id}`} className="block hover:translate-x-1 transition-transform">
+                                  <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
                                   <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
-                               </div>
+                               </Link>
                             </td>
                             <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int1 || "---"}</td>
                             <td className="px-4 py-6 text-center font-bold text-muted-foreground">{sub?.details?.int2 || "---"}</td>
@@ -456,10 +467,10 @@ export default function PromotionsPage() {
                     <ShieldCheck className="text-primary size-6" />
                   </div>
                   <p className="text-sm font-medium text-muted-foreground max-w-xl italic">
-                    "Toutes les moyennes et les rangs affichés dans ce tableau sont scellés et basés sur les coefficients officiels de l'établissement Acadex pour l'année {activeYear}."
+                    "Toutes les moyennes et les rangs affichés sont scellés et synchronisés avec le module de Vie Scolaire (Note de Conduite)."
                   </p>
                </div>
-               <Button className="rounded-xl font-black bg-foreground text-white h-12 px-8"><Download className="mr-2 size-4" /> EXPORTER CLASSEMENT</Button>
+               <Button className="rounded-xl font-black bg-foreground text-white h-12 px-8 shadow-lg active:scale-95"><Download className="mr-2 size-4" /> EXPORTER CLASSEMENT</Button>
             </div>
           </div>
         )}
