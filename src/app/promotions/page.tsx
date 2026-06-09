@@ -135,7 +135,7 @@ export default function PromotionsPage() {
       let totalCoef = 0
       
       Object.entries(subjects).forEach(([name, s]: [string, any]) => {
-        const avg = s.vals.reduce((a:number, b:number) => a+b, 0) / s.vals.length
+        const avg = s.vals.length > 0 ? s.vals.reduce((a:number, b:number) => a+b, 0) / s.vals.length : 0
         s.avg = avg
         totalWeighted += avg * s.coef
         totalCoef += s.coef
@@ -166,10 +166,10 @@ export default function PromotionsPage() {
       
       const avgs = classGroups[cid].map(s => s.generalAvg)
       classStats[cid] = {
-        avg: Number((avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(2)),
+        avg: avgs.length > 0 ? Number((avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(2)) : 0,
         count: avgs.length,
-        max: Math.max(...avgs),
-        min: Math.min(...avgs),
+        max: avgs.length > 0 ? Math.max(...avgs) : 0,
+        min: avgs.length > 0 ? Math.min(...avgs) : 0,
         successRate: avgs.length > 0 ? (avgs.filter(v => v >= 10).length / avgs.length * 100).toFixed(0) : "0"
       }
     })
@@ -229,7 +229,7 @@ export default function PromotionsPage() {
               Centre <span className="text-primary italic">Promotions</span>
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[9px] md:text-sm">
-              <Layers className="size-3 md:size-4 text-primary" />
+              <Layers className="size-3.5 md:size-4 text-primary" />
               <span>Pilotage Académique • {activeYear}</span>
             </div>
           </div>
@@ -252,7 +252,7 @@ export default function PromotionsPage() {
                   className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group relative overflow-hidden active:scale-95"
                 >
                   <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
-                    <GraduationCap className="size-24 md:size-32" />
+                    <GraduationCap className="size-20 md:size-32" />
                   </div>
                   <div className="flex items-center justify-between mb-8 relative z-10">
                     <div className="size-11 md:size-16 bg-primary/5 rounded-2xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
@@ -266,7 +266,7 @@ export default function PromotionsPage() {
                   </div>
                   <div className="mt-8 pt-6 border-t border-muted/30 flex justify-between items-center relative z-10">
                     <span className="text-[10px] md:text-xs font-black text-muted-foreground uppercase">{data?.count || 0} Élèves</span>
-                    <ChevronRight className="size-4 md:size-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="size-3.5 md:size-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Card>
               )
@@ -289,9 +289,9 @@ export default function PromotionsPage() {
                     onClick={() => setSelectedClass(cls)}
                     className="p-8 md:p-12 rounded-[2.5rem] bg-white border-none shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden active:scale-95"
                   >
-                    <div className="absolute top-0 right-0 p-6 opacity-[0.02]"><Zap className="size-20" /></div>
+                    <div className="absolute top-0 right-0 p-6 opacity-[0.02]"><Zap className="size-16 md:size-20" /></div>
                     <div className="size-16 md:size-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-                      <BookOpen className="size-8 md:size-10" />
+                      <BookOpen className="size-6 md:size-10" />
                     </div>
                     <h3 className="text-2xl md:text-4xl font-black mb-4 uppercase text-center">{cls}</h3>
                     <div className="space-y-3 pt-4 border-t border-muted/30">
@@ -313,7 +313,7 @@ export default function PromotionsPage() {
 
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
-            {/* Stats Horizontales pour mobile */}
+            {/* Stats Horizontales - Scroll Mobile */}
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
@@ -322,11 +322,11 @@ export default function PromotionsPage() {
                  { label: "Faible", val: (academicData.classStats[selectedClass]?.min || "0.00") + "/20", icon: TrendingDown, color: "text-red-500" },
                  { label: "Réussite", val: (academicData.classStats[selectedClass]?.successRate || "0") + "%", icon: CheckCircle2, color: "text-emerald-600" },
                ].map((s, i) => (
-                 <Card key={i} className="min-w-[140px] md:min-w-0 p-5 md:p-7 rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between shrink-0 lg:shrink">
-                    <div className={cn("p-2 rounded-xl bg-muted w-fit mb-4", s.color)}><s.icon className="size-4 md:size-5" /></div>
+                 <Card key={i} className="min-w-[130px] md:min-w-0 p-5 md:p-7 rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between shrink-0 lg:shrink">
+                    <div className={cn("p-2 rounded-xl bg-muted w-fit mb-4", s.color)}><s.icon className="size-4 md:size-6" /></div>
                     <div>
-                       <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">{s.label}</p>
-                       <h4 className="text-base md:text-2xl font-black">{s.val}</h4>
+                       <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">{s.label}</p>
+                       <h4 className="text-sm md:text-2xl font-black">{s.val}</h4>
                     </div>
                  </Card>
                ))}
@@ -334,21 +334,21 @@ export default function PromotionsPage() {
 
             <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-4 md:p-6 rounded-[2rem] shadow-sm border-2 border-primary/5">
                <div className="flex items-center justify-between w-full md:w-auto">
-                 <Button variant="ghost" onClick={goBackToClasses} className="rounded-xl font-black text-[10px] md:text-xs uppercase mobile-touch-target"><ChevronLeft className="size-4 mr-1 md:mr-2" /> Retour</Button>
-                 <Badge className="bg-primary text-white text-sm md:text-lg font-black px-4 md:px-6 h-10 md:h-12 rounded-2xl">{selectedClass}</Badge>
+                 <Button variant="ghost" onClick={goBackToClasses} className="rounded-xl font-black text-[9px] md:text-xs uppercase mobile-touch-target"><ChevronLeft className="size-3.5 mr-1.5" /> Retour</Button>
+                 <Badge className="bg-primary text-white text-xs md:text-lg font-black px-4 md:px-6 h-10 md:h-12 rounded-2xl">{selectedClass}</Badge>
                </div>
                
                <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
                   <div className="flex-1 md:w-64">
                     <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                       <SelectTrigger className="h-12 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger>
+                       <SelectTrigger className="h-11 md:h-12 rounded-xl border-2 font-black text-[10px] md:text-sm"><SelectValue /></SelectTrigger>
                        <SelectContent className="rounded-xl border-2 p-1.5">
                           {BENIN_SUBJECTS.map(s => <SelectItem key={s} value={s} className="font-bold p-3 rounded-lg">{s}</SelectItem>)}
                        </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleAnalyzeClass} disabled={analyzing} className="bg-primary hover:bg-primary/90 rounded-xl h-12 px-5 md:px-8 font-black shadow-xl shadow-primary/20 text-[10px] md:text-sm mobile-touch-target">
-                     {analyzing ? <Loader2 className="animate-spin size-4" /> : <Sparkles className="size-4 mr-2" />}
+                  <Button onClick={handleAnalyzeClass} disabled={analyzing} className="bg-primary hover:bg-primary/90 rounded-xl h-11 md:h-12 px-4 md:px-8 font-black shadow-xl shadow-primary/20 text-[9px] md:text-sm mobile-touch-target">
+                     {analyzing ? <Loader2 className="animate-spin size-3.5" /> : <Sparkles className="size-3.5 md:size-4 mr-2" />}
                      <span className="hidden sm:inline">Analyser Classe</span>
                      <span className="sm:hidden">IA</span>
                   </Button>
@@ -358,51 +358,51 @@ export default function PromotionsPage() {
             {aiReport && (
               <Card className="p-8 rounded-[2.5rem] bg-foreground text-white shadow-2xl relative overflow-hidden animate-in zoom-in-95">
                  <div className="relative z-10 space-y-4">
-                    <h3 className="text-xl font-black flex items-center gap-3 uppercase"><Zap className="text-primary fill-primary size-5 md:size-6" /> Diagnostic Brain v1</h3>
-                    <p className="text-white/80 italic font-medium leading-relaxed border-l-4 border-primary pl-6 text-sm md:text-base">{aiReport}</p>
+                    <h3 className="text-lg md:text-xl font-black flex items-center gap-3 uppercase"><Zap className="text-primary fill-primary size-4 md:size-6" /> Diagnostic Brain v1</h3>
+                    <p className="text-white/80 italic font-medium leading-relaxed border-l-4 border-primary pl-6 text-xs md:text-base">{aiReport}</p>
                  </div>
-                 <Sparkles className="absolute -bottom-10 -right-10 size-48 text-white/[0.03]" />
+                 <Sparkles className="absolute -bottom-10 -right-10 size-40 md:size-48 text-white/[0.03]" />
               </Card>
             )}
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
-               {/* Mobile View: Cards */}
+               {/* Mobile View: Cards Bijou */}
                <div className="md:hidden p-4 space-y-4 bg-muted/5">
                   {currentClassStudents.map((s: any) => (
                     <div key={s.id} className="p-5 bg-white rounded-[2rem] border border-muted/50 shadow-sm flex flex-col gap-4 active:scale-[0.98] transition-all">
                        <div className="flex justify-between items-start">
                           <div className="flex items-center gap-3">
-                             <div className={cn("size-10 rounded-xl flex items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary")}>
+                             <div className={cn("size-9 rounded-xl flex items-center justify-center font-black shadow-sm text-[10px]", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-primary/10 text-primary")}>
                                {s.rank}e
                              </div>
-                             <div>
-                                <p className="font-black text-sm uppercase truncate max-w-[150px]">{s.lastName} {s.firstName}</p>
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
+                             <div className="min-w-0">
+                                <p className="font-black text-xs uppercase truncate max-w-[140px]">{s.lastName} {s.firstName}</p>
+                                <p className="text-[8px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
                              </div>
                           </div>
-                          <Badge className="bg-primary h-8 px-3 rounded-lg font-black text-sm shadow-sm">{s.generalAvg.toFixed(2)}</Badge>
+                          <Badge className="bg-primary h-7 px-2.5 rounded-lg font-black text-xs shadow-sm">{s.generalAvg.toFixed(2)}</Badge>
                        </div>
                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-muted/30">
-                          <div className="p-3 bg-muted/30 rounded-xl">
-                             <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">{selectedSubject}</p>
+                          <div className="p-3 bg-muted/20 rounded-xl">
+                             <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">{selectedSubject.substring(0, 10)}...</p>
                              <p className="font-black text-xs">{s.subjects?.[selectedSubject]?.avg?.toFixed(2) || "---"}</p>
                           </div>
-                          <div className="p-3 bg-muted/30 rounded-xl">
+                          <div className="p-3 bg-muted/20 rounded-xl">
                              <p className="text-[7px] font-black text-muted-foreground uppercase mb-1">Conduite</p>
                              <p className="font-black text-xs">{s.conduct.toFixed(1)}/20</p>
                           </div>
                        </div>
-                       <Button variant="ghost" asChild className="w-full font-black text-primary text-[10px] uppercase h-10 hover:bg-primary/5 rounded-xl mobile-touch-target">
-                         <Link href={`/eleves/${s.id}`}>Détails Dossier <ArrowRight className="ml-2 size-3" /></Link>
+                       <Button variant="ghost" asChild className="w-full font-black text-primary text-[9px] uppercase h-9 hover:bg-primary/5 rounded-xl mobile-touch-target">
+                         <Link href={`/eleves/${s.id}`}>Détails Dossier <ArrowRight className="ml-1.5 size-3" /></Link>
                        </Button>
                     </div>
                   ))}
                </div>
 
-               {/* Desktop View: Table */}
+               {/* Desktop View: Table Royale */}
                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
+                    <thead className="bg-muted/30 text-[9px] font-black uppercase text-muted-foreground border-b border-muted/30">
                       <tr>
                         <th className="px-8 py-6 text-left">Rang</th>
                         <th className="px-8 py-6 text-left">Élève</th>
@@ -452,15 +452,15 @@ export default function PromotionsPage() {
 
             <div className="p-6 md:p-8 bg-muted/20 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-dashed border-muted-foreground/10">
                <div className="flex items-center gap-4 text-center md:text-left">
-                  <div className="size-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
-                    <ShieldCheck className="text-primary size-6" />
+                  <div className="size-10 md:size-12 bg-white rounded-xl flex items-center justify-center shadow-sm shrink-0">
+                    <ShieldCheck className="text-primary size-5 md:size-6" />
                   </div>
-                  <p className="text-[11px] md:text-sm font-medium text-muted-foreground max-w-xl italic">
+                  <p className="text-[10px] md:text-sm font-medium text-muted-foreground max-w-xl italic">
                     "Toutes les moyennes et les rangs affichés sont scellés et synchronisés avec le module de Vie Scolaire (Note de Conduite) et les Coefficients Officiels."
                   </p>
                </div>
-               <Button className="w-full md:w-auto rounded-xl font-black bg-foreground text-white h-12 md:h-14 px-8 shadow-lg active:scale-95 transition-all text-xs md:text-sm mobile-touch-target">
-                 <Download className="mr-2 size-4" /> EXPORTER CLASSEMENT
+               <Button className="w-full md:w-auto rounded-xl font-black bg-foreground text-white h-12 md:h-14 px-8 shadow-lg active:scale-95 transition-all text-[10px] md:text-sm mobile-touch-target">
+                 <Download className="mr-2 size-3.5 md:size-4" /> EXPORTER CLASSEMENT
                </Button>
             </div>
           </div>
