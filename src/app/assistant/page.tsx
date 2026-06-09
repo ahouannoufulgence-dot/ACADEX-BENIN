@@ -12,8 +12,8 @@ import {
   User, 
   Loader2, 
   ShieldCheck, 
-  MessageSquare,
-  Lock
+  Lock,
+  ChevronLeft
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
@@ -21,6 +21,7 @@ import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
+import { cn } from "@/lib/utils"
 
 interface Message {
   role: 'user' | 'assistant';
@@ -47,10 +48,10 @@ export default function AssistantPage() {
       content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Je connais vos résultats scellés en temps réel. Comment puis-je vous aider ?`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
-        ? ["Analyse des moyennes par classe", "Point sur la trésorerie", "Quels sont les élèves en difficulté ?"]
+        ? ["Analyse des moyennes par classe", "Point sur la trésorerie", "Élèves en difficulté"]
         : role === "Enseignant"
         ? ["Moyennes de ma matière", "Évolution de mes classes", "Saisie des notes"]
-        : ["Analyse ma moyenne générale", "Dans quelle matière dois-je progresser ?", "Conseils pour le 1er trimestre"]
+        : ["Analyse ma moyenne", "Matières à progresser", "Conseils Trimestre"]
     }
     setMessages([initialMsg])
 
@@ -91,7 +92,6 @@ export default function AssistantPage() {
     setLoading(true)
 
     try {
-      // RÉCUPÉRATION DES DONNÉES RÉELLES POUR L'IA (Notes & Moyennes)
       let contextGrades: any[] = []
       
       if (userRole === "Élève") {
@@ -116,7 +116,7 @@ export default function AssistantPage() {
           schoolName: schoolInfo.name,
           motto: schoolInfo.motto,
           year: schoolInfo.year,
-          grades: contextGrades, // L'IA a maintenant accès aux vraies notes
+          grades: contextGrades,
         }
       })
 
@@ -136,43 +136,43 @@ export default function AssistantPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto h-[calc(100vh-14rem)] flex flex-col gap-6 animate-in">
+      <div className="max-w-4xl mx-auto h-[calc(100svh-11rem)] flex flex-col gap-4 md:gap-6 animate-in">
         
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
-            <div className="size-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20">
-              <Sparkles className="size-6 text-white fill-white/20" />
+            <div className="size-10 md:size-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20">
+              <Sparkles className="size-5 md:size-6 text-white fill-white/20" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-foreground tracking-tight">Cerveau {schoolInfo.name}</h1>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                <Lock className="size-3 text-emerald-500" />
-                Accès {userRole} Sécurisé
+              <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight uppercase">Cerveau {schoolInfo.name}</h1>
+              <p className="text-[7px] md:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
+                <Lock className="size-2.5 text-emerald-500" />
+                Accès {userRole} Scellé
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="hidden sm:flex rounded-full border-primary/20 text-primary font-black px-4 bg-primary/5">
+          <Badge variant="outline" className="hidden sm:flex rounded-full border-primary/20 text-primary font-black px-4 bg-primary/5 text-[10px]">
             {schoolInfo.year}
           </Badge>
         </div>
 
-        <Card className="flex-1 border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden flex flex-col">
+        <Card className="flex-1 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden flex flex-col relative">
           <div 
             ref={scrollRef}
-            className="flex-1 overflow-y-auto p-6 md:p-10 space-y-6 bg-muted/5 scroll-smooth no-scrollbar"
+            className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 bg-muted/5 scroll-smooth no-scrollbar"
           >
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2`}>
-                <div className={`max-w-[85%] flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  <div className={`size-10 rounded-2xl shrink-0 flex items-center justify-center shadow-sm ${msg.role === 'user' ? 'bg-foreground text-white' : 'bg-primary text-white'}`}>
-                    {msg.role === 'user' ? <User className="size-5" /> : <Bot className="size-5" />}
+              <div key={i} className={cn("flex animate-in slide-in-from-bottom-2", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                <div className={cn("max-w-[90%] md:max-w-[85%] flex gap-3 md:gap-4", msg.role === 'user' ? 'flex-row-reverse' : '')}>
+                  <div className={cn("size-8 md:size-10 rounded-xl md:rounded-2xl shrink-0 flex items-center justify-center shadow-sm", msg.role === 'user' ? 'bg-foreground text-white' : 'bg-primary text-white')}>
+                    {msg.role === 'user' ? <User className="size-4 md:size-5" /> : <Bot className="size-4 md:size-5" />}
                   </div>
                   <div className="space-y-3">
-                    <div className={`p-5 rounded-3xl text-sm md:text-base font-medium leading-relaxed shadow-sm ${
+                    <div className={cn("p-4 md:p-6 rounded-2xl md:rounded-3xl text-xs md:text-base font-medium leading-relaxed shadow-sm",
                       msg.role === 'user' 
-                        ? 'bg-foreground text-white rounded-tr-none' 
+                        ? 'bg-primary text-white rounded-tr-none' 
                         : 'bg-white text-foreground rounded-tl-none border border-muted/50'
-                    }`}>
+                    )}>
                       {msg.content}
                     </div>
                     {msg.suggestions && msg.suggestions.length > 0 && (
@@ -181,7 +181,7 @@ export default function AssistantPage() {
                           <button 
                             key={idx}
                             onClick={() => handleSend(s)}
-                            className="text-[10px] font-black uppercase tracking-wider bg-primary/5 hover:bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/10 transition-all"
+                            className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-primary/5 hover:bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/10 transition-all active:scale-95"
                           >
                             {s}
                           </button>
@@ -194,26 +194,26 @@ export default function AssistantPage() {
             ))}
             {loading && (
               <div className="flex justify-start animate-pulse">
-                <div className="flex gap-4">
-                  <div className="size-10 rounded-2xl bg-muted flex items-center justify-center">
-                    <Loader2 className="size-5 text-muted-foreground animate-spin" />
+                <div className="flex gap-3 md:gap-4">
+                  <div className="size-8 md:size-10 rounded-xl md:rounded-2xl bg-muted flex items-center justify-center">
+                    <Loader2 className="size-4 md:size-5 text-muted-foreground animate-spin" />
                   </div>
-                  <div className="p-5 bg-muted/50 rounded-3xl rounded-tl-none border border-muted/50">
-                    <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Analyse des données réelles...</p>
+                  <div className="p-4 md:p-6 bg-muted/50 rounded-2xl md:rounded-3xl rounded-tl-none border border-muted/50">
+                    <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest">Analyse en cours...</p>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          <div className="p-6 md:p-8 pt-4 bg-white border-t border-muted/30">
+          <div className="p-3 md:p-8 pt-2 bg-white border-t border-muted/30">
             <form 
               onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-              className="flex items-center gap-4 bg-muted/30 p-2 pl-6 rounded-[2rem] border-2 border-transparent focus-within:border-primary/20 transition-all shadow-inner"
+              className="flex items-center gap-3 bg-muted/40 p-1.5 pl-5 md:pl-8 rounded-2xl md:rounded-[2rem] border-2 border-transparent focus-within:border-primary/10 transition-all shadow-inner"
             >
               <Input 
-                placeholder={`Demandez à l'IA d'analyser vos notes...`} 
-                className="flex-1 bg-transparent border-none shadow-none h-12 font-bold placeholder:text-muted-foreground/50 focus-visible:ring-0"
+                placeholder={`Poser une question...`} 
+                className="flex-1 bg-transparent border-none shadow-none h-10 md:h-14 font-bold placeholder:text-muted-foreground/30 focus-visible:ring-0 text-xs md:text-lg"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
@@ -221,16 +221,16 @@ export default function AssistantPage() {
               <Button 
                 type="submit" 
                 disabled={!input.trim() || loading}
-                className="bg-primary hover:bg-primary/90 text-white size-12 rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-95"
+                className="bg-primary hover:bg-primary/90 text-white size-10 md:size-14 rounded-[0.9rem] md:rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-90"
               >
-                {loading ? <Loader2 className="size-5 animate-spin" /> : <Send className="size-5" />}
+                {loading ? <Loader2 className="size-4 md:size-6 animate-spin" /> : <Send className="size-4 md:size-6" />}
               </Button>
             </form>
           </div>
         </Card>
 
-        <div className="flex items-center justify-center gap-4 text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] opacity-40">
-           <ShieldCheck className="size-3" /> Analyse basée sur vos notes réelles
+        <div className="flex items-center justify-center gap-3 text-[7px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">
+           <ShieldCheck className="size-2.5 md:size-3 text-emerald-500" /> Analyse Certifiée ACADEX
         </div>
       </div>
     </DashboardLayout>
