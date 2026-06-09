@@ -98,7 +98,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
-  // Determine if we should show the background image
   const showBackground = pathname.includes('/dashboard/') || pathname === '/dashboard'
 
   useEffect(() => {
@@ -150,17 +149,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC] relative overflow-hidden">
-        {/* GLOBAL BACKGROUND FOR DASHBOARDS */}
+        {/* GLOBAL PROFESSIONAL BACKGROUND IMAGE */}
         {showBackground && (
           <div className="fixed inset-0 z-0">
             <Image 
-              src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
-              alt="Background"
+              src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
+              alt="Professional Background"
               fill
-              className="object-cover"
+              className="object-cover opacity-40"
               priority
             />
-            <div className="absolute inset-0 bg-black/60" />
+            <div className="absolute inset-0 bg-black/65" />
           </div>
         )}
 

@@ -6,44 +6,32 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
-  CreditCard, 
   Search, 
   Plus, 
-  Filter, 
-  DollarSign,
   ChevronRight,
-  Printer,
   History,
-  CheckCircle2,
-  ArrowUpRight,
-  ArrowDownRight,
   FileDown,
   Wallet,
   Loader2,
-  User,
-  Calendar as CalendarIcon,
   ShieldCheck,
   ShieldAlert,
   TrendingUp,
   AlertTriangle,
-  ArrowRight,
-  Shapes,
-  UserSquare2,
-  Calculator,
-  HardDrive,
+  ArrowUpRight,
   Banknote,
   PiggyBank,
   Sparkles,
-  Zap
+  Zap,
+  Calculator,
+  HardDrive
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { toast } from "@/hooks/use-toast"
 import { useState, useMemo, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, getDoc, setDoc } from "firebase/firestore"
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, onSnapshot } from "firebase/firestore"
 import {
   Dialog,
   DialogContent,
@@ -192,13 +180,13 @@ export default function TreasuryModule() {
               Trésorerie <span className="text-primary italic">& Finance</span>
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
-              <ShieldCheck className="size-3 md:size-4 text-emerald-500" />
+              <ShieldCheck className="size-3.5 text-emerald-500" />
               <span>Année Scolaire <Badge className="bg-primary text-[10px] ml-1">{activeYear}</Badge></span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
             <Button variant="outline" className="flex-1 md:flex-none h-11 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm transition-all active:scale-95">
-              <FileDown className="mr-2 size-3.5 md:size-5" /> Rapport
+              <FileDown className="mr-2 size-4 md:size-5" /> Rapport
             </Button>
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
               <DialogTrigger asChild>
@@ -244,7 +232,7 @@ export default function TreasuryModule() {
                             </div>
                           </div>
                           <Button onClick={handleAddPayment} disabled={loading || !formData.studentId} className="w-full h-14 md:h-18 rounded-2xl bg-primary font-black text-sm md:text-xl shadow-xl shadow-primary/20 active:scale-95 transition-all">
-                            {loading ? <Loader2 className="animate-spin size-4 md:size-6 mr-2" /> : <ShieldCheck className="size-4 md:size-6 mr-2" />}
+                            {loading ? <Loader2 className="animate-spin size-5 md:size-6 mr-2" /> : <ShieldCheck className="size-5 md:size-6 mr-2" />}
                             Valider l'Encaissement
                           </Button>
                        </div>
@@ -261,7 +249,6 @@ export default function TreasuryModule() {
               { id: "dashboard", label: "Cockpit", icon: TrendingUp },
               { id: "encaissements", label: "Recettes", icon: Banknote },
               { id: "depenses", label: "Dépenses", icon: PiggyBank },
-              { id: "salaires", label: "Salaires", icon: UserSquare2 },
             ].map(t => (
               <TabsTrigger key={t.id} value={t.id} className="rounded-xl md:rounded-[2rem] font-black px-6 md:px-10 text-[9px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex items-center gap-2 shrink-0">
                 <t.icon className="size-3.5 md:size-4" /> {t.label}
@@ -281,9 +268,9 @@ export default function TreasuryModule() {
                   <div className={cn("absolute -top-4 -right-4 size-16 md:size-24 rounded-full opacity-[0.04] transition-transform group-hover:scale-150", kpi.premium ? "bg-primary/40" : kpi.bg)} />
                   <div className="flex items-center justify-between mb-4 md:mb-10 relative z-10">
                     <div className={cn("p-2 md:p-4 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", kpi.premium ? "bg-white/10 text-primary" : cn(kpi.bg, kpi.color))}>
-                      <kpi.icon className="size-3.5 md:size-6" />
+                      <kpi.icon className="size-4 md:size-6" />
                     </div>
-                    {kpi.label === 'Solde' ? <ShieldCheck className="size-3 md:size-4 text-primary/40" /> : <ArrowUpRight className="size-3 md:size-4 opacity-20" />}
+                    {kpi.label === 'Solde' ? <ShieldCheck className="size-4 md:size-5 text-primary/40" /> : <ArrowUpRight className="size-3.5 md:size-4.5 opacity-20" />}
                   </div>
                   <div className="relative z-10">
                     <p className={cn("text-[7px] md:text-[10px] font-black uppercase tracking-widest mb-1", kpi.premium ? "text-white/40" : "text-muted-foreground")}>{kpi.label}</p>
@@ -300,7 +287,7 @@ export default function TreasuryModule() {
                  <div className="flex items-center justify-between mb-8 md:mb-14">
                     <div className="space-y-1">
                       <h3 className="text-lg md:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-                        <History className="text-primary size-4 md:size-7" /> Flux Réel Live
+                        <History className="text-primary size-4 md:size-6" /> Flux Réel Live
                       </h3>
                       <p className="text-[7px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.25em]">Audit des transactions scellées</p>
                     </div>
@@ -326,7 +313,7 @@ export default function TreasuryModule() {
                               <div key={tx.id} className="p-4 md:p-7 bg-muted/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/10 hover:bg-white hover:shadow-xl transition-all group flex items-center justify-between">
                                 <div className="flex items-center gap-4 md:gap-8">
                                    <div className={cn("size-10 md:size-14 rounded-xl md:rounded-[1.2rem] flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", isExpense ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600")}>
-                                     {isExpense ? <PiggyBank className="size-4 md:size-7" /> : <Banknote className="size-4 md:size-7" />}
+                                     {isExpense ? <PiggyBank className="size-4.5 md:size-6" /> : <Banknote className="size-4.5 md:size-6" />}
                                    </div>
                                    <div className="min-w-0">
                                       <h4 className="font-black text-xs md:text-xl truncate uppercase tracking-tight">{isExpense ? tx.motif : tx.studentName}</h4>
@@ -358,12 +345,12 @@ export default function TreasuryModule() {
                    <div className="relative z-10">
                      <div className="flex items-center gap-4 mb-6 md:mb-10">
                        <div className="size-10 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5 animate-pulse">
-                         <Sparkles className="size-4 md:size-7 text-primary fill-primary/10" />
+                         <Sparkles className="size-4 md:size-6 text-primary fill-primary/10" />
                        </div>
                        <h4 className="font-black text-base md:text-2xl">Audit IA Financier</h4>
                      </div>
                      <p className="text-[10px] md:text-base font-medium text-muted-foreground italic leading-relaxed mb-6 md:mb-12">
-                       "Analyse : Les classes de 3EME présentent un retard de paiement de 12%. Souhaitez-vous générer des lettres de relance certifiées ?"
+                       "Analyse : Les classes de 3EME présentent un retard de paiement de 12%."
                      </p>
                      <Button asChild className="w-full bg-white text-primary border border-primary/10 rounded-xl md:rounded-2xl font-black h-11 md:h-16 shadow-sm active:scale-95 transition-all text-xs md:text-sm mobile-touch-target">
                        <Link href="/assistant">Lancer l'Audit Brain</Link>
@@ -378,7 +365,7 @@ export default function TreasuryModule() {
                       <h4 className="font-black text-[9px] md:text-sm uppercase tracking-widest">Alerte Trésorerie</h4>
                    </div>
                    <p className="text-[9px] md:text-sm font-bold text-amber-800 leading-relaxed uppercase tracking-tight">
-                      Des élèves de Terminale n'ont pas encore soldé la deuxième tranche de scolarité pour l'année {activeYear}.
+                      Des élèves de Terminale n'ont pas encore soldé la deuxième tranche de scolarité.
                    </p>
                 </Card>
               </div>
@@ -507,7 +494,7 @@ export default function TreasuryModule() {
                             <Input value={expenseForm.motif} onChange={e => setExpenseForm({...expenseForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-sm" placeholder="Ex: Achat fournitures..." />
                          </div>
                          <Button onClick={handleAddExpense} disabled={loading} className="w-full h-14 md:h-16 bg-red-600 hover:bg-red-700 rounded-2xl font-black text-sm md:text-lg shadow-xl shadow-red-600/20 active:scale-95 transition-all">
-                            {loading ? <Loader2 className="animate-spin mr-2 size-4 md:size-5" /> : <ShieldAlert className="size-4 md:size-5 mr-2" />}
+                            {loading ? <Loader2 className="animate-spin mr-2 size-5" /> : <ShieldAlert className="size-5 mr-2" />}
                             Sceller la Dépense
                          </Button>
                       </div>
@@ -571,20 +558,6 @@ export default function TreasuryModule() {
                         ))}
                       </tbody>
                    </table>
-                </div>
-             </Card>
-          </TabsContent>
-          
-          <TabsContent value="salaires" className="animate-in zoom-in-95">
-             <Card className="p-16 md:p-40 text-center rounded-[2.5rem] md:rounded-[5rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center gap-8">
-                <div className="size-16 md:size-32 bg-white rounded-[2rem] md:rounded-[3rem] flex items-center justify-center shadow-inner">
-                  <UserSquare2 className="size-8 md:size-16 text-muted-foreground" />
-                </div>
-                <div className="space-y-3">
-                  <h3 className="text-lg md:text-4xl font-black uppercase tracking-tight">Coffre-fort Salaires</h3>
-                  <p className="max-w-sm mx-auto font-medium text-xs md:text-xl leading-relaxed">
-                    "Ce module est en cours de scellage sécurisé pour l'année {activeYear}."
-                  </p>
                 </div>
              </Card>
           </TabsContent>

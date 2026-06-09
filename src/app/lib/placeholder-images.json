@@ -3,33 +3,21 @@
   "placeholderImages": [
     {
       "id": "hero-students-class",
-      "description": "African students in green uniforms writing in notebooks in a bright classroom",
-      "imageUrl": "https://picsum.photos/seed/acadex-green-uniforms/1920/1080",
-      "imageHint": "students green uniforms"
+      "description": "African students in green uniforms smiling and learning in a bright classroom",
+      "imageUrl": "https://picsum.photos/seed/acadex-students-happy/1920/1080",
+      "imageHint": "students green uniforms smiling"
     },
     {
       "id": "registration-green",
       "description": "Vibrant green educational background with abstract patterns",
       "imageUrl": "https://picsum.photos/seed/acadex-green-reg/1920/1080",
-      "imageHint": "green nature"
+      "imageHint": "green education"
     },
     {
-      "id": "login-education",
-      "description": "Professional and clean school library background",
-      "imageUrl": "https://picsum.photos/seed/acadex-login-bg/1920/1080",
-      "imageHint": "school library"
-    },
-    {
-      "id": "scientific-bg",
-      "description": "Subtle abstract scientific research and laboratory background",
-      "imageUrl": "https://picsum.photos/seed/science-lab-1/1920/1080",
-      "imageHint": "scientific research"
-    },
-    {
-      "id": "teacher-lab",
-      "description": "Modern technical laboratory for teacher dashboard",
-      "imageUrl": "https://picsum.photos/seed/lab-research/1920/1080",
-      "imageHint": "laboratory research"
+      "id": "login-students",
+      "description": "Smiling African students in school uniforms",
+      "imageUrl": "https://picsum.photos/seed/acadex-login-new/1920/1080",
+      "imageHint": "students smiling"
     }
   ]
 }

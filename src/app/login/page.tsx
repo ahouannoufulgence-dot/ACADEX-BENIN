@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [schoolName, setSchoolName] = useState("ACADEX")
   const [schoolLogo, setSchoolLogo] = useState("")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
+  const loginImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -36,7 +36,7 @@ export default function LoginPage() {
           setSchoolLogo(data.logoUrl || "")
         }
       } catch (err) {
-        console.warn("Mode Hors-ligne / Config par défaut")
+        console.warn("Config par défaut")
       }
     }
     fetchSchool()
@@ -84,7 +84,7 @@ export default function LoginPage() {
         return;
       }
 
-      toast({ title: "Identifiant inconnu", description: "Veuillez vérifier votre code ou contacter la direction.", variant: "destructive" });
+      toast({ title: "Identifiant inconnu", description: "Veuillez vérifier votre code.", variant: "destructive" });
     } catch (err) {
       toast({ title: "Erreur de connexion", description: "Impossible de joindre le serveur.", variant: "destructive" });
     } finally {
@@ -94,18 +94,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
-      {/* PROFESSIONAL BACKGROUND IMAGE */}
+      {/* CORRECT PROFESSIONAL HUMAN BACKGROUND */}
       <div className="fixed inset-0 z-0">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
+          src={loginImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
           alt="Login Background"
           fill
           className="object-cover"
           priority
-          data-ai-hint="students green uniforms"
         />
-        {/* DARK OVERLAY FOR READABILITY */}
-        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-black/65" />
       </div>
 
       <div className="relative z-10 w-full max-w-[420px] animate-in fade-in duration-700">
@@ -181,7 +179,7 @@ export default function LoginPage() {
       </div>
       
       <div className="absolute bottom-6 w-full text-center text-[8px] md:text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] z-10 px-4">
-        Connexion Sécurisée AES-256 • ACADEX V1
+        Connexion Sécurisée • ACADEX V1
       </div>
     </div>
   );

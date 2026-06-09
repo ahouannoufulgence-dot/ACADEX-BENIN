@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function Home() {
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
+  const homeImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
 
   const roles = [
     {
@@ -40,17 +40,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-background overflow-hidden">
-      {/* PROFESSIONAL BACKGROUND IMAGE */}
+      {/* CORRECT PROFESSIONAL HUMAN BACKGROUND */}
       <div className="fixed inset-0 z-0">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
+          src={homeImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
           alt="ACADEX Excellence"
           fill
           className="object-cover"
           priority
-          data-ai-hint="students green uniforms"
         />
-        {/* DARK OVERLAY FOR READABILITY */}
         <div className="absolute inset-0 bg-black/65" />
       </div>
 
@@ -62,7 +60,7 @@ export default function Home() {
             </div>
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] md:text-xs font-black uppercase tracking-widest">
-            <ShieldCheck className="size-3 md:size-4 text-emerald-400" />
+            <ShieldCheck className="size-3.5 md:size-4 text-emerald-400" />
             Écosystème ACADEX Bénin
           </div>
           <h1 className="text-3xl md:text-6xl font-black tracking-tight text-white drop-shadow-2xl">
@@ -79,7 +77,7 @@ export default function Home() {
               <div className={`h-1.5 md:h-2 w-full ${role.color}`} />
               <CardContent className="p-6 md:p-8 flex flex-col items-center text-center space-y-4 md:space-y-6">
                 <div className={`size-12 md:size-16 ${role.color} text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform`}>
-                  <role.icon className="size-6 md:size-8" />
+                  <role.icon className="size-5 md:size-8" />
                 </div>
                 <div className="space-y-1 md:space-y-2">
                   <h3 className="text-lg md:text-xl font-black text-foreground">{role.title}</h3>
@@ -110,7 +108,7 @@ export default function Home() {
       </div>
       
       <div className="absolute bottom-6 md:bottom-8 text-center w-full text-[8px] md:text-[10px] font-bold text-white/30 uppercase tracking-widest px-4">
-        ACADEX V1 • Intelligence Scolaire Béninoise
+        ACADEX V1 • Intelligence Scolaire
       </div>
     </div>
   );
