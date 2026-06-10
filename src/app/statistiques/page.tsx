@@ -8,7 +8,6 @@ import {
   Users, 
   GraduationCap, 
   FileDown,
-  Sparkles,
   Activity,
   UserCheck,
   ShieldCheck,
@@ -16,21 +15,18 @@ import {
   Scale,
   TrendingUp,
   History,
-  AlertTriangle,
   ArrowUpRight,
-  ArrowDownRight,
   BarChart3,
   Loader2,
   MapPin,
   Baby,
-  VenetianMask
+  VenetianMask,
+  Sparkles
 } from "lucide-react"
 import {
   CartesianGrid,
   XAxis,
   YAxis,
-  BarChart,
-  Bar,
   Tooltip,
   ResponsiveContainer,
   PieChart,
@@ -42,11 +38,10 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, orderBy, doc, onSnapshot } from "firebase/firestore"
+import { collection, query, where, orderBy } from "firebase/firestore"
 import { useMemo, useState, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
-import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
@@ -57,17 +52,41 @@ export default function StatisticsModule() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("synthèse")
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
+    // Détection sécurisée du navigateur
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    
+    // Récupération de l'année active
+    const savedYear = localStorage.getItem('acadex_active_year')
+    if (savedYear) setActiveYear(savedYear)
+
     const updateYear = (e: any) => setActiveYear(e.detail)
     window.addEventListener('acadex_year_changed', updateYear as any)
-    return () => window.removeEventListener('acadex_year_changed', updateYear as any)
+    window.addEventListener('resize', checkMobile)
+    
+    return () => {
+      window.removeEventListener('acadex_year_changed', updateYear as any)
+      window.removeEventListener('resize', checkMobile)
+    }
   }, [])
 
-  const studentsCol = useMemo(() => query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
-  const gradesCol = useMemo(() => query(collection(db, "grades"), where("academicYear", "==", activeYear)), [db, activeYear])
-  const paymentsCol = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
+  const studentsCol = useMemo(() => {
+    if (!db || !activeYear) return null
+    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
+  }, [db, activeYear])
+
+  const gradesCol = useMemo(() => {
+    if (!db || !activeYear) return null
+    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
+  }, [db, activeYear])
+
+  const paymentsCol = useMemo(() => {
+    if (!db || !activeYear) return null
+    return query(collection(db, "payments"), where("academicYear", "==", activeYear))
+  }, [db, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsCol)
   const { data: grades, loading: loadingGrades } = useCollection(gradesCol)
@@ -77,12 +96,10 @@ export default function StatisticsModule() {
     const totalStudents = students?.length || 0
     const validGrades = grades?.filter(g => !isNaN(Number(g.value))) || []
     
-    // GPA Global
     const globalGPA = validGrades.length > 0 
       ? (validGrades.reduce((acc, g) => acc + Number(g.value), 0) / validGrades.length).toFixed(2)
       : "0.00"
 
-    // Moyennes par Promo
     const promoGrades: Record<string, { total: number, count: number }> = {}
     validGrades.forEach(g => {
       const promo = g.classId.match(/^[0-9]+/)?.[0] || g.classId
@@ -95,12 +112,10 @@ export default function StatisticsModule() {
       avg: Number((d.total / d.count).toFixed(2))
     })).sort((a, b) => a.name.localeCompare(b.name))
 
-    // Finances
     const revenue = payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0
     const expected = totalStudents * 150000
     const payRate = expected > 0 ? (revenue / expected) * 100 : 0
 
-    // Démographie
     const genderDist: Record<string, number> = { "Masculin": 0, "Féminin": 0 }
     const cityDist: Record<string, number> = {}
     
@@ -144,7 +159,6 @@ export default function StatisticsModule() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Responsive Header Card - Micro Icons */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-14 rounded-[2rem] md:rounded-[3.5rem] shadow-sm border-2 border-primary/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
              <BarChart3 className="size-40 md:size-64" />
@@ -220,7 +234,7 @@ export default function StatisticsModule() {
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={analysis.promoData}>
                         <defs>
-                          <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                          <linearGradient id="colorAvg" x1="0" x2="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#14532d" stopOpacity={0.15}/>
                             <stop offset="95%" stopColor="#14532d" stopOpacity={0}/>
                           </linearGradient>
@@ -256,7 +270,6 @@ export default function StatisticsModule() {
 
           <TabsContent value="démographie" className="space-y-6 md:space-y-10 animate-in fade-in slide-in-from-right-4">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
-                {/* Répartition Genre */}
                 <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-7 md:p-12">
                    <div className="flex items-center gap-4 mb-8 md:mb-12">
                       <div className="size-10 md:size-12 bg-muted rounded-xl flex items-center justify-center text-primary"><VenetianMask className="size-5 md:size-6" /></div>
@@ -272,8 +285,8 @@ export default function StatisticsModule() {
                             data={analysis.genderData}
                             cx="50%"
                             cy="50%"
-                            innerRadius={window?.innerWidth < 768 ? 50 : 80}
-                            outerRadius={window?.innerWidth < 768 ? 70 : 110}
+                            innerRadius={isMobile ? 50 : 80}
+                            outerRadius={isMobile ? 70 : 110}
                             paddingAngle={8}
                             dataKey="value"
                           >
@@ -288,7 +301,6 @@ export default function StatisticsModule() {
                    </div>
                 </Card>
 
-                {/* Répartition Géographique */}
                 <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-7 md:p-12">
                    <div className="flex items-center gap-4 mb-8 md:mb-12">
                       <div className="size-10 md:size-12 bg-muted rounded-xl flex items-center justify-center text-primary"><MapPin className="size-5 md:size-6" /></div>
@@ -306,7 +318,7 @@ export default function StatisticsModule() {
                               <span className="text-foreground">{city.name}</span>
                               <span className="text-primary">{city.value} élèves</span>
                            </div>
-                           <Progress value={(city.value / analysis.totalStudents) * 100} className="h-2 md:h-3 rounded-full" />
+                           <Progress value={analysis.totalStudents > 0 ? (city.value / analysis.totalStudents) * 100 : 0} className="h-2 md:h-3 rounded-full" />
                         </div>
                       ))}
                    </div>
@@ -319,8 +331,8 @@ export default function StatisticsModule() {
                       <Baby className="text-primary size-6 md:size-8" />
                    </div>
                    <div className="text-center md:text-left">
-                      <p className="text-[10px] md:text-lg font-black uppercase text-foreground tracking-tight">Structure Sociale Certifiée</p>
-                      <p className="text-[8px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest opacity-60">L'audit démographique aide à l'optimisation des flux de transport et d'internat.</p>
+                      <p className="text-[10px] md:text-sm font-black uppercase text-foreground tracking-tight">Structure Sociale Certifiée</p>
+                      <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest opacity-60">L'audit démographique aide à l'optimisation des flux de transport et d'internat.</p>
                    </div>
                 </div>
                 <Button className="w-full md:w-auto h-12 md:h-16 rounded-xl md:rounded-2xl font-black bg-foreground text-white px-10 md:px-14 shadow-xl active:scale-95 transition-all text-[9px] md:text-sm">
