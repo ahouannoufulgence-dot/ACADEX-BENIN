@@ -50,7 +50,7 @@ export default function TeachersPage() {
     if (name) setDirectorName(name)
   }, [])
 
-  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM COMPLET
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM COMPLET (A-Z)
   const teachersQuery = useMemo(() => query(collection(db, "teachers"), orderBy("fullName", "asc")), [db])
   const { data: teachers, loading } = useCollection(teachersQuery)
 
@@ -99,15 +99,14 @@ export default function TeachersPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Section - Mobile Optimized */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
-            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
+            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight leading-tight uppercase">
               Équipe <span className="text-primary italic">Pédagogique</span>
             </h1>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
               <ShieldCheck className="size-3 md:size-4 text-emerald-500" />
-              <span>Pilotage Stratégique • {directorName}</span>
+              <span className="uppercase tracking-widest">Pilotage Stratégique • {directorName}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
@@ -120,7 +119,6 @@ export default function TeachersPage() {
           </div>
         </div>
 
-        {/* Quick Stats Grid - Micro Icons */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {[
             { label: "Total", value: stats.total, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -138,13 +136,12 @@ export default function TeachersPage() {
                </div>
                <div className="relative z-10">
                  <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-0.5">{stat.label}</p>
-                 <h3 className="text-xl md:text-3xl font-black text-foreground">{loading ? "..." : stat.value}</h3>
+                 <h3 className="text-xl md:text-4xl font-black text-foreground">{loading ? "..." : stat.value}</h3>
                </div>
             </Card>
           ))}
         </div>
 
-        {/* Search Bar */}
         <div className="relative group max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
@@ -155,7 +152,6 @@ export default function TeachersPage() {
           />
         </div>
 
-        {/* Teachers List - Micro Premium Cards */}
         <Card className="border-none shadow-sm bg-white rounded-[2.2rem] md:rounded-[3rem] overflow-hidden min-h-[400px]">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-32 gap-6 opacity-30">
@@ -184,8 +180,8 @@ export default function TeachersPage() {
                    
                    <div className="flex items-center gap-4 md:gap-8 relative z-10">
                      <Avatar className="size-12 md:size-20 border-4 border-muted group-hover:border-primary/20 transition-all shadow-sm">
-                       <AvatarFallback className="font-black text-sm md:text-2xl bg-primary/10 text-primary">
-                        {(teacher.fullName || "??").substring(0, 2).toUpperCase()}
+                       <AvatarFallback className="font-black text-sm md:text-2xl bg-primary/10 text-primary uppercase">
+                        {(teacher.fullName || "??").substring(0, 2)}
                        </AvatarFallback>
                      </Avatar>
                      <div className="min-w-0">
@@ -206,10 +202,6 @@ export default function TeachersPage() {
                          )}>
                            {teacher.status || 'Inconnu'}
                          </Badge>
-                       </div>
-                       {/* Mobile-only contact info */}
-                       <div className="flex sm:hidden items-center gap-3 mt-2">
-                          <span className="text-[8px] font-black text-muted-foreground uppercase flex items-center gap-1.5"><Phone className="size-2 text-primary" /> {teacher.phone}</span>
                        </div>
                      </div>
                    </div>

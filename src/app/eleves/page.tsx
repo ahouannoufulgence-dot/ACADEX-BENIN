@@ -83,7 +83,8 @@ export default function StudentsPage() {
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
-    // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM
+    
+    // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM DE FAMILLE (A-Z)
     if (userRole === "Enseignant" && userClasses.length > 0) {
       return query(
         baseCol, 
@@ -135,20 +136,20 @@ export default function StudentsPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-8 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
-              {userRole === "Enseignant" ? "Mes Élèves" : "Gestion des Élèves"}
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">
+              {userRole === "Enseignant" ? "Mes Élèves" : "Régistre Élèves"}
             </h1>
-            <div className="text-muted-foreground mt-2 font-medium flex items-center gap-2">
-              <ShieldCheck className="size-4 text-emerald-500" /> <span className="text-xs md:text-sm">Année <Badge className="bg-primary text-[10px] md:text-xs">{activeYear}</Badge></span>
+            <div className="text-muted-foreground font-bold flex items-center gap-2">
+              <ShieldCheck className="size-4 text-emerald-500" /> <span className="text-xs md:text-sm uppercase tracking-widest">Univers <Badge className="bg-primary text-[10px] ml-1">{activeYear}</Badge></span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            <Button onClick={handleExportPDF} variant="outline" className="flex-1 md:flex-none border-2 rounded-2xl h-12 px-4 md:px-6 font-black bg-white text-xs md:text-sm">
-              <FileDown className="mr-2 size-4 md:size-5" /> Exporter
+            <Button onClick={handleExportPDF} variant="outline" className="flex-1 md:flex-none border-2 rounded-xl md:rounded-2xl h-11 md:h-14 px-4 md:px-6 font-black bg-white text-[10px] md:text-sm">
+              <FileDown className="mr-2 size-4" /> Exporter
             </Button>
             {userRole === "Directeur" && (
-              <Button asChild className="flex-1 md:flex-none bg-primary hover:bg-primary/90 shadow-xl rounded-2xl h-12 px-4 md:px-8 font-black text-xs md:text-sm">
+              <Button asChild className="flex-1 md:flex-none bg-primary hover:bg-primary/90 shadow-xl rounded-xl md:rounded-2xl h-11 md:h-14 px-4 md:px-8 font-black text-[10px] md:text-sm">
                 <Link href="/eleves/identifiants">Identifiants</Link>
               </Button>
             )}
@@ -158,74 +159,76 @@ export default function StudentsPage() {
         <div className="relative group w-full">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
-            placeholder="Rechercher un élève..." 
+            placeholder="Rechercher par nom, prénom ou matricule..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl font-medium text-sm md:text-base"
+            className="pl-12 h-14 md:h-16 bg-white border-none shadow-sm rounded-2xl md:rounded-3xl font-bold text-sm md:text-lg placeholder:text-muted-foreground/30"
           />
         </div>
 
         <div className="grid gap-4">
           {loading ? (
             <div className="flex flex-col items-center justify-center p-20 gap-4">
-              <Loader2 className="size-10 animate-spin text-primary" />
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Récupération de la classe...</p>
+              <Loader2 className="size-10 md:size-14 animate-spin text-primary opacity-20" />
+              <p className="text-[10px] md:text-xs font-black text-muted-foreground uppercase tracking-[0.3em]">Synchro Registre...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
-            <Card className="p-12 md:p-20 text-center bg-white rounded-[2.5rem] border-none shadow-sm flex flex-col items-center justify-center space-y-6">
-              <div className="size-16 md:size-20 bg-muted rounded-full flex items-center justify-center opacity-20">
-                <Users className="size-8 md:size-10" />
+            <Card className="p-12 md:p-24 text-center bg-white rounded-[2.5rem] md:rounded-[4rem] border-none shadow-sm flex flex-col items-center justify-center space-y-6">
+              <div className="size-20 md:size-32 bg-muted rounded-[2rem] md:rounded-[3rem] flex items-center justify-center opacity-20 shadow-inner">
+                <Users className="size-10 md:size-16" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl md:text-2xl font-black">Aucun élève trouvé</h3>
-                <p className="text-muted-foreground text-sm font-medium max-w-xs mx-auto">Vérifiez l'orthographe ou l'année active.</p>
+                <h3 className="text-xl md:text-3xl font-black uppercase text-foreground">Aucun élève détecté</h3>
+                <p className="text-muted-foreground text-xs md:text-lg font-medium max-w-xs mx-auto leading-relaxed">Vérifiez l'orthographe ou assurez-vous d'être dans l'année active {activeYear}.</p>
               </div>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {filteredStudents.map((student: any) => (
-                <Card key={student.id} className="border-none shadow-sm bg-white rounded-3xl overflow-hidden hover:shadow-lg transition-all group">
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4 mb-4">
-                      <Avatar className="size-14 border-4 border-muted group-hover:border-primary/20 transition-all">
-                        <AvatarFallback className="bg-primary text-white font-black text-lg">{student.lastName?.[0]}{student.firstName?.[0]}</AvatarFallback>
+                <Card key={student.id} className="border-none shadow-sm bg-white rounded-3xl md:rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all group relative">
+                  <CardContent className="p-5 md:p-8">
+                    <div className="flex items-center gap-4 md:gap-6 mb-4 md:mb-6">
+                      <Avatar className="size-14 md:size-20 border-4 border-muted group-hover:border-primary/20 transition-all shadow-sm">
+                        <AvatarFallback className="bg-primary/5 text-primary font-black text-sm md:text-2xl uppercase">
+                          {student.lastName?.[0]}{student.firstName?.[0]}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors truncate uppercase">{student.lastName} {student.firstName}</h3>
-                        <div className="flex items-center gap-2">
-                           <Badge className="bg-primary/10 text-primary border-none font-black text-[9px] px-2">{student.classId}</Badge>
-                           <span className="text-[9px] font-bold text-muted-foreground uppercase">{student.matricule}</span>
+                        <h3 className="text-base md:text-2xl font-black text-foreground group-hover:text-primary transition-colors truncate uppercase tracking-tight">{student.lastName} {student.firstName}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                           <Badge className="bg-primary/10 text-primary border-none font-black text-[8px] md:text-[10px] px-2 md:px-3 py-0.5">{student.classId}</Badge>
+                           <span className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{student.matricule}</span>
                         </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="size-10 rounded-xl mobile-touch-target"><MoreVertical className="size-5" /></Button>
+                          <Button variant="ghost" size="icon" className="size-10 md:size-14 rounded-xl md:rounded-2xl mobile-touch-target hover:bg-muted"><MoreVertical className="size-5 md:size-7" /></Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl border-2 w-48 p-2">
+                        <DropdownMenuContent align="end" className="rounded-2xl border-2 w-56 p-2 shadow-2xl">
                           <DropdownMenuItem asChild>
-                            <Link href={`/eleves/${student.id}`} className="flex items-center gap-2 font-bold cursor-pointer w-full p-2">
-                              <UserCircle2 className="size-4" /> Voir Profil
+                            <Link href={`/eleves/${student.id}`} className="flex items-center gap-3 font-bold cursor-pointer w-full p-3 rounded-xl">
+                              <UserCircle2 className="size-5" /> Voir Profil Scellé
                             </Link>
                           </DropdownMenuItem>
                           {userRole === "Directeur" && (
                             <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive flex items-center gap-2 font-bold cursor-pointer p-2"
+                              className="text-destructive focus:text-destructive flex items-center gap-3 font-bold cursor-pointer p-3 rounded-xl"
                               onSelect={() => setStudentToDelete(student)}
                             >
-                              <Trash2 className="size-4" /> Supprimer
+                              <Trash2 className="size-5" /> Supprimer Dossier
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                     
-                    <div className="flex items-center justify-between pt-4 border-t border-muted/30">
-                       <div className="flex items-center gap-2">
-                          <div className="size-8 bg-muted rounded-lg flex items-center justify-center"><Phone className="size-3 text-muted-foreground" /></div>
-                          <span className="text-[10px] font-bold text-foreground">{student.phone || "---"}</span>
+                    <div className="flex items-center justify-between pt-4 md:pt-6 border-t border-muted/30">
+                       <div className="flex items-center gap-2 md:gap-3">
+                          <div className="size-8 md:size-10 bg-muted rounded-xl flex items-center justify-center shadow-inner"><Phone className="size-3.5 md:size-4 text-muted-foreground" /></div>
+                          <span className="text-[10px] md:text-sm font-black text-foreground">{student.phone || "Non renseigné"}</span>
                        </div>
-                       <Button variant="ghost" size="sm" asChild className="text-primary font-black text-[10px] rounded-lg h-8 px-3 hover:bg-primary/5">
-                          <Link href={`/eleves/${student.id}`}>Profil <ChevronRight className="ml-1 size-3" /></Link>
+                       <Button variant="ghost" size="sm" asChild className="text-primary font-black text-[10px] md:text-xs rounded-xl h-9 md:h-11 px-4 hover:bg-primary/5 transition-all">
+                          <Link href={`/eleves/${student.id}`}>Fiche <ChevronRight className="ml-1 size-3 md:size-4" /></Link>
                        </Button>
                     </div>
                   </CardContent>
@@ -237,19 +240,22 @@ export default function StudentsPage() {
       </div>
 
       <AlertDialog open={!!studentToDelete} onOpenChange={(open) => !open && setStudentToDelete(null)}>
-        <AlertDialogContent className="rounded-[2rem] w-[90%] max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black">Supprimer ?</AlertDialogTitle>
-            <AlertDialogDescription className="font-medium text-sm">
-              Confirmez-vous la suppression de <span className="font-black text-foreground">{studentToDelete?.lastName}</span> ? Cette action est irréversible.
+        <AlertDialogContent className="rounded-[2.5rem] w-[90%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
+          <div className="p-6 md:p-10 bg-destructive text-white">
+            <AlertDialogTitle className="text-xl md:text-3xl font-black uppercase">Alerte Intégrité</AlertDialogTitle>
+            <p className="text-white/60 font-bold text-[9px] md:text-xs uppercase tracking-widest mt-1">Action Irréversible</p>
+          </div>
+          <div className="p-6 md:p-10 bg-white">
+            <AlertDialogDescription className="font-medium text-sm md:text-lg text-foreground/80 leading-relaxed">
+              Confirmez-vous la suppression définitive du dossier de <span className="font-black text-foreground underline">{studentToDelete?.lastName} {studentToDelete?.firstName}</span> ? <br /><br />Toutes les notes et paiements associés seront effacés du registre.
             </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl font-bold flex-1">Annuler</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-white rounded-xl font-black flex-1">
-              Supprimer
+          </div>
+          <div className="p-6 md:p-10 bg-muted/20 flex gap-3">
+            <AlertDialogCancel className="rounded-xl md:rounded-2xl font-bold flex-1 h-12 md:h-16">Annuler</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 text-white rounded-xl md:rounded-2xl font-black flex-1 h-12 md:h-16 shadow-xl shadow-destructive/20">
+              Confirmer Suppression
             </AlertDialogAction>
-          </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </DashboardLayout>

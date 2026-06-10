@@ -141,7 +141,7 @@ export default function MessagingPage() {
     updateDoc(doc(db, "conversations", selectedChat.id), updates)
   }
 
-  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES CONTACTS
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES CONTACTS (A-Z)
   const fetchContacts = async () => {
     setLoadingContacts(true)
     try {
@@ -159,17 +159,11 @@ export default function MessagingPage() {
           .filter(d => userClasses.includes(d.data().classId))
           .map(d => ({ id: d.data().matricule || d.id, name: `${d.data().firstName} ${d.data().lastName}`, role: 'Élève', sub: d.data().classId, type: 'private' }))
         allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }, ...myStudents]
-        userClasses.forEach(cls => allContacts.push({ id: `GROUP_${cls}`, name: `Classe ${cls}`, role: 'Groupe', sub: 'Discussion Collective', type: 'class', classId: cls }))
       } else {
-        const parts = currentUserId.split('-')
-        const studentClass = parts.length > 1 ? parts[1] : ""
-        const myTeachers = teachersSnap.docs
-          .filter(d => d.data().classes?.includes(studentClass))
-          .map(d => ({ id: d.data().officialId || d.id, name: d.data().fullName, role: 'Professeur', sub: d.data().subject, type: 'private' }))
-        allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }, ...myTeachers]
+        allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }]
       }
       
-      // APPLICATION DU TRI ALPHABÉTIQUE SUR LA LISTE FINALE
+      // APPLICATION DU TRI ALPHABÉTIQUE STRICT
       const sortedContacts = allContacts
         .filter(c => c.id !== currentUserId)
         .sort((a, b) => a.name.localeCompare(b.name))
@@ -180,21 +174,21 @@ export default function MessagingPage() {
   }
 
   const startConversation = async (contact: any) => {
-    const convId = contact.type === 'class' ? contact.id : [currentUserId, contact.id].sort().join("_")
+    const convId = [currentUserId, contact.id].sort().join("_")
     const convRef = doc(db, "conversations", convId)
-    const participants = contact.type === 'class' ? [currentUserId] : [currentUserId, contact.id]
+    const participants = [currentUserId, contact.id]
 
     await setDoc(convRef, {
       id: convId,
       participants,
-      type: contact.type,
+      type: 'private',
       participantNames: { [currentUserId]: currentUserName, [contact.id]: contact.name },
       lastMessage: "Discussion démarrée",
       lastMessageTime: serverTimestamp(),
       unreadCount: { [currentUserId]: 0, [contact.id]: 0 }
     }, { merge: true })
 
-    setSelectedChat({ id: convId, participants, otherName: contact.name, type: contact.type })
+    setSelectedChat({ id: convId, participants, otherName: contact.name, type: 'private' })
   }
 
   const filteredConversations = useMemo(() => {
@@ -203,7 +197,7 @@ export default function MessagingPage() {
     if (activeTab === "unread") list = conversations.filter(c => (c.unreadCount?.[currentUserId] || 0) > 0)
     return list.filter(c => {
       const otherId = c.participants.find((p: string) => p !== currentUserId)
-      const name = c.participantNames?.[otherId] || c.id
+      const name = c.participantNames?.[otherId] || "Inconnu"
       return name.toLowerCase().includes(searchTerm.toLowerCase()) || (c.lastMessage?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     })
   }, [conversations, searchTerm, activeTab, currentUserId])
@@ -228,7 +222,7 @@ export default function MessagingPage() {
           <div className="p-6 md:p-10 pb-4">
             <div className="flex items-center justify-between mb-8">
               <div className="space-y-1">
-                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight uppercase">Canal <span className="text-primary italic">Scellé</span></h2>
+                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight uppercase">Canal <span className="text-primary italic">Messagerie</span></h2>
                 <p className="text-[8px] font-black uppercase text-muted-foreground tracking-[0.3em] flex items-center gap-2">
                    <ShieldCheck className="size-3 text-emerald-500" /> Sécurité Acadex
                 </p>
@@ -241,14 +235,10 @@ export default function MessagingPage() {
                 </DialogTrigger>
                 <DialogContent className="rounded-[2.5rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
                   <div className="p-6 md:p-10 bg-primary text-white">
-                    <DialogTitle className="text-xl md:text-3xl font-black">Nouveau Message</DialogTitle>
-                    <p className="text-white/40 text-[9px] uppercase font-black tracking-widest mt-1">Sélectionnez un destinataire certifié (A-Z)</p>
+                    <DialogTitle className="text-xl md:text-3xl font-black uppercase">Nouveau Message</DialogTitle>
+                    <p className="text-white/40 text-[9px] uppercase font-black tracking-widest mt-1">Sélectionnez un contact scellé (A-Z)</p>
                   </div>
                   <div className="p-5 md:p-8 space-y-6 bg-[#F8FAFC]">
-                    <div className="relative group">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                      <Input placeholder="Rechercher un contact..." className="pl-12 h-13 rounded-2xl border-none shadow-inner font-bold bg-white" />
-                    </div>
                     <ScrollArea className="h-[350px] md:h-[450px] pr-2 no-scrollbar">
                       {loadingContacts ? (
                         <div className="flex flex-col items-center justify-center py-24 gap-4 opacity-30">
@@ -262,7 +252,7 @@ export default function MessagingPage() {
                               <Avatar className="size-12 border-4 border-white shadow-sm group-hover:border-primary/20 transition-all"><AvatarFallback className="bg-primary/5 text-primary font-black text-lg">{c.name?.[0]}</AvatarFallback></Avatar>
                               <div className="flex-1 min-w-0">
                                 <p className="font-black text-sm md:text-lg truncate uppercase tracking-tight">{c.name}</p>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 mt-0.5">
                                   <Badge variant="outline" className="text-[8px] font-black uppercase px-2 py-0.5 border-muted/50 text-muted-foreground">{c.role}</Badge>
                                   <span className="text-[8px] font-bold text-primary uppercase">{c.sub}</span>
                                 </div>
@@ -296,12 +286,12 @@ export default function MessagingPage() {
               <div className="flex justify-center py-20 animate-pulse opacity-20"><Loader2 className="size-8 animate-spin text-primary" /></div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-20 text-center space-y-4 opacity-30">
-                 <MessageCircle className="size-10 mx-auto" />
-                 <p className="text-[8px] font-black uppercase tracking-widest">Aucune discussion</p>
+                 <MessageCircle className="size-10 md:size-16 mx-auto text-muted-foreground" />
+                 <p className="text-[8px] md:text-xs font-black uppercase tracking-widest">Aucune discussion scellée</p>
               </div>
             ) : filteredConversations.map((chat: any) => {
               const otherId = chat.participants.find((p: string) => p !== currentUserId)
-              const name = chat.participantNames?.[otherId] || (chat.type === 'class' ? chat.id : "Utilisateur")
+              const name = chat.participantNames?.[otherId] || "Utilisateur"
               const unread = chat.unreadCount?.[currentUserId] || 0
               const isActive = selectedChat?.id === chat.id
               return (
@@ -311,9 +301,9 @@ export default function MessagingPage() {
                 )}>
                   <div className="relative shrink-0">
                     <Avatar className={cn("size-12 border-4 transition-all", isActive ? "border-white/20" : "border-white")}>
-                      <AvatarFallback className={cn("font-black text-lg", isActive ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>{name?.[0]}</AvatarFallback>
+                      <AvatarFallback className={cn("font-black text-lg uppercase", isActive ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>{name?.[0]}</AvatarFallback>
                     </Avatar>
-                    {unread > 0 && <div className="absolute -top-1 -right-1 size-5 bg-amber-400 text-black font-black text-[10px] rounded-full flex items-center justify-center border-4 border-white animate-bounce">{unread}</div>}
+                    {unread > 0 && <div className="absolute -top-1 -right-1 size-5 bg-amber-400 text-black font-black text-[10px] rounded-full flex items-center justify-center border-4 border-white animate-bounce shadow-md">{unread}</div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
@@ -346,12 +336,12 @@ export default function MessagingPage() {
               <div className="p-4 md:p-8 border-b flex items-center justify-between bg-white/95 backdrop-blur-md sticky top-0 z-20">
                 <div className="flex items-center gap-3 md:gap-8">
                   <Button variant="ghost" size="icon" className="md:hidden rounded-xl bg-muted/50 size-10 mobile-touch-target" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-6" /></Button>
-                  <Avatar className="size-11 md:size-16 border-4 border-muted/20 shadow-sm"><AvatarFallback className="font-black text-xl bg-primary/5 text-primary">{selectedChat.otherName?.[0]}</AvatarFallback></Avatar>
+                  <Avatar className="size-11 md:size-16 border-4 border-muted/20 shadow-sm"><AvatarFallback className="font-black text-xl bg-primary/5 text-primary uppercase">{selectedChat.otherName?.[0]}</AvatarFallback></Avatar>
                   <div>
-                    <h3 className="text-base md:text-2xl font-black tracking-tight uppercase">{selectedChat.otherName}</h3>
+                    <h3 className="text-base md:text-2xl font-black tracking-tight uppercase truncate max-w-[150px] md:max-w-none">{selectedChat.otherName}</h3>
                     <div className="flex items-center gap-2">
                        <div className="size-2 bg-emerald-500 rounded-full animate-pulse" />
-                       <span className="text-[7px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest">En ligne scellé</span>
+                       <span className="text-[7px] md:text-[10px] font-black text-emerald-600 uppercase tracking-widest">Canal Scellé</span>
                     </div>
                   </div>
                 </div>
@@ -367,7 +357,7 @@ export default function MessagingPage() {
                     <div key={msg.id || i} className={cn("flex animate-in slide-in-from-bottom-2", isMe ? "justify-end" : "justify-start")}>
                       <div className={cn(
                         "group relative p-4 md:p-8 rounded-[1.8rem] md:rounded-[3rem] text-xs md:text-lg font-medium shadow-sm leading-relaxed max-w-[88%] md:max-w-[75%]",
-                        isMe ? "bg-primary text-white rounded-br-none shadow-primary/20" : "bg-white text-foreground rounded-bl-none border border-muted/30"
+                        isMe ? "bg-primary text-white rounded-br-none shadow-primary/20" : "bg-white text-foreground rounded-tl-none border border-muted/30"
                       )}>
                         {msg.text}
                         <div className="flex justify-end gap-1.5 opacity-40 mt-2">

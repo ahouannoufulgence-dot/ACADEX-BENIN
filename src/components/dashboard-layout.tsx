@@ -58,14 +58,14 @@ const navigationConfig = {
     { name: "Dashboard", href: "/dashboard/directeur", icon: LayoutDashboard },
     { name: "Promotions", href: "/promotions", icon: Layers },
     { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
-    { name: "Vie de l’Élève", href: "/vie-scolaire", icon: ClipboardList },
+    { name: "Vie Scolaire", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Élèves", href: "/eleves", icon: Users },
     { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
     { name: "Notes", href: "/notes", icon: PenTool },
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
-    { name: "Années Scolaires", href: "/archives", icon: History },
+    { name: "Archives", href: "/archives", icon: History },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
   Enseignant: [
@@ -113,8 +113,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       return
     }
 
-    setUserName(name || "Monsieur")
     setUserRole(role)
+    setUserName(name || "Monsieur")
     setUserId(id || "INV-000")
     setActiveYear(savedYear || "2026-2027")
     setMounted(true)
@@ -133,7 +133,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setActiveYear(year)
     localStorage.setItem('acadex_active_year', year)
     window.dispatchEvent(new CustomEvent('acadex_year_changed', { detail: year }))
-    router.refresh()
   }
 
   const menuItems = useMemo(() => {
@@ -148,7 +147,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   if (!mounted) return null
 
-  // Layout public (Login, Register, etc.)
   if (!userRole && (pathname === '/login' || pathname === '/' || pathname.startsWith('/register'))) {
     return <>{children}</>
   }
@@ -156,7 +154,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-[#F8FAFC] relative overflow-hidden">
-        {/* GLOBAL PROFESSIONAL BACKGROUND IMAGE */}
         {showBackground && (
           <div className="fixed inset-0 z-0">
             <Image 
@@ -173,7 +170,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <Sidebar className="border-none shadow-2xl flex-shrink-0 z-40" collapsible="icon">
           <SidebarHeader className="h-18 md:h-24 flex items-center px-4 bg-primary overflow-hidden">
             <Link href="/dashboard" className="flex items-center gap-3 w-full">
-              <div className="size-9 md:size-11 bg-white rounded-xl flex items-center justify-center shadow-lg overflow-hidden shrink-0">
+              <div className="size-9 md:size-11 bg-white rounded-xl md:rounded-[0.8rem] flex items-center justify-center shadow-lg overflow-hidden shrink-0">
                 {schoolInfo.logo ? (
                   <img src={schoolInfo.logo} alt="Logo" className="w-full h-full object-contain" />
                 ) : (
@@ -187,7 +184,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <SidebarContent className="px-2 py-4 md:py-6">
               <SidebarGroup>
                 <SidebarGroupLabel className="text-white/40 font-black px-4 py-4 uppercase tracking-[0.25em] text-[9px] group-data-[collapsible=icon]:hidden">
-                  MENU {userRole?.toUpperCase()}
+                  COCKPIT {userRole?.toUpperCase()}
                 </SidebarGroupLabel>
                 <SidebarGroupContent>
                   <SidebarMenu className="gap-1 md:gap-2">
@@ -196,7 +193,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                         <SidebarMenuButton
                           asChild
                           isActive={pathname === item.href}
-                          className={`group transition-all duration-300 h-10 md:h-12 rounded-[0.8rem] md:rounded-2xl px-4 ${
+                          className={`group transition-all duration-300 h-10 md:h-12 rounded-xl md:rounded-2xl px-4 ${
                             pathname === item.href 
                               ? "bg-white/20 text-white shadow-lg" 
                               : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -207,7 +204,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                             <item.icon className={cn("size-4 md:size-5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
                             <span className="font-bold text-[11px] md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
-                              <Badge className="ml-auto bg-amber-400 text-[7px] font-black h-3.5 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden">IA</Badge>
+                              <Badge className="ml-auto bg-amber-400 text-[7px] font-black h-3.5 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden animate-pulse">IA</Badge>
                             )}
                           </Link>
                         </SidebarMenuButton>
@@ -221,13 +218,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <SidebarFooter className="p-3 md:p-4 bg-primary">
             <Button onClick={handleLogout} variant="ghost" className="w-full justify-start text-white/50 hover:text-white hover:bg-white/10 gap-3 px-4 h-10 md:h-12 rounded-xl font-bold">
               <LogOut className="size-4 md:size-5 shrink-0" />
-              <span className="group-data-[collapsible=icon]:hidden text-[11px] md:text-sm">Déconnexion</span>
+              <span className="group-data-[collapsible=icon]:hidden text-[11px] md:text-sm uppercase tracking-widest">Déconnexion</span>
             </Button>
           </SidebarFooter>
         </Sidebar>
 
         <SidebarInset className="flex flex-col flex-1 min-w-0 bg-transparent">
-          <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/85 backdrop-blur-xl px-4 md:px-7 border-b border-border/40">
+          <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/85 backdrop-blur-xl px-4 md:px-7 border-b border-border/40 shadow-sm">
             <div className="flex items-center gap-3 md:gap-5">
               <SidebarTrigger className="text-primary hover:bg-primary/5 size-9 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
               
@@ -236,7 +233,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {userName}
                 </h2>
                 <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="text-[7px] md:text-[9px] font-black border-primary/20 text-primary px-1.5 h-3.5 md:h-5 uppercase">{userId}</Badge>
+                  <Badge variant="outline" className="text-[7px] md:text-[9px] font-black border-primary/20 text-primary px-1.5 h-3.5 md:h-5 uppercase tracking-tighter">{userId}</Badge>
                 </div>
               </div>
             </div>
@@ -244,7 +241,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2 md:gap-5">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-8 md:h-12 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-5 transition-all text-[9px] md:text-sm mobile-touch-target">
+                  <Button variant="outline" className="h-8 md:h-12 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-5 transition-all text-[9px] md:text-sm mobile-touch-target shadow-sm">
                     <Calendar className="size-3 md:size-4 text-primary" />
                     <span>{activeYear}</span>
                     <ChevronDown className="size-2 md:size-3 text-muted-foreground" />
@@ -260,7 +257,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenu>
               
               <Avatar className="size-8 md:size-11 border-2 border-primary/10 shadow-sm mobile-touch-target">
-                <AvatarFallback className="bg-primary text-white font-black text-[10px] md:text-base">{userName[0]}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-white font-black text-[10px] md:text-base uppercase">{userName[0]}</AvatarFallback>
               </Avatar>
             </div>
           </header>
