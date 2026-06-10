@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -15,13 +15,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Zap,
-  UserCheck,
-  Timer,
-  CalendarDays,
   MapPin,
   Loader2,
   AlertTriangle,
-  History
+  History,
+  Timer
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
@@ -35,7 +33,7 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, addDoc, query, where, deleteDoc, doc, serverTimestamp } from "firebase/firestore"
+import { collection, addDoc, query, where, deleteDoc, doc, serverTimestamp, getDocs } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
@@ -100,17 +98,16 @@ export default function AvailabilityPage() {
       return
     }
 
-    // Détection de conflit locale pour l'enseignant
+    // VÉRIFICATION DE CONFLIT LOCALE (DÉTECTION ACADEX)
     const conflict = mySchedules?.find((s: any) => {
       if (s.day !== newCourse.day) return false
-      // Vérification de chevauchement d'intervalles
       return (newCourse.startTime < s.endTime) && (newCourse.endTime > s.startTime)
     })
 
     if (conflict) {
       toast({ 
-        title: "Conflit Horaire", 
-        description: `Vous avez déjà une séance en ${conflict.classId} sur ce créneau.`,
+        title: "Conflit Horaire Détecté", 
+        description: `Vous avez déjà une séance scellée en ${conflict.classId} sur ce créneau.`,
         variant: "destructive" 
       })
       return
@@ -127,7 +124,7 @@ export default function AvailabilityPage() {
         academicYear: activeYear,
         createdAt: serverTimestamp()
       })
-      toast({ title: "Séance scellée", description: "Le planning de la classe a été mis à jour." })
+      toast({ title: "Séance scellée", description: "Le planning global a été mis à jour automatiquement." })
       setNewCourse({ ...newCourse, classId: "", room: "" })
     } catch (e) {
       toast({ title: "Erreur de scellage", variant: "destructive" })
@@ -171,14 +168,14 @@ export default function AvailabilityPage() {
             <Card className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3rem] bg-white border-none shadow-sm space-y-8">
               <div className="space-y-2 text-center md:text-left">
                 <h3 className="text-lg md:text-2xl font-black flex items-center justify-center md:justify-start gap-3">
-                  <Plus className="text-primary size-4 md:size-6" /> Programmer Séance
+                  <Plus className="text-primary size-4 md:size-6" /> Sceller Séance
                 </h3>
-                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Relié aux classes & élèves</p>
+                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Relié aux classes & au directeur</p>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Classe</Label>
+                  <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Classe autorisée</Label>
                   <Select value={newCourse.classId} onValueChange={(v) => setNewCourse({...newCourse, classId: v})}>
                     <SelectTrigger className="h-12 md:h-14 rounded-2xl border-2 font-black text-xs md:text-base transition-all focus:border-primary"><SelectValue placeholder="Choisir une classe" /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-2 p-1.5">
@@ -188,7 +185,7 @@ export default function AvailabilityPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Jour de cours</Label>
+                  <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Jour de la semaine</Label>
                   <Select value={newCourse.day} onValueChange={(v) => setNewCourse({...newCourse, day: v})}>
                     <SelectTrigger className="h-12 md:h-14 rounded-2xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-2xl border-2 p-1.5">
@@ -199,11 +196,11 @@ export default function AvailabilityPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="space-y-2">
-                      <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Heure Début</Label>
+                      <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Début</Label>
                       <Input type="time" value={newCourse.startTime} onChange={e => setNewCourse({...newCourse, startTime: e.target.value})} className="h-12 md:h-14 rounded-2xl border-2 font-black text-center text-sm md:text-lg" />
                    </div>
                    <div className="space-y-2">
-                      <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Heure Fin</Label>
+                      <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Fin</Label>
                       <Input type="time" value={newCourse.endTime} onChange={e => setNewCourse({...newCourse, endTime: e.target.value})} className="h-12 md:h-14 rounded-2xl border-2 font-black text-center text-sm md:text-lg" />
                    </div>
                 </div>
@@ -218,7 +215,7 @@ export default function AvailabilityPage() {
 
                 <Button onClick={handleAddCourse} disabled={saving} className="w-full h-12 md:h-16 rounded-2xl bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 font-black text-xs md:text-lg transition-all active:scale-95">
                   {saving ? <Loader2 className="animate-spin mr-2 size-4" /> : <Save className="mr-2 size-4" />}
-                  Sceller au Planning
+                  Valider Scellage
                 </Button>
               </div>
             </Card>
@@ -243,22 +240,22 @@ export default function AvailabilityPage() {
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[4rem] overflow-hidden min-h-[500px] flex flex-col">
               <CardHeader className="p-8 md:p-12 border-b bg-muted/5 flex items-center justify-between">
                  <div className="space-y-1">
-                   <CardTitle className="text-xl md:text-3xl font-black tracking-tight uppercase">Mon Agenda</CardTitle>
+                   <CardTitle className="text-xl md:text-3xl font-black tracking-tight uppercase">Mon Agenda Semaine</CardTitle>
                    <p className="font-bold text-primary text-[9px] md:text-sm uppercase tracking-widest flex items-center gap-2">
                      <History className="size-3.5" /> Historique de Planification
                    </p>
                  </div>
-                 <Badge variant="outline" className="rounded-full border-2 font-black px-4 h-9 md:h-11 text-[9px] md:text-xs">SESSIONS SCELLÉES</Badge>
+                 <Badge variant="outline" className="rounded-full border-2 font-black px-4 h-9 md:h-11 text-[9px] md:text-xs">SESSIONS ACTIVES</Badge>
               </CardHeader>
               <CardContent className="p-6 md:p-10 flex-1">
                 {loadingSchedules ? (
                   <div className="py-20 text-center animate-pulse"><Loader2 className="animate-spin mx-auto text-primary/20 size-10" /></div>
                 ) : !mySchedules || mySchedules.length === 0 ? (
                   <div className="py-24 text-center space-y-6 opacity-30">
-                    <CalendarDays className="size-20 mx-auto text-muted-foreground" />
+                    <Calendar className="size-20 mx-auto text-muted-foreground" />
                     <div className="space-y-1">
                       <p className="font-black text-xs md:text-xl uppercase tracking-widest">Agenda Vierge</p>
-                      <p className="text-[10px] md:text-sm font-medium">Commencez par ajouter votre premier cours.</p>
+                      <p className="text-[10px] md:text-sm font-medium">Commencez par ajouter votre premier cours scellé.</p>
                     </div>
                   </div>
                 ) : (
@@ -272,24 +269,23 @@ export default function AvailabilityPage() {
                            <div className="grid gap-3 md:gap-6">
                               {dayCourses.map((course: any) => (
                                 <div key={course.id} className="p-5 md:p-8 bg-muted/5 rounded-[1.8rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/20 hover:bg-white hover:shadow-xl transition-all group flex items-center justify-between">
-                                   <div className="flex items-center gap-4 md:gap-8">
+                                   <div className="flex items-center gap-4 md:gap-8 flex-1 min-w-0">
                                       <div className="size-12 md:size-20 bg-white rounded-2xl flex flex-col items-center justify-center shadow-inner group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                                          <Clock className="size-4 md:size-6" />
                                          <span className="text-[8px] md:text-sm font-black uppercase tracking-tighter">{course.startTime.split(':')[0]}H</span>
                                       </div>
-                                      <div className="space-y-1">
+                                      <div className="space-y-1 truncate">
                                          <div className="flex items-center gap-3">
                                             <Badge className="bg-primary text-white font-black text-[10px] md:text-lg px-3 py-0.5 rounded-md">{course.classId}</Badge>
-                                            <h4 className="text-sm md:text-2xl font-black uppercase tracking-tight">{course.startTime} - {course.endTime}</h4>
+                                            <h4 className="text-sm md:text-2xl font-black uppercase tracking-tight truncate">{course.startTime} - {course.endTime}</h4>
                                          </div>
                                          <div className="flex flex-wrap items-center gap-4 text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                             <span className="flex items-center gap-1.5"><MapPin className="size-2.5 md:size-3 text-primary" /> {course.room || 'Salle libre'}</span>
                                             <span className="flex items-center gap-1.5"><Timer className="size-2.5 md:size-3 text-primary" /> {course.duration}</span>
-                                            <Badge variant="outline" className="h-5 px-2 border-primary/20 text-primary text-[6px] md:text-[8px]">SÉANCE SCELLÉE</Badge>
                                          </div>
                                       </div>
                                    </div>
-                                   <Button variant="ghost" size="icon" onClick={() => removeCourse(course.id)} className="size-10 md:size-14 rounded-xl md:rounded-2xl text-destructive hover:bg-destructive/10 transition-all active:scale-90"><Trash2 className="size-4 md:size-6" /></Button>
+                                   <Button variant="ghost" size="icon" onClick={() => removeCourse(course.id)} className="size-10 md:size-14 rounded-xl md:rounded-2xl text-destructive hover:bg-destructive/10 transition-all active:scale-90 shrink-0"><Trash2 className="size-4 md:size-6" /></Button>
                                 </div>
                               ))}
                            </div>
@@ -299,11 +295,6 @@ export default function AvailabilityPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter className="p-8 border-t bg-muted/5 flex justify-center">
-                 <Button variant="outline" className="rounded-xl font-black text-[9px] md:text-sm border-2 h-10 md:h-12 px-8 hover:bg-primary hover:text-white transition-all">
-                   <History className="mr-2 size-3.5" /> Télécharger mon Planning PDF
-                 </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>

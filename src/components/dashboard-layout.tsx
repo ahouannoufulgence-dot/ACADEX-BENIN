@@ -17,7 +17,8 @@ import {
   ChevronDown,
   History,
   ClipboardList,
-  Layers
+  Layers,
+  CalendarDays
 } from "lucide-react"
 import {
   Sidebar,
@@ -57,6 +58,7 @@ const navigationConfig = {
   Directeur: [
     { name: "Dashboard", href: "/dashboard/directeur", icon: LayoutDashboard },
     { name: "Promotions", href: "/promotions", icon: Layers },
+    { name: "Plannings", href: "/agenda", icon: CalendarDays },
     { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
     { name: "Vie Scolaire", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Élèves", href: "/eleves", icon: Users },
@@ -71,6 +73,7 @@ const navigationConfig = {
   Enseignant: [
     { name: "Dashboard", href: "/dashboard/enseignant", icon: LayoutDashboard },
     { name: "Vie Scolaire", href: "/vie-scolaire", icon: ClipboardList },
+    { name: "Mon Planning", href: "/disponibilites", icon: CalendarDays },
     { name: "Mes Classes", href: "/eleves", icon: Users },
     { name: "Saisie Notes", href: "/notes", icon: PenTool },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
@@ -79,6 +82,7 @@ const navigationConfig = {
   Élève: [
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
     { name: "Cahier de Vie", href: "/vie-scolaire", icon: ClipboardList },
+    { name: "Mon Planning", href: "/dashboard/eleve/agenda", icon: CalendarDays },
     { name: "Mes Notes", href: "/dashboard/eleve/notes", icon: PenTool },
     { name: "Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
