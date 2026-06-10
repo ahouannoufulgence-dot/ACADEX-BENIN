@@ -111,21 +111,58 @@ export default function GenIdentifiersPage() {
   }
 
   const handleExportPDF = () => {
-    if (filteredIds.length === 0) return
-    const docPdf = new jsPDF()
-    docPdf.setFillColor(20, 83, 45)
-    docPdf.rect(0, 0, 210, 30, 'F')
-    docPdf.setTextColor(255, 255, 255)
-    docPdf.setFontSize(16)
-    docPdf.text(`IDENTIFIANTS D'INSCRIPTION - ${selectedClass || 'TOUTES'}`, 105, 20, { align: "center" })
+    if (filteredIds.length === 0) {
+      toast({ title: "Aucune donnée à exporter" })
+      return
+    }
 
-    autoTable(docPdf, {
-      startY: 40,
-      head: [['Matricule', 'Classe', 'Statut']],
-      body: filteredIds.map((id: any) => [id.matricule, id.classId, id.status.toUpperCase()]),
-      headStyles: { fillColor: [20, 83, 45] }
+    const docPdf = new jsPDF()
+    
+    // Groupement par classe pour isoler chaque classe sur une page
+    const grouped = filteredIds.reduce((acc: Record<string, any[]>, curr: any) => {
+      if (!acc[curr.classId]) acc[curr.classId] = []
+      acc[curr.classId].push(curr)
+      return acc
+    }, {})
+
+    const sortedClasses = Object.keys(grouped).sort()
+
+    sortedClasses.forEach((classId, index) => {
+      // Ajouter une nouvelle page sauf pour la première classe
+      if (index > 0) docPdf.addPage()
+
+      // En-tête premium pour la page
+      docPdf.setFillColor(20, 83, 45)
+      docPdf.rect(0, 0, 210, 30, 'F')
+      docPdf.setTextColor(255, 255, 255)
+      docPdf.setFontSize(16)
+      docPdf.text(`ACADEX - LISTE D'INSCRIPTION`, 105, 15, { align: "center" })
+      docPdf.setFontSize(12)
+      docPdf.text(`CLASSE : ${classId.toUpperCase()}`, 105, 24, { align: "center" })
+
+      const classData = grouped[classId]
+
+      autoTable(docPdf, {
+        startY: 40,
+        head: [['Identifiant Unique', 'Classe', 'Statut Activation']],
+        body: classData.map((id: any) => [id.matricule, id.classId, id.status === 'utilisé' ? 'UTILISÉ' : 'À DISTRIBUER']),
+        headStyles: { fillColor: [20, 83, 45], halign: 'center' },
+        bodyStyles: { fontStyle: 'bold', halign: 'center' },
+        columnStyles: { 
+          0: { cellWidth: 100, fontStyle: 'bold' }
+        },
+        theme: 'grid'
+      })
+
+      // Pied de page
+      const pageCount = (docPdf as any).internal.getNumberOfPages()
+      docPdf.setTextColor(150, 150, 150)
+      docPdf.setFontSize(8)
+      docPdf.text(`Document certifié ACADEX - Page ${index + 1} - Classe ${classId}`, 105, 285, { align: "center" })
     })
-    docPdf.save(`LISTE_CODES_ACADEX.pdf`)
+
+    docPdf.save(`IDENTIFIANTS_PAR_CLASSE_ACADEX.pdf`)
+    toast({ title: "Exportation Réussie", description: "Le PDF est organisé avec 1 page par classe." })
   }
 
   return (
@@ -137,7 +174,7 @@ export default function GenIdentifiersPage() {
             <p className="text-muted-foreground mt-2 font-medium">Les élèves utiliseront ces codes pour activer leur espace cockpit.</p>
           </div>
           <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
-            <FileDown className="mr-2 size-5" /> Télécharger PDF
+            <FileDown className="mr-2 size-5" /> Télécharger PDF (1 page/classe)
           </Button>
         </div>
 
