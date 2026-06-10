@@ -51,11 +51,6 @@ const levels = [
   { id: "TERMINALE", label: "TERMINALE", desc: "Second Cycle" }
 ]
 
-const BENIN_SUBJECTS = [
-  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", 
-  "Allemand", "Espagnol", "Économie", "Informatique", "EPS"
-]
-
 export default function PromotionsPage() {
   const db = useFirestore()
   const [activeYear, setActiveYear] = useState("")
@@ -132,7 +127,6 @@ export default function PromotionsPage() {
       let totalCoef = 0
       
       Object.entries(subjects).forEach(([name, s]: [string, any]) => {
-        // CALCUL PROGRESSIF
         const d = s.details
         const interros = [d.int1, d.int2, d.int3].filter(v => v !== undefined)
         const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : null
@@ -197,35 +191,13 @@ export default function PromotionsPage() {
     return { levelsMap, classStats, studentsProcessed }
   }, [students, grades, lifeEvents, coefs])
 
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES ÉLÈVES DANS LA VUE CLASSE
   const currentClassStudents = useMemo(() => {
     if (!academicData.studentsProcessed || !selectedClass) return []
     return academicData.studentsProcessed
       .filter((s: any) => s.classId === selectedClass)
-      .sort((a: any, b: any) => (a.rank || 0) - (b.rank || 0))
+      .sort((a: any, b: any) => (a.lastName || "").localeCompare(b.lastName || ""))
   }, [academicData, selectedClass])
-
-  const handleAnalyzeClass = async () => {
-    if (!selectedClass || currentClassStudents.length === 0) return
-    setAnalyzing(true)
-    try {
-      const prompt = `Analysez la performance de la classe ${selectedClass}. 
-      Statistiques actuelles : Moyenne ${academicData.classStats[selectedClass]?.avg}, Taux réussite ${academicData.classStats[selectedClass]?.successRate}%. 
-      Certaines notes sont encore en attente (calcul progressif).`
-      
-      const res = await askAcadexBrain({
-        question: prompt,
-        userRole: "Directeur",
-        userId: "DIR-001",
-        contextData: { schoolName: "ACADEX", year: activeYear, stats: academicData.classStats[selectedClass] }
-      })
-      setAiReport(res.answer)
-      toast({ title: "Audit IA Terminé" })
-    } catch (e) {
-      toast({ title: "Erreur IA", variant: "destructive" })
-    } finally {
-      setAnalyzing(false)
-    }
-  }
 
   const goBackToLevels = () => { setSelectedLevel(null); setSelectedClass(null); setAiReport(null); }
   const goBackToClasses = () => { setSelectedClass(null); setAiReport(null); }
@@ -281,6 +253,33 @@ export default function PromotionsPage() {
           </div>
         )}
 
+        {selectedLevel && !selectedClass && (
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in slide-in-from-right-4">
+              {Array.from(academicData.levelsMap[selectedLevel]?.classes || []).sort().map((cid: any) => (
+                <Card 
+                  key={cid} 
+                  onClick={() => setSelectedClass(cid)}
+                  className="p-6 md:p-10 rounded-[2.2rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group border-l-[10px] border-primary active:scale-95"
+                >
+                   <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-2xl md:text-4xl font-black text-foreground">{cid}</h3>
+                      <ChevronRight className="size-6 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                   </div>
+                   <div className="space-y-3">
+                      <div className="flex justify-between items-center text-[10px] md:text-xs font-bold uppercase text-muted-foreground">
+                         <span>Moyenne Classe</span>
+                         <span className="text-primary font-black">{academicData.classStats[cid]?.avg}/20</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] md:text-xs font-bold uppercase text-muted-foreground">
+                         <span>Taux Réussite</span>
+                         <span className="text-emerald-600 font-black">{academicData.classStats[cid]?.successRate}%</span>
+                      </div>
+                   </div>
+                </Card>
+              ))}
+           </div>
+        )}
+
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
@@ -302,34 +301,32 @@ export default function PromotionsPage() {
             </div>
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
+               <div className="p-8 md:p-12 border-b bg-muted/5 flex items-center justify-between">
+                  <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Registre {selectedClass} (A-Z)</h3>
+                  <Badge variant="outline" className="font-black border-primary/20 text-primary">SCELLEMENT PROGRESSIF</Badge>
+               </div>
                <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-muted/30 text-[9px] font-black uppercase text-muted-foreground border-b border-muted/30">
                       <tr>
-                        <th className="px-8 py-6 text-left">Rang</th>
                         <th className="px-8 py-6 text-left">Élève</th>
-                        <th className="px-6 py-6 text-center bg-primary/5 text-primary">Moy Mat.</th>
                         <th className="px-6 py-6 text-center">Conduite</th>
+                        <th className="px-6 py-6 text-center">Rang</th>
                         <th className="px-8 py-6 text-right bg-primary text-white">Moy Générale Prov.</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/20">
                       {currentClassStudents.map((s: any) => {
-                        const sub = s.subjects?.[selectedSubject]
                         return (
                           <tr key={s.id} className="hover:bg-muted/5 transition-all group">
-                            <td className="px-8 py-6">
-                               <div className={cn("size-10 rounded-xl flex items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}e</div>
-                            </td>
                             <td className="px-8 py-6">
                                <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
                             </td>
-                            <td className="px-6 py-6 text-center font-black text-primary bg-primary/5">
-                              {sub?.avg?.toFixed(2) ?? "0.00"}
-                              {sub?.isProvisional && <span className="ml-1 text-[8px] text-amber-500 animate-pulse">⏳</span>}
-                            </td>
                             <td className="px-6 py-6 text-center font-black text-emerald-600">{s.conduct.toFixed(1)}</td>
+                            <td className="px-6 py-6 text-center">
+                               <div className={cn("inline-flex size-10 rounded-xl items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}e</div>
+                            </td>
                             <td className="px-8 py-6 text-right">
                                <span className="font-black text-2xl text-foreground tabular-nums">{s.generalAvg.toFixed(2)}</span>
                             </td>

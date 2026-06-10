@@ -66,9 +66,10 @@ export default function StudentLifePage() {
     return () => unsubConfig()
   }, [db])
 
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES ÉLÈVES POUR LA SÉLECTION
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear || userRole === "Élève") return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear))
+    return query(collection(db, "students"), where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
   }, [db, activeYear, userRole])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
@@ -158,7 +159,6 @@ export default function StudentLifePage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Section - Refined for Mobile */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">Vie <span className="text-primary italic">Scolaire</span></h1>
@@ -242,8 +242,6 @@ export default function StudentLifePage() {
               </Card>
             ) : (
               <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
-                
-                {/* Mobile Back Button & Profile Info */}
                 {isStaff && (
                   <div className="flex items-center gap-4 lg:hidden">
                     <Button variant="ghost" size="icon" onClick={() => setSelectedStudent(null)} className="size-10 rounded-xl bg-white shadow-sm border border-muted/20">

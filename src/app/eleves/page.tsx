@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -24,7 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, deleteDoc, doc, where, onSnapshot } from "firebase/firestore"
+import { collection, query, deleteDoc, doc, where, onSnapshot, orderBy } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -82,10 +83,16 @@ export default function StudentsPage() {
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
+    // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM
     if (userRole === "Enseignant" && userClasses.length > 0) {
-      return query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
+      return query(
+        baseCol, 
+        where("academicYear", "==", activeYear), 
+        where("classId", "in", userClasses),
+        orderBy("lastName", "asc")
+      )
     }
-    return query(baseCol, where("academicYear", "==", activeYear))
+    return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
   }, [db, userRole, userClasses, activeYear])
 
   const { data: students, loading } = useCollection(studentsQuery)

@@ -17,7 +17,7 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs } from "firebase/firestore"
+import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs, orderBy } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
@@ -42,11 +42,6 @@ const OFFICIAL_CLASSES = [
   "2NDE A", "2NDE B", "2NDE C", "2NDE D",
   "1ERE A", "1ERE B", "1ERE C", "1ERE D",
   "TLE A", "TLE B", "TLE C", "TLE D"
-]
-
-const BENIN_SUBJECTS = [
-  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", 
-  "Allemand", "Espagnol", "Économie", "Informatique", "EPS"
 ]
 
 export default function GradesPage() {
@@ -123,13 +118,15 @@ export default function GradesPage() {
     fetchData()
   }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear])
 
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES ÉLÈVES POUR LA SAISIE
   const studentsQuery = useMemo(() => {
     if (!db || !selectedClass) return null
     return query(
       collection(db, 'students'), 
       where("classId", "==", selectedClass),
       where("status", "==", "Actif"),
-      where("academicYear", "==", activeYear)
+      where("academicYear", "==", activeYear),
+      orderBy("lastName", "asc")
     )
   }, [db, selectedClass, activeYear])
 
@@ -152,7 +149,7 @@ export default function GradesPage() {
     try {
       students?.forEach((student: any) => {
         const valStr = gradesData[student.matricule]
-        if (valStr === undefined || valStr === "") return // Ne pas enregistrer les vides pour permettre le progressif
+        if (valStr === undefined || valStr === "") return 
 
         const val = parseFloat(valStr)
         const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}_${activeYear}`.replace(/\s/g, '_')
@@ -175,7 +172,6 @@ export default function GradesPage() {
 
       await batch.commit()
       toast({ title: "Note scellée avec succès", description: `Le registre de ${selectedClass} est mis à jour.` })
-      // Mise à jour locale de la complétion
       setCompletionStats(prev => ({ ...prev, [selectedEvalType]: true }))
     } catch (e) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'grades', operation: 'write' }))
@@ -261,7 +257,6 @@ export default function GradesPage() {
 
         {selectedClass && (
           <div className="grid gap-6">
-            {/* Progression Bar */}
             <div className="flex flex-wrap gap-2 md:gap-4 p-4 bg-white rounded-3xl shadow-sm border border-muted/50">
                {evalTypes.map(t => (
                  <div key={t.id} className={cn(
@@ -293,7 +288,7 @@ export default function GradesPage() {
                 <table className="w-full">
                   <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
                     <tr>
-                      <th className="px-12 py-8 text-left tracking-widest">Identifiant & Élève</th>
+                      <th className="px-12 py-8 text-left tracking-widest">Identifiant & Élève (A-Z)</th>
                       <th className="px-12 py-8 text-center tracking-widest">Note / 20</th>
                       <th className="px-12 py-8 text-right bg-primary text-white tracking-widest">Moyenne Provisoire</th>
                     </tr>

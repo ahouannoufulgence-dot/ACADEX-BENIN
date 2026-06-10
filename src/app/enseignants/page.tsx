@@ -27,7 +27,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { collection, query, doc, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -50,7 +50,8 @@ export default function TeachersPage() {
     if (name) setDirectorName(name)
   }, [])
 
-  const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM COMPLET
+  const teachersQuery = useMemo(() => query(collection(db, "teachers"), orderBy("fullName", "asc")), [db])
   const { data: teachers, loading } = useCollection(teachersQuery)
 
   const filteredTeachers = useMemo(() => {

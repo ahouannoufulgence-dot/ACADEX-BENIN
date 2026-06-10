@@ -141,6 +141,7 @@ export default function MessagingPage() {
     updateDoc(doc(db, "conversations", selectedChat.id), updates)
   }
 
+  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES CONTACTS
   const fetchContacts = async () => {
     setLoadingContacts(true)
     try {
@@ -167,7 +168,13 @@ export default function MessagingPage() {
           .map(d => ({ id: d.data().officialId || d.id, name: d.data().fullName, role: 'Professeur', sub: d.data().subject, type: 'private' }))
         allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Administration', type: 'private' }, ...myTeachers]
       }
-      setContacts(allContacts.filter(c => c.id !== currentUserId))
+      
+      // APPLICATION DU TRI ALPHABÉTIQUE SUR LA LISTE FINALE
+      const sortedContacts = allContacts
+        .filter(c => c.id !== currentUserId)
+        .sort((a, b) => a.name.localeCompare(b.name))
+
+      setContacts(sortedContacts)
     } catch (e) { console.error(e) } 
     finally { setLoadingContacts(false) }
   }
@@ -235,7 +242,7 @@ export default function MessagingPage() {
                 <DialogContent className="rounded-[2.5rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
                   <div className="p-6 md:p-10 bg-primary text-white">
                     <DialogTitle className="text-xl md:text-3xl font-black">Nouveau Message</DialogTitle>
-                    <p className="text-white/40 text-[9px] uppercase font-black tracking-widest mt-1">Sélectionnez un destinataire certifié</p>
+                    <p className="text-white/40 text-[9px] uppercase font-black tracking-widest mt-1">Sélectionnez un destinataire certifié (A-Z)</p>
                   </div>
                   <div className="p-5 md:p-8 space-y-6 bg-[#F8FAFC]">
                     <div className="relative group">
