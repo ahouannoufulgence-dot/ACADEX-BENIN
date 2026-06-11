@@ -83,6 +83,7 @@ export default function GradesPage() {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
+  // OPTIMISATION : Une seule requête pour toutes les notes de la classe/matière
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass || !userSubject || !mounted) return
@@ -97,29 +98,28 @@ export default function GradesPage() {
           setClassCoefficient(2)
         }
 
+        // Requête unique pour tout le trimestre
+        const q = query(
+          collection(db, "grades"),
+          where("classId", "==", selectedClass),
+          where("subject", "==", userSubject),
+          where("term", "==", selectedTrimestre),
+          where("academicYear", "==", activeYear)
+        )
+        const snap = await getDocs(q)
+        const allGrades = snap.docs.map(d => d.data())
+        
         const stats: Record<string, boolean> = {}
-        for (const type of evalTypes) {
-           const q = query(
-             collection(db, "grades"),
-             where("classId", "==", selectedClass),
-             where("subject", "==", userSubject),
-             where("term", "==", selectedTrimestre),
-             where("type", "==", type.id),
-             where("academicYear", "==", activeYear)
-           )
-           const snap = await getDocs(q)
-           stats[type.id] = !snap.empty
-           
-           if (type.id === selectedEvalType) {
-              const existing: Record<string, string> = {}
-              snap.docs.forEach(d => {
-                const data = d.data()
-                existing[data.studentId] = data.value.toString()
-              })
-              setGradesData(existing)
-           }
-        }
+        evalTypes.forEach(type => {
+          stats[type.id] = allGrades.some(g => g.type === type.id)
+        })
         setCompletionStats(stats)
+
+        const currentTypeGrades: Record<string, string> = {}
+        allGrades.filter(g => g.type === selectedEvalType).forEach(g => {
+          currentTypeGrades[g.studentId] = g.value.toString()
+        })
+        setGradesData(currentTypeGrades)
       } catch (e) {
         console.warn("Erreur synchro", e)
       } finally {
