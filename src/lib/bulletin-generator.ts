@@ -35,7 +35,6 @@ export interface BulletinData {
     int3?: number;
     dev1?: number;
     dev2?: number;
-    comp?: number;
     avg: number;
     weighted: number;
     rank: number;
@@ -66,16 +65,13 @@ export async function generateBulletinPDF(data: BulletinData) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const primaryColor = data.schoolInfo.primaryColor || "#14532D";
   
-  // Convert hex to RGB for jspdf
   const r = parseInt(primaryColor.slice(1, 3), 16);
   const g = parseInt(primaryColor.slice(3, 5), 16);
   const b = parseInt(primaryColor.slice(5, 7), 16);
 
-  // --- HEADER SECTION ---
   doc.setFillColor(248, 250, 252);
   doc.rect(0, 0, pageWidth, 50, 'F');
   
-  // Logo placeholder or actual image
   if (data.schoolInfo.logoUrl) {
     try {
       doc.addImage(data.schoolInfo.logoUrl, 'PNG', 15, 10, 25, 25);
@@ -88,7 +84,6 @@ export async function generateBulletinPDF(data: BulletinData) {
     }
   }
 
-  // School Identity
   doc.setTextColor(r, g, b);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
@@ -104,7 +99,6 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.text(`${data.schoolInfo.address} | Tél: ${data.schoolInfo.phone}`, pageWidth / 2, 30, { align: 'center' });
   doc.text(`Email: ${data.schoolInfo.email}`, pageWidth / 2, 34, { align: 'center' });
 
-  // Academic Year Box
   doc.setFillColor(r, g, b);
   doc.roundedRect(pageWidth - 55, 10, 40, 12, 2, 2, 'F');
   doc.setTextColor(255, 255, 255);
@@ -112,7 +106,6 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.setFont('helvetica', 'bold');
   doc.text(data.schoolInfo.academicYear, pageWidth - 35, 17.5, { align: 'center' });
 
-  // --- DOCUMENT TITLE ---
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(14);
   doc.text(`BULLETIN DE NOTES - ${data.term.toUpperCase()}`, pageWidth / 2, 60, { align: 'center' });
@@ -120,7 +113,6 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.setLineWidth(1);
   doc.line(pageWidth / 2 - 30, 63, pageWidth / 2 + 30, 63);
 
-  // --- STUDENT INFO ---
   doc.setFillColor(245, 245, 245);
   doc.roundedRect(15, 70, pageWidth - 30, 25, 2, 2, 'F');
   doc.setFontSize(9);
@@ -145,17 +137,15 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.setFont('helvetica', 'normal');
   doc.text(`${data.student.effectif} élèves`, 130, 84);
 
-  // --- GRADES TABLE ---
   autoTable(doc, {
     startY: 100,
-    head: [['Matières', 'Coef', 'Int.', 'Dev. 1', 'Dev. 2', 'Comp.', 'Moy/20', 'Pondéré', 'Appréciations']],
+    head: [['Matières', 'Coef', 'Int.', 'Dev. 1', 'Dev. 2', 'Moy/20', 'Pondéré', 'Appréciations']],
     body: data.grades.map(g => [
       g.subject.toUpperCase(),
       g.coef,
       (( (g.int1||0) + (g.int2||0) + (g.int3||0) ) / ( (g.int1!==undefined?1:0)+(g.int2!==undefined?1:0)+(g.int3!==undefined?1:0) || 1)).toFixed(1),
       g.dev1 !== undefined ? g.dev1.toFixed(1) : '-',
       g.dev2 !== undefined ? g.dev2.toFixed(1) : '-',
-      g.comp !== undefined ? g.comp.toFixed(1) : '-',
       g.avg.toFixed(2),
       g.weighted.toFixed(2),
       g.appreciation
@@ -164,16 +154,14 @@ export async function generateBulletinPDF(data: BulletinData) {
     headStyles: { fillColor: [r, g, b], textColor: [255, 255, 255], fontSize: 8, halign: 'center', valign: 'middle' },
     bodyStyles: { fontSize: 7, halign: 'center', textColor: [50, 50, 50] },
     columnStyles: {
-      0: { halign: 'left', fontStyle: 'bold', cellWidth: 35 },
-      8: { halign: 'left', fontStyle: 'italic', cellWidth: 40 }
+      0: { halign: 'left', fontStyle: 'bold', cellWidth: 40 },
+      7: { halign: 'left', fontStyle: 'italic', cellWidth: 45 }
     },
     margin: { left: 15, right: 15 }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY;
 
-  // --- SUMMARY BOXES ---
-  // Left: Results
   doc.setFillColor(250, 250, 250);
   doc.roundedRect(15, finalY + 5, 85, 35, 2, 2, 'F');
   doc.setFontSize(9);
@@ -193,7 +181,6 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.text(`MOYENNE GÉNÉRALE :`, 20, finalY + 33);
   doc.text(`${data.summary.generalAvg.toFixed(2)} / 20`, 85, finalY + 33, { align: 'right' });
 
-  // Right: Discipline & Ranks
   doc.setFillColor(250, 250, 250);
   doc.roundedRect(pageWidth - 100, finalY + 5, 85, 35, 2, 2, 'F');
   doc.setFontSize(9);
@@ -212,7 +199,6 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.setFontSize(10);
   doc.text(`MENTION : ${data.summary.mention}`, pageWidth - 95, finalY + 33);
 
-  // --- FOOTER SIGNATURES ---
   const footerY = finalY + 55;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -220,7 +206,6 @@ export async function generateBulletinPDF(data: BulletinData) {
   doc.text("Le Titulaire", pageWidth / 2, footerY, { align: 'center' });
   doc.text("Le Chef d'Établissement", pageWidth - 30, footerY, { align: 'right' });
 
-  // QR Code for verification
   const qrData = `VERIF-ACADEX-${data.student.matricule}-${data.term}-${data.summary.generalAvg}`;
   const qrCodeDataUrl = await QRCode.toDataURL(qrData);
   doc.addImage(qrCodeDataUrl, 'PNG', pageWidth / 2 - 12, footerY + 10, 24, 24);

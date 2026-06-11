@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
@@ -62,7 +63,7 @@ export default function OfficialBulletinPage() {
           name: g.subject, 
           coef: g.coefficient || 1, 
           int1: undefined, int2: undefined, int3: undefined, 
-          dev1: undefined, dev2: undefined, comp: undefined 
+          dev1: undefined, dev2: undefined
         }
       }
       subjectsMap[g.subject][g.type] = Number(g.value)
@@ -76,14 +77,13 @@ export default function OfficialBulletinPage() {
       if (ints.length > 0) pillars.push(avgInt)
       if (s.dev1 !== undefined) pillars.push(s.dev1)
       if (s.dev2 !== undefined) pillars.push(s.dev2)
-      if (s.comp !== undefined) pillars.push(s.comp)
       
       const avg = pillars.length > 0 ? pillars.reduce((a, b) => a + b, 0) / pillars.length : 0
       return {
         subject: s.name,
         coef: s.coef,
         int1: s.int1, int2: s.int2, int3: s.int3,
-        dev1: s.dev1, dev2: s.dev2, comp: s.comp,
+        dev1: s.dev1, dev2: s.dev2,
         avg: Number(avg.toFixed(2)),
         weighted: Number((avg * s.coef).toFixed(2)),
         rank: 1,

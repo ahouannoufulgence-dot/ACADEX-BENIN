@@ -41,7 +41,6 @@ export default function StudentGradesPage() {
     const matricule = localStorage.getItem('acadex_user_id') || ""
     setStudentId(matricule)
     
-    // We need the internal document ID to link to the bulletin
     const findInternalId = async () => {
       const q = query(collection(db, "students"), where("matricule", "==", matricule))
       const snap = await (await import("firebase/firestore")).getDocs(q)
@@ -82,7 +81,7 @@ export default function StudentGradesPage() {
         subjects[g.subject] = { 
           name: g.subject, 
           coef: Number(g.coefficient) || 1, 
-          details: { int1: null, int2: null, int3: null, dev1: null, dev2: null, comp: null } 
+          details: { int1: null, int2: null, int3: null, dev1: null, dev2: null } 
         }
       }
       subjects[g.subject].details[g.type] = Number(g.value)
@@ -99,12 +98,11 @@ export default function StudentGradesPage() {
       if (avgInt !== null) pillars.push(avgInt)
       if (s.details.dev1 !== null) pillars.push(s.details.dev1)
       if (s.details.dev2 !== null) pillars.push(s.details.dev2)
-      if (s.details.comp !== null) pillars.push(s.details.comp)
       
       const avgSub = pillars.length > 0 ? (pillars.reduce((a:number, b:number) => a+b, 0) / pillars.length) : 0
       
       s.myAverage = Number(avgSub.toFixed(2))
-      s.isProvisional = pillars.length < 4
+      s.isProvisional = pillars.length < 3
       
       totalWeighted += s.myAverage * s.coef
       totalCoef += s.coef
@@ -198,11 +196,10 @@ export default function StudentGradesPage() {
                                 { label: "I 2", val: sub.details.int2 },
                                 { label: "I 3", val: sub.details.int3 },
                                 { label: "D 1", val: sub.details.dev1 },
-                                { label: "D 2", val: sub.details.dev2 },
-                                { label: "C", val: sub.details.comp, premium: true },
+                                { label: "D 2", val: sub.details.dev2 }
                               ].map((it, i) => (
-                                <div key={i} className={cn("p-2 md:p-4 rounded-lg md:rounded-2xl border flex flex-col items-center justify-center gap-0.5 transition-all", it.premium ? "bg-primary text-white border-primary shadow-md" : "bg-muted/10 border-transparent hover:border-primary/10")}>
-                                  <span className={cn("text-[6px] md:text-[9px] font-black uppercase", it.premium ? "text-white/60" : "text-muted-foreground")}>{it.label}</span>
+                                <div key={i} className="p-2 md:p-4 rounded-lg md:rounded-2xl border bg-muted/10 border-transparent hover:border-primary/10 flex flex-col items-center justify-center gap-0.5 transition-all">
+                                  <span className="text-[6px] md:text-[9px] font-black uppercase text-muted-foreground">{it.label}</span>
                                   <span className="font-black text-[10px] md:text-xl tabular-nums">{it.val !== null ? it.val : "---"}</span>
                                 </div>
                               ))}

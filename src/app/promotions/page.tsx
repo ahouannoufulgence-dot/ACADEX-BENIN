@@ -136,11 +136,10 @@ export default function PromotionsPage() {
         if (avgInt !== null) pillars.push(avgInt)
         if (d.dev1 !== undefined) pillars.push(d.dev1)
         if (d.dev2 !== undefined) pillars.push(d.dev2)
-        if (d.comp !== undefined) pillars.push(d.comp)
 
         const avg = pillars.length > 0 ? (pillars.reduce((a:number, b:number) => a+b, 0) / pillars.length) : 0
         s.avg = avg
-        s.isProvisional = pillars.length < 4
+        s.isProvisional = pillars.length < 3
         
         totalWeighted += avg * s.coef
         totalCoef += s.coef

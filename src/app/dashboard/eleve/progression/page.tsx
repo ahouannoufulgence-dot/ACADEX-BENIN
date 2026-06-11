@@ -45,10 +45,10 @@ import {
 import { cn } from "@/lib/utils"
 import { generateAcademicFeedback, type GenerateAcademicFeedbackOutput } from "@/ai/flows/generate-academic-feedback"
 
-const EVAL_STEPS = ["int1", "int2", "int3", "dev1", "dev2", "comp"]
+const EVAL_STEPS = ["int1", "int2", "int3", "dev1", "dev2"]
 const EVAL_LABELS: Record<string, string> = {
   int1: "Int. 1", int2: "Int. 2", int3: "Int. 3",
-  dev1: "Dev. 1", dev2: "Dev. 2", comp: "Comp."
+  dev1: "Dev. 1", dev2: "Dev. 2"
 }
 
 export default function StudentProgressionPage() {
@@ -91,7 +91,6 @@ export default function StudentProgressionPage() {
       subjectsMap[g.subject].myNotes[g.type] = Number(g.value)
     })
 
-    // Calculer stats de classe par matière et type
     Object.keys(subjectsMap).forEach(sub => {
       EVAL_STEPS.forEach(type => {
         const typeGrades = classGrades.filter(g => g.subject === sub && g.type === type).map(g => Number(g.value))
@@ -102,14 +101,12 @@ export default function StudentProgressionPage() {
         }
       })
 
-      // Calculer moyenne sujet
       const notes = Object.values(subjectsMap[sub].myNotes).map(Number)
       subjectsMap[sub].average = notes.length > 0 ? Number((notes.reduce((a, b) => a + b, 0) / notes.length).toFixed(2)) : 0
     })
 
     const subjectList = Object.values(subjectsMap).sort((a, b) => b.average - a.average)
     
-    // Moyenne générale et rang
     const studentAverages = Array.from(new Set(classGrades.map(g => g.studentId))).map(sid => {
       const sGrades = classGrades.filter(g => g.studentId === sid).map(g => Number(g.value))
       return { id: sid, avg: sGrades.length > 0 ? sGrades.reduce((a, b) => a + b, 0) / sGrades.length : 0 }
@@ -161,7 +158,6 @@ export default function StudentProgressionPage() {
     <DashboardLayout>
       <div className="space-y-5 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Analytique */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Ma <span className="text-primary italic">Progression</span></h1>
@@ -179,7 +175,6 @@ export default function StudentProgressionPage() {
 
         {!selectedSubject ? (
           <div className="space-y-6 md:space-y-10">
-            {/* KPIs Globaux */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
                {[
                  { label: "Moyenne Générale", value: analysis?.myGpa.toFixed(2) || "0.00", icon: Trophy, color: "text-primary", bg: "bg-emerald-50", trend: "+0.4", up: true },
@@ -208,7 +203,6 @@ export default function StudentProgressionPage() {
                ))}
             </div>
 
-            {/* Liste des Matières - Navigation Progression */}
             <div className="grid gap-4 md:gap-6">
                <div className="flex items-center justify-between px-2">
                   <h2 className="text-sm md:text-2xl font-black uppercase tracking-tight text-muted-foreground">Progression par Discipline</h2>
@@ -257,7 +251,6 @@ export default function StudentProgressionPage() {
           </div>
         ) : (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-6 duration-500">
-             {/* Back Button & Title */}
              <div className="flex items-center gap-4">
                 <Button variant="ghost" onClick={() => { setSelectedSubject(null); setAiReport(null); }} className="rounded-xl h-10 md:h-12 bg-white shadow-sm border border-muted/50 px-3 md:px-5 font-black text-[10px] md:text-sm uppercase tracking-widest transition-all hover:bg-primary hover:text-white">
                    <ChevronLeft className="mr-1 size-3 md:size-4" /> Retour
@@ -267,7 +260,6 @@ export default function StudentProgressionPage() {
              </div>
 
              <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
-                {/* Graphique de Progression */}
                 <div className="lg:col-span-8 space-y-6 md:space-y-10">
                    <Card className="p-4 md:p-12 rounded-[2rem] md:rounded-[4rem] bg-white border-none shadow-sm">
                       <div className="flex items-center justify-between mb-8 md:mb-14">
@@ -295,7 +287,6 @@ export default function StudentProgressionPage() {
                       </div>
                    </Card>
 
-                   {/* Détail des Notes - Tableau Premium */}
                    <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] overflow-hidden">
                       <div className="p-5 md:p-10 border-b bg-muted/5 flex items-center justify-between">
                          <h3 className="text-base md:text-xl font-black uppercase tracking-tight">Registre de l'Élève</h3>
@@ -349,7 +340,6 @@ export default function StudentProgressionPage() {
                    </Card>
                 </div>
 
-                {/* Sidebar IA & Insights */}
                 <div className="lg:col-span-4 space-y-6 md:space-y-10">
                    <Card className="p-6 md:p-12 bg-foreground text-white rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group border-none">
                       <div className="relative z-10 space-y-6 md:space-y-8">
@@ -382,7 +372,7 @@ export default function StudentProgressionPage() {
                          <div className="flex gap-4 items-start">
                             <div className="size-8 md:size-11 bg-primary/5 text-primary rounded-lg flex items-center justify-center font-black text-[9px] md:text-sm shrink-0">2</div>
                             <p className="text-[9px] md:text-sm font-medium text-muted-foreground leading-relaxed">
-                               Moyenne Matière = (Moy Interro + D1 + D2 + Comp) / total des piliers présents.
+                               Moyenne Matière = (Moy Interro + D1 + D2) / total des piliers présents.
                             </p>
                          </div>
                       </div>

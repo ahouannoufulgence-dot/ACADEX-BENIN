@@ -45,8 +45,7 @@ const evalTypes = [
   { id: "int2", label: "Interrogation 2" },
   { id: "int3", label: "Interrogation 3" },
   { id: "dev1", label: "Devoir 1" },
-  { id: "dev2", label: "Devoir 2" },
-  { id: "comp", label: "Composition" }
+  { id: "dev2", label: "Devoir 2" }
 ]
 
 const OFFICIAL_CLASSES = [
@@ -89,12 +88,10 @@ export default function GradesPage() {
       
       setLoadingExisting(true)
       try {
-        // Tentative de récupération du coef spécifique à la classe
         const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
         let configSnap = await getDoc(doc(db, "subject_configs", configId))
         
         if (!configSnap.exists()) {
-          // Repli sur le niveau général (6EME au lieu de 6EME A)
           const level = selectedClass.split(' ')[0]
           const levelConfigId = `${level}_${userSubject}`.replace(/\s/g, '_')
           configSnap = await getDoc(doc(db, "subject_configs", levelConfigId))
@@ -164,7 +161,6 @@ export default function GradesPage() {
     const batch = writeBatch(db)
 
     try {
-      // 1. Sauvegarder le coefficient pour cette classe/matière
       const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
       const configRef = doc(db, "subject_configs", configId)
       batch.set(configRef, {
@@ -175,7 +171,6 @@ export default function GradesPage() {
         updatedAt: serverTimestamp()
       }, { merge: true })
 
-      // 2. Sauvegarder les notes
       students?.forEach((student: any) => {
         const valStr = gradesData[student.matricule]
         if (valStr === undefined || valStr === "") return 
