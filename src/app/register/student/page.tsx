@@ -13,7 +13,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useFirestore } from "@/firebase";
-import { collection, query, where, getDocs, updateDoc, doc, addDoc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc, writeBatch, serverTimestamp } from "firebase/firestore";
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import placeholderData from "@/app/lib/placeholder-images.json";
@@ -90,7 +90,7 @@ export default function RegisterStudentPage() {
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!form.lastName || !form.firstName || !form.password) {
       toast({ title: "Champs obligatoires", description: "Nom, Prénom et Mot de passe sont requis.", variant: "destructive" });
       return;
@@ -107,26 +107,33 @@ export default function RegisterStudentPage() {
       registeredAt: new Date().toISOString()
     };
 
-    const studentRef = collection(db, "students");
-    const regIdRef = doc(db, "registration_ids", regDoc.id);
+    try {
+      const batch = writeBatch(db);
+      const studentRef = doc(collection(db, "students"));
+      const regIdRef = doc(db, "registration_ids", regDoc.id);
 
-    addDoc(studentRef, studentData).then(() => {
-      updateDoc(regIdRef, { status: "utilisé" });
+      batch.set(studentRef, studentData);
+      batch.update(regIdRef, { status: "utilisé", activatedAt: serverTimestamp() });
+
+      await batch.commit();
+
       localStorage.setItem('acadex_user_id', regDoc.matricule);
       localStorage.setItem('acadex_user_role', 'Élève');
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
       localStorage.setItem('acadex_active_year', activeYear);
+      
       setStep(3);
-    }).catch(async () => {
+    } catch (err) {
       const error = new FirestorePermissionError({
         path: 'students',
         operation: 'create',
         requestResourceData: studentData,
       });
       errorEmitter.emit('permission-error', error);
-    }).finally(() => {
+      toast({ title: "Échec de l'inscription", variant: "destructive" });
+    } finally {
       setLoading(false);
-    });
+    }
   };
 
   return (
@@ -200,9 +207,9 @@ export default function RegisterStudentPage() {
                     <Label className="font-bold text-[10px] md:text-xs text-muted-foreground uppercase">Sexe</Label>
                     <Select value={form.gender} onValueChange={v => setForm({...form, gender: v})}>
                       <SelectTrigger className="h-11 md:h-12 rounded-xl font-bold text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-2 p-1">
-                        <SelectItem value="Masculin" className="font-bold p-3 rounded-lg text-xs">Masculin</SelectItem>
-                        <SelectItem value="Féminin" className="font-bold p-3 rounded-lg text-xs">Féminin</SelectItem>
+                      <SelectContent className="rounded-xl border-2 p-1.5">
+                        <SelectItem value="Masculin" className="font-bold p-3 rounded-xl text-xs">Masculin</SelectItem>
+                        <SelectItem value="Féminin" className="font-bold p-3 rounded-xl text-xs">Féminin</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
