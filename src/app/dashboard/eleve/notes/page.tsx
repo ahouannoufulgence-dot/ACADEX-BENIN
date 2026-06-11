@@ -121,7 +121,7 @@ export default function StudentGradesPage() {
                 {activeYear}
               </Badge>
               <div className="flex items-center gap-1.5 text-muted-foreground font-bold text-[8px] md:text-[10px]">
-                <Clock className="size-2.5 md:size-3 text-amber-500" /> Calcul Progressif Activé
+                <Clock className="size-2 md:size-3 text-amber-500" /> Calcul Progressif Activé
               </div>
             </div>
           </div>
@@ -130,7 +130,7 @@ export default function StudentGradesPage() {
                 <p className="text-[7px] md:text-[10px] font-black uppercase text-white/40 tracking-widest">Moyenne Provisoire</p>
                 <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
              </div>
-             <div className="size-11 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0"><TrendingUp className="size-5 md:size-10" /></div>
+             <div className="size-9 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0"><TrendingUp className="size-4 md:size-10" /></div>
           </div>
         </div>
 
@@ -145,10 +145,10 @@ export default function StudentGradesPage() {
 
           <TabsContent value={activeTerm} className="space-y-5 md:space-y-10 animate-in slide-in-from-bottom-6 duration-700">
              {loadingMyGrades ? (
-                <div className="py-20 md:py-40 text-center animate-pulse opacity-20"><Loader2 className="animate-spin text-primary size-10 md:size-12 mx-auto" /></div>
+                <div className="py-20 md:py-40 text-center animate-pulse opacity-20"><Loader2 className="animate-spin text-primary size-8 md:size-12 mx-auto" /></div>
              ) : (!analysis || analysis.subjects.length === 0) ? (
                 <Card className="p-12 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[3rem] bg-white/50 opacity-40 space-y-4">
-                   <Zap className="size-10 md:size-16 mx-auto text-muted-foreground" />
+                   <Zap className="size-8 md:size-16 mx-auto text-muted-foreground" />
                    <h3 className="text-lg md:text-2xl font-black uppercase">En attente de scellage</h3>
                    <p className="text-muted-foreground font-medium text-[10px] md:text-base">Dès que vos professeurs scelleront vos premières notes, votre moyenne s'affichera ici.</p>
                 </Card>

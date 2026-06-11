@@ -55,14 +55,14 @@ export default function StudentPaymentsPage() {
 
         <div className="grid gap-3 md:gap-6 grid-cols-1 sm:grid-cols-3">
           <Card className="p-6 md:p-10 rounded-[1.5rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col justify-between group hover:shadow-lg transition-all h-full">
-             <div className="size-11 md:size-16 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6"><DollarSign className="size-5 md:size-8" /></div>
+             <div className="size-10 md:size-16 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6"><DollarSign className="size-4.5 md:size-8" /></div>
              <div>
                <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Versé</p>
                <p className="text-2xl md:text-4xl font-black text-foreground tabular-nums">{totalPaid.toLocaleString()} <span className="text-[10px] md:text-sm opacity-40 ml-1">F</span></p>
              </div>
           </Card>
           <Card className="p-6 md:p-10 rounded-[1.5rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col justify-between border-l-[6px] md:border-l-[10px] border-amber-500 h-full">
-             <div className="size-11 md:size-16 bg-amber-50 text-amber-600 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6"><Wallet className="size-5 md:size-8" /></div>
+             <div className="size-10 md:size-16 bg-amber-50 text-amber-600 rounded-xl md:rounded-2xl flex items-center justify-center mb-4 md:mb-6"><Wallet className="size-4.5 md:size-8" /></div>
              <div>
                <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">Reste à payer</p>
                <p className="text-2xl md:text-4xl font-black text-amber-600 tabular-nums">{remaining.toLocaleString()} <span className="text-[10px] md:text-sm opacity-40 ml-1">F</span></p>
@@ -87,16 +87,16 @@ export default function StudentPaymentsPage() {
         <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3rem] overflow-hidden">
           <div className="p-5 md:p-8 border-b bg-muted/5 flex items-center justify-between">
             <h3 className="text-base md:text-xl font-black flex items-center gap-2 md:gap-3">
-               <History className="text-primary size-4 md:size-5" /> Historique
+               <History className="text-primary size-3.5 md:size-5" /> Historique
             </h3>
-            <Button variant="outline" className="rounded-lg h-8 md:h-11 font-bold border-2 text-[10px] md:text-sm px-3 md:px-4"><FileDown className="size-3 md:size-4 mr-1.5 md:mr-2" /> Reçus</Button>
+            <Button variant="outline" className="rounded-lg h-8 md:h-11 font-bold border-2 text-[10px] md:text-sm px-3 md:px-4"><FileDown className="size-2.5 md:size-4 mr-1.5 md:mr-2" /> Reçus</Button>
           </div>
           <div className="p-0">
              {loading ? (
                <div className="p-12 md:p-20 text-center animate-pulse font-black text-muted-foreground text-[10px] md:text-base">Synchronisation...</div>
              ) : !payments || payments.length === 0 ? (
                <div className="p-16 md:p-24 text-center space-y-3 opacity-30">
-                 <Lock className="size-10 md:size-16 text-muted-foreground mx-auto" />
+                 <Lock className="size-8 md:size-16 text-muted-foreground mx-auto" />
                  <p className="text-[10px] md:text-base font-medium">Aucun versement scellé.</p>
                </div>
              ) : (
@@ -105,7 +105,7 @@ export default function StudentPaymentsPage() {
                    <div key={i} className="p-4 md:p-8 flex items-center justify-between group hover:bg-muted/5 transition-all">
                      <div className="flex items-center gap-3 md:gap-6 min-w-0">
                         <div className="size-10 md:size-14 bg-emerald-50 text-emerald-600 rounded-lg md:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0">
-                           <CheckCircle2 className="size-5 md:size-7" />
+                           <CheckCircle2 className="size-4 md:size-7" />
                         </div>
                         <div className="min-w-0">
                            <p className="font-black text-sm md:text-xl tabular-nums truncate">{Number(p.amountPaid).toLocaleString()} F</p>

@@ -70,7 +70,7 @@ export default function StudentAgendaPage() {
             </div>
           </div>
           <Badge className="bg-white border-2 border-primary/20 text-primary h-10 md:h-14 px-5 md:px-10 rounded-xl md:rounded-[1.8rem] flex items-center gap-2 md:gap-3 font-black text-[9px] md:text-lg shadow-xl shadow-primary/10 w-fit">
-             <ShieldCheck className="size-3.5 md:size-6" /> CERTIFIÉ ACADEX
+             <ShieldCheck className="size-3 md:size-6" /> CERTIFIÉ ACADEX
           </Badge>
         </div>
 
@@ -115,7 +115,7 @@ export default function StudentAgendaPage() {
                 </div>
               ) : dayCourses.length === 0 ? (
                 <div className="h-40 md:h-[400px] flex flex-col items-center justify-center p-8 md:p-12 text-center border-4 border-dashed rounded-[1.5rem] md:rounded-[3rem] bg-white/50 opacity-40 space-y-3 md:space-y-6">
-                  <BookOpen className="size-8 md:size-20 text-muted-foreground" />
+                  <BookOpen className="size-6 md:size-20 text-muted-foreground" />
                   <div className="space-y-0.5">
                     <h3 className="text-base md:text-3xl font-black uppercase">Temps Libre</h3>
                     <p className="font-medium text-muted-foreground text-[8px] md:text-xl">Aucune séance scellée.</p>
@@ -127,14 +127,14 @@ export default function StudentAgendaPage() {
                     <div className="p-3 md:p-10 flex flex-row items-center justify-between gap-3 md:gap-6">
                       <div className="flex items-center gap-3 md:gap-10 min-w-0">
                          <div className="size-11 md:size-24 bg-muted rounded-lg md:rounded-[2.5rem] flex flex-col items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0">
-                            <Clock className="size-3.5 md:size-7" />
+                            <Clock className="size-3 md:size-7" />
                             <span className="text-[7px] md:text-lg font-black uppercase">{course.startTime.split(':')[0]}H</span>
                          </div>
                          <div className="space-y-0.5 md:space-y-1 truncate">
                            <h3 className="text-xs md:text-4xl font-black text-foreground uppercase group-hover:text-primary transition-colors truncate">{course.subject}</h3>
                            <div className="flex flex-wrap gap-2 md:gap-4 text-[6px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                              <span className="flex items-center gap-1"><MapPin className="size-2.5 md:size-4 text-primary" /> {course.room || 'Salle...'}</span>
-                              <span className="flex items-center gap-1"><User className="size-2.5 md:size-4 text-primary" /> {course.teacherName?.split(' ')[0]}</span>
+                              <span className="flex items-center gap-1"><MapPin className="size-2 md:size-4 text-primary" /> {course.room || 'Salle...'}</span>
+                              <span className="flex items-center gap-1"><User className="size-2 md:size-4 text-primary" /> {course.teacherName?.split(' ')[0]}</span>
                            </div>
                          </div>
                       </div>

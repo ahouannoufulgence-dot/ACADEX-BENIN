@@ -172,8 +172,8 @@ export default function StudentLifePage() {
                  {stats.conductGrade.toFixed(1)}<span className="text-[10px] md:text-lg opacity-40 ml-1">/20</span>
                </h2>
              </div>
-             <div className="size-11 md:size-16 bg-primary/5 rounded-xl md:rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-               <Award className="size-6 md:size-8" />
+             <div className="size-10 md:size-16 bg-primary/5 rounded-xl md:rounded-2xl flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+               <Award className="size-5 md:size-8" />
              </div>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function StudentLifePage() {
             <div className={cn("lg:col-span-4 space-y-6", selectedStudent && "hidden lg:block")}>
               <Card className="p-4 md:p-8 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm h-fit">
                 <div className="relative group mb-4 md:mb-6">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input placeholder="Chercher un élève..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-11 h-11 md:h-14 rounded-2xl bg-muted/30 border-none font-bold text-xs md:text-sm shadow-inner" />
                 </div>
                 <ScrollArea className="h-[350px] md:h-[500px] pr-2 no-scrollbar">
@@ -275,7 +275,6 @@ export default function StudentLifePage() {
                             </Button>
                           </div>
                         </TabsContent>
-                        {/* Similar refinements for discipline and conduite content */}
                         <TabsContent value="conduite" className="m-0 animate-in fade-in">
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 items-end">
                             <div className="space-y-1.5">

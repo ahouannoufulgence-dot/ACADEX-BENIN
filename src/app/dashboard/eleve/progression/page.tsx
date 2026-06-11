@@ -146,8 +146,8 @@ export default function StudentProgressionPage() {
           <div className="lg:col-span-4 space-y-4 md:space-y-8">
             <Card className="p-6 md:p-10 bg-foreground text-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden relative group">
               <div className="relative z-10 space-y-4 md:space-y-8">
-                <div className="size-11 md:size-20 bg-primary rounded-xl md:rounded-3xl flex items-center justify-center shadow-lg">
-                  <Trophy className="size-5 md:size-10" />
+                <div className="size-10 md:size-20 bg-primary rounded-xl md:rounded-3xl flex items-center justify-center shadow-lg">
+                  <Trophy className="size-4 md:size-10" />
                 </div>
                 <div>
                   <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-1">Moyenne Générale</p>
@@ -159,7 +159,7 @@ export default function StudentProgressionPage() {
             </Card>
 
             <Card className="p-6 md:p-10 border-l-[8px] md:border-l-[15px] border-primary bg-white rounded-[1.8rem] md:rounded-[3rem] shadow-sm">
-               <h3 className="font-black text-sm md:text-2xl mb-5 md:mb-8 flex items-center gap-2 md:gap-4 uppercase tracking-tight"><Target className="text-primary size-4 md:size-8" /> Mes Atouts</h3>
+               <h3 className="font-black text-sm md:text-2xl mb-5 md:mb-8 flex items-center gap-2 md:gap-4 uppercase tracking-tight"><Target className="text-primary size-3.5 md:size-8" /> Mes Atouts</h3>
                <div className="space-y-3">
                  {loading ? (
                    <div className="animate-pulse space-y-2">
@@ -185,7 +185,7 @@ export default function StudentProgressionPage() {
              {!result ? (
                <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] p-10 md:p-24 text-center flex flex-col items-center justify-center h-full space-y-6 md:space-y-10 border-4 border-dashed border-muted/50">
                  <div className="size-20 md:size-40 bg-muted/40 rounded-[2rem] md:rounded-[3.5rem] flex items-center justify-center shadow-inner group">
-                    <Sparkles className="size-10 md:size-20 text-muted-foreground opacity-20 group-hover:scale-110 group-hover:text-primary group-hover:opacity-100 transition-all duration-700" />
+                    <Sparkles className="size-8 md:size-20 text-muted-foreground opacity-20 group-hover:scale-110 group-hover:text-primary group-hover:opacity-100 transition-all duration-700" />
                  </div>
                  <div className="space-y-2 md:space-y-4">
                    <h3 className="text-xl md:text-4xl font-black text-foreground uppercase tracking-tight">Le Coach IA ACADEX</h3>
@@ -212,7 +212,7 @@ export default function StudentProgressionPage() {
                     <div className="space-y-8 md:space-y-16 relative z-10">
                       <section className="space-y-4 md:space-y-8">
                         <h4 className="flex items-center gap-3 md:gap-5 font-black text-lg md:text-4xl text-foreground uppercase tracking-tight">
-                          <CheckCircle2 className="size-6 md:size-12 text-primary" /> Observation
+                          <CheckCircle2 className="size-5 md:size-12 text-primary" /> Observation
                         </h4>
                         <div className="p-6 md:p-12 bg-primary/5 rounded-[1.5rem] md:rounded-[3.5rem] border-2 border-primary/10 italic font-medium text-xs md:text-2xl leading-relaxed text-foreground/80 shadow-inner">
                           "{result.academicFeedback}"
@@ -221,7 +221,7 @@ export default function StudentProgressionPage() {
 
                       <section className="space-y-4 md:space-y-8">
                          <h4 className="flex items-center gap-3 md:gap-5 font-black text-lg md:text-4xl text-foreground uppercase tracking-tight">
-                           <Target className="size-6 md:size-12 text-primary" /> Plan d'Action
+                           <Target className="size-5 md:size-12 text-primary" /> Plan d'Action
                          </h4>
                          <div className="grid gap-3 md:gap-6">
                             {result.recommendations.map((rec, i) => (
