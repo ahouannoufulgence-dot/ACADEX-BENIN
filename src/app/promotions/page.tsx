@@ -26,7 +26,8 @@ import {
   CheckCircle2,
   ShieldCheck,
   GraduationCap,
-  Clock
+  Clock,
+  FileText
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
@@ -191,7 +192,6 @@ export default function PromotionsPage() {
     return { levelsMap, classStats, studentsProcessed }
   }, [students, grades, lifeEvents, coefs])
 
-  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES ÉLÈVES DANS LA VUE CLASSE
   const currentClassStudents = useMemo(() => {
     if (!academicData.studentsProcessed || !selectedClass) return []
     return academicData.studentsProcessed
@@ -302,7 +302,7 @@ export default function PromotionsPage() {
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
                <div className="p-8 md:p-12 border-b bg-muted/5 flex items-center justify-between">
-                  <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Registre {selectedClass} (A-Z)</h3>
+                  <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Registre {selectedClass}</h3>
                   <Badge variant="outline" className="font-black border-primary/20 text-primary">SCELLEMENT PROGRESSIF</Badge>
                </div>
                <div className="overflow-x-auto">
@@ -310,9 +310,9 @@ export default function PromotionsPage() {
                     <thead className="bg-muted/30 text-[9px] font-black uppercase text-muted-foreground border-b border-muted/30">
                       <tr>
                         <th className="px-8 py-6 text-left">Élève</th>
-                        <th className="px-6 py-6 text-center">Conduite</th>
                         <th className="px-6 py-6 text-center">Rang</th>
-                        <th className="px-8 py-6 text-right bg-primary text-white">Moy Générale Prov.</th>
+                        <th className="px-6 py-6 text-center">Moy Prov.</th>
+                        <th className="px-8 py-6 text-right">Bulletin</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/20">
@@ -323,12 +323,18 @@ export default function PromotionsPage() {
                                <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
                             </td>
-                            <td className="px-6 py-6 text-center font-black text-emerald-600">{s.conduct.toFixed(1)}</td>
                             <td className="px-6 py-6 text-center">
                                <div className={cn("inline-flex size-10 rounded-xl items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}e</div>
                             </td>
+                            <td className="px-6 py-6 text-center">
+                               <span className="font-black text-lg text-foreground tabular-nums">{s.generalAvg.toFixed(2)}</span>
+                            </td>
                             <td className="px-8 py-6 text-right">
-                               <span className="font-black text-2xl text-foreground tabular-nums">{s.generalAvg.toFixed(2)}</span>
+                               <Button variant="ghost" size="icon" asChild className="size-11 rounded-xl text-primary hover:bg-primary/5 active:scale-95 transition-all">
+                                  <Link href={`/bulletin/${s.id}`}>
+                                     <FileText className="size-5 md:size-6" />
+                                  </Link>
+                               </Button>
                             </td>
                           </tr>
                         )

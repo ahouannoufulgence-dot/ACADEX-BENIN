@@ -19,29 +19,38 @@ import {
   Calculator,
   CheckCircle2,
   Calendar,
-  Clock
+  Clock,
+  FileDown
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { collection, query, where, doc, getDoc } from "firebase/firestore"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 export default function StudentGradesPage() {
   const db = useFirestore()
   const [studentId, setStudentId] = useState("")
-  const [studentClass, setStudentClass] = useState("")
+  const [studentInternalId, setStudentInternalId] = useState("")
   const [activeTerm, setActiveTab] = useState("T1")
   const [activeYear, setActiveYear] = useState("2026-2027")
 
   useEffect(() => {
     const matricule = localStorage.getItem('acadex_user_id') || ""
     setStudentId(matricule)
-    const parts = matricule.split('-')
-    if (parts.length >= 2) setStudentClass(parts[1])
+    
+    // We need the internal document ID to link to the bulletin
+    const findInternalId = async () => {
+      const q = query(collection(db, "students"), where("matricule", "==", matricule))
+      const snap = await (await import("firebase/firestore")).getDocs(q)
+      if (!snap.empty) setStudentInternalId(snap.docs[0].id)
+    }
+    findInternalId()
+    
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
-  }, [])
+  }, [db])
 
   const myGradesQuery = useMemo(() => {
     if (!db || !studentId) return null
@@ -125,12 +134,21 @@ export default function StudentGradesPage() {
               </div>
             </div>
           </div>
-          <div className="bg-primary text-white p-5 md:p-10 rounded-[1.8rem] md:rounded-[3.5rem] shadow-xl flex items-center justify-between md:justify-start gap-6 md:gap-12 transition-all hover:scale-[1.02]">
-             <div className="space-y-0.5">
-                <p className="text-[7px] md:text-[10px] font-black uppercase text-white/40 tracking-widest">Moyenne Provisoire</p>
-                <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
+          <div className="flex items-center gap-3">
+             {studentInternalId && analysis && analysis.subjects.length > 0 && (
+               <Button asChild variant="outline" className="h-12 md:h-20 px-6 md:px-10 rounded-2xl md:rounded-[2.5rem] border-2 border-primary/20 font-black text-[10px] md:text-sm bg-white hover:bg-primary/5 transition-all shadow-sm">
+                  <Link href={`/bulletin/${studentInternalId}`}>
+                    <FileDown className="mr-2 size-4 md:size-5" /> Télécharger Bulletin
+                  </Link>
+               </Button>
+             )}
+             <div className="bg-primary text-white p-5 md:p-10 rounded-[1.8rem] md:rounded-[3.5rem] shadow-xl flex items-center justify-between md:justify-start gap-6 md:gap-12 transition-all hover:scale-[1.02]">
+                <div className="space-y-0.5">
+                    <p className="text-[7px] md:text-[10px] font-black uppercase text-white/40 tracking-widest">Moyenne Provisoire</p>
+                    <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
+                </div>
+                <div className="size-9 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0"><TrendingUp className="size-4 md:size-10" /></div>
              </div>
-             <div className="size-9 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0"><TrendingUp className="size-4 md:size-10" /></div>
           </div>
         </div>
 
@@ -161,7 +179,7 @@ export default function StudentGradesPage() {
                           <div className="flex justify-between items-start gap-4">
                               <div className="space-y-1 min-w-0">
                                 <h4 className="text-sm md:text-2xl font-black text-foreground uppercase tracking-tight truncate group-hover:text-primary transition-colors">{sub.name}</h4>
-                                <div className="flex flex-wrap items-center gap-1.5">
+                                <div className="flex items-center gap-1.5">
                                   <Badge variant="outline" className="text-[7px] md:text-[10px] font-black uppercase border-primary/10 text-primary/60 px-1.5">COEF {sub.coef}</Badge>
                                   <Badge className={cn("text-[6px] md:text-[7px] font-black uppercase rounded-sm h-3.5 md:h-4 px-1", sub.isProvisional ? "bg-amber-100 text-amber-600" : "bg-emerald-100 text-emerald-600")}>
                                     {sub.isProvisional ? "En cours" : "Complet"}
