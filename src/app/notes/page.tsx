@@ -83,7 +83,6 @@ export default function GradesPage() {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
-  // OPTIMISATION : Une seule requête pour toutes les notes de la classe/matière
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass || !userSubject || !mounted) return
@@ -98,7 +97,6 @@ export default function GradesPage() {
           setClassCoefficient(2)
         }
 
-        // Requête unique pour tout le trimestre
         const q = query(
           collection(db, "grades"),
           where("classId", "==", selectedClass),
@@ -311,8 +309,8 @@ export default function GradesPage() {
                         <tr key={student.id} className="hover:bg-muted/5 transition-all group">
                           <td className="px-12 py-8">
                              <div className="flex items-center gap-4">
-                                <span className="font-black text-foreground tabular-nums text-xs opacity-40">{student.matricule}</span>
-                                <p className="font-black text-lg text-foreground uppercase truncate">{student.lastName} {student.firstName}</p>
+                                <span className="font-black text-foreground tabular-nums text-xs opacity-40 shrink-0">{student.matricule}</span>
+                                <p className="font-black text-lg text-foreground uppercase leading-tight">{student.lastName} {student.firstName}</p>
                              </div>
                           </td>
                           <td className="px-12 py-8 text-center">
