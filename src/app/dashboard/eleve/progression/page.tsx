@@ -22,6 +22,7 @@ import {
   Info,
   History,
   ShieldCheck,
+  ShieldAlert,
   Calculator
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
