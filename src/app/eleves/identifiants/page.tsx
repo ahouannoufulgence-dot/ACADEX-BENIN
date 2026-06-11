@@ -14,7 +14,7 @@ import {
   Search
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, orderBy, serverTimestamp, deleteDoc, doc, writeBatch } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
@@ -25,7 +25,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
-// Nomenclature Unifiée ACADEX - Mise à jour avec Séries A, B, C, D
 const officialClasses = [
   "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
   "2NDE A", "2NDE B", "2NDE C", "2NDE D",
@@ -39,6 +38,11 @@ export default function GenIdentifiersPage() {
   const [count, setCount] = useState("50")
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const idsQuery = useMemo(() => query(collection(db, "registration_ids"), orderBy("matricule", "asc")), [db])
   const { data: identifiers, loading: loadingIds } = useCollection(idsQuery)
@@ -106,8 +110,10 @@ export default function GenIdentifiersPage() {
   }
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({ title: "Copié !", description: text })
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(text)
+      toast({ title: "Copié !", description: text })
+    }
   }
 
   const handleExportPDF = () => {
@@ -118,7 +124,6 @@ export default function GenIdentifiersPage() {
 
     const docPdf = new jsPDF()
     
-    // Groupement par classe pour isoler chaque classe sur une page
     const grouped = filteredIds.reduce((acc: Record<string, any[]>, curr: any) => {
       if (!acc[curr.classId]) acc[curr.classId] = []
       acc[curr.classId].push(curr)
@@ -128,10 +133,8 @@ export default function GenIdentifiersPage() {
     const sortedClasses = Object.keys(grouped).sort()
 
     sortedClasses.forEach((classId, index) => {
-      // Ajouter une nouvelle page sauf pour la première classe
       if (index > 0) docPdf.addPage()
 
-      // En-tête premium pour la page
       docPdf.setFillColor(20, 83, 45)
       docPdf.rect(0, 0, 210, 30, 'F')
       docPdf.setTextColor(255, 255, 255)
@@ -154,16 +157,16 @@ export default function GenIdentifiersPage() {
         theme: 'grid'
       })
 
-      // Pied de page
-      const pageCount = (docPdf as any).internal.getNumberOfPages()
       docPdf.setTextColor(150, 150, 150)
       docPdf.setFontSize(8)
-      docPdf.text(`Document certifié ACADEX - Page ${index + 1} - Classe ${classId}`, 105, 285, { align: "center" })
+      docPdf.text(`Document certifié ACADEX - Classe ${classId}`, 105, 285, { align: "center" })
     })
 
     docPdf.save(`IDENTIFIANTS_PAR_CLASSE_ACADEX.pdf`)
     toast({ title: "Exportation Réussie", description: "Le PDF est organisé avec 1 page par classe." })
   }
+
+  if (!mounted) return null
 
   return (
     <DashboardLayout>

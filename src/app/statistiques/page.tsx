@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Users, 
@@ -14,12 +14,10 @@ import {
   Wallet,
   Scale,
   TrendingUp,
-  History,
   ArrowUpRight,
   BarChart3,
   Loader2,
   MapPin,
-  Baby,
   VenetianMask,
   Sparkles
 } from "lucide-react"
@@ -38,7 +36,7 @@ import {
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { useMemo, useState, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -53,13 +51,13 @@ export default function StatisticsModule() {
   const [activeTab, setActiveTab] = useState("synthèse")
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [isMobile, setIsMobile] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    // Détection sécurisée du navigateur
+    setMounted(true)
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
     
-    // Récupération de l'année active
     const savedYear = localStorage.getItem('acadex_active_year')
     if (savedYear) setActiveYear(savedYear)
 
@@ -155,10 +153,11 @@ export default function StatisticsModule() {
     docPdf.save(`AUDIT_ACADEX_${activeYear}.pdf`)
   }
 
+  if (!mounted) return null
+
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
-        
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-6 md:p-14 rounded-[2rem] md:rounded-[3.5rem] shadow-sm border-2 border-primary/5 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
              <BarChart3 className="size-40 md:size-64" />
@@ -328,7 +327,7 @@ export default function StatisticsModule() {
              <Card className="p-8 md:p-14 bg-muted/20 rounded-[2.5rem] md:rounded-[4rem] border-2 border-dashed border-muted-foreground/10 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex items-center gap-5">
                    <div className="size-12 md:size-16 bg-white rounded-2xl flex items-center justify-center shadow-sm shrink-0">
-                      <Baby className="text-primary size-6 md:size-8" />
+                      <Users className="text-primary size-6 md:size-8" />
                    </div>
                    <div className="text-center md:text-left">
                       <p className="text-[10px] md:text-sm font-black uppercase text-foreground tracking-tight">Structure Sociale Certifiée</p>
@@ -338,16 +337,6 @@ export default function StatisticsModule() {
                 <Button className="w-full md:w-auto h-12 md:h-16 rounded-xl md:rounded-2xl font-black bg-foreground text-white px-10 md:px-14 shadow-xl active:scale-95 transition-all text-[9px] md:text-sm">
                    EXPORTER RAPPORT DÉMO
                 </Button>
-             </Card>
-          </TabsContent>
-
-          <TabsContent value="académique" className="animate-in fade-in zoom-in-95">
-             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] p-10 md:p-20 text-center flex flex-col items-center justify-center min-h-[400px] border-4 border-dashed border-muted">
-                <div className="size-16 md:size-24 bg-muted rounded-[2rem] flex items-center justify-center mb-8 opacity-40">
-                   <GraduationCap className="size-8 md:size-12 text-primary" />
-                </div>
-                <h3 className="text-xl md:text-3xl font-black mb-3 uppercase">Analyse Académique</h3>
-                <p className="text-muted-foreground font-medium max-w-sm text-sm md:text-lg opacity-60">Le module d'audit par matière et par classe est en cours de scellage sécurisé.</p>
              </Card>
           </TabsContent>
         </Tabs>

@@ -5,7 +5,19 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Save, Loader2, Zap, ShieldCheck, Calculator, Lock, UserCheck, RefreshCw, Info, ArrowRight, User, CheckCircle2, Clock } from "lucide-react"
+import { 
+  Save, 
+  Loader2, 
+  ShieldCheck, 
+  Calculator, 
+  User, 
+  CheckCircle2, 
+  Clock, 
+  RefreshCw,
+  ChevronRight,
+  TrendingUp,
+  FileText
+} from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
   Select, 
@@ -51,6 +63,7 @@ export default function GradesPage() {
   const [userSubject, setUserSubject] = useState("")
   const [userName, setUserName] = useState("")
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [mounted, setMounted] = useState(false)
   
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
@@ -61,9 +74,8 @@ export default function GradesPage() {
   const [completionStats, setCompletionStats] = useState<Record<string, boolean>>({})
   const [classCoefficient, setClassCoefficient] = useState<number>(1)
 
-  const isDirector = userRole === "Directeur"
-
   useEffect(() => {
+    setMounted(true)
     setUserRole(localStorage.getItem('acadex_user_role'))
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     setUserSubject(localStorage.getItem('acadex_user_subject') || "")
@@ -73,7 +85,7 @@ export default function GradesPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedClass || !userSubject) return
+      if (!selectedClass || !userSubject || !mounted) return
       
       setLoadingExisting(true)
       try {
@@ -85,7 +97,6 @@ export default function GradesPage() {
           setClassCoefficient(2)
         }
 
-        // Vérification de la complétion pour chaque type d'évaluation
         const stats: Record<string, boolean> = {}
         for (const type of evalTypes) {
            const q = query(
@@ -116,11 +127,10 @@ export default function GradesPage() {
       }
     }
     fetchData()
-  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear])
+  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear, mounted])
 
-  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE DES ÉLÈVES POUR LA SAISIE
   const studentsQuery = useMemo(() => {
-    if (!db || !selectedClass) return null
+    if (!db || !selectedClass || !mounted) return null
     return query(
       collection(db, 'students'), 
       where("classId", "==", selectedClass),
@@ -128,9 +138,9 @@ export default function GradesPage() {
       where("academicYear", "==", activeYear),
       orderBy("lastName", "asc")
     )
-  }, [db, selectedClass, activeYear])
+  }, [db, selectedClass, activeYear, mounted])
 
-  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
+  const { data: students } = useCollection(studentsQuery)
 
   const handleGradeChange = (matricule: string, value: string) => {
     const num = parseFloat(value)
@@ -180,6 +190,8 @@ export default function GradesPage() {
     }
   }
 
+  if (!mounted) return null
+  const isDirector = userRole === "Directeur"
   const classesToShow = isDirector ? OFFICIAL_CLASSES : userClasses
 
   return (
@@ -199,7 +211,7 @@ export default function GradesPage() {
           <Button 
             onClick={handleSaveGrades} 
             disabled={saving || !selectedClass || students?.length === 0} 
-            className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-13 md:h-16 px-8 md:px-12 rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
+            className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-13 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
           >
             {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} 
             {saving ? "Scellage..." : "Sceller Évaluation"}
@@ -288,7 +300,7 @@ export default function GradesPage() {
                 <table className="w-full">
                   <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
                     <tr>
-                      <th className="px-12 py-8 text-left tracking-widest">Identifiant & Élève (A-Z)</th>
+                      <th className="px-12 py-8 text-left tracking-widest">Élève (A-Z)</th>
                       <th className="px-12 py-8 text-center tracking-widest">Note / 20</th>
                       <th className="px-12 py-8 text-right bg-primary text-white tracking-widest">Moyenne Provisoire</th>
                     </tr>
@@ -299,7 +311,7 @@ export default function GradesPage() {
                         <tr key={student.id} className="hover:bg-muted/5 transition-all group">
                           <td className="px-12 py-8">
                              <div className="flex items-center gap-4">
-                                <span className="font-black text-foreground tabular-nums">{student.matricule}</span>
+                                <span className="font-black text-foreground tabular-nums text-xs opacity-40">{student.matricule}</span>
                                 <p className="font-black text-lg text-foreground uppercase truncate">{student.lastName} {student.firstName}</p>
                              </div>
                           </td>
