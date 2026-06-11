@@ -11,20 +11,16 @@ export default function DashboardRedirector() {
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
     
-    // Délais court pour l'effet visuel de sécurité
-    const timer = setTimeout(() => {
-      if (role === 'Directeur') {
-        router.replace('/dashboard/directeur')
-      } else if (role === 'Enseignant') {
-        router.replace('/dashboard/enseignant')
-      } else if (role === 'Élève') {
-        router.replace('/dashboard/eleve')
-      } else {
-        router.replace('/login')
-      }
-    }, 800)
-
-    return () => clearTimeout(timer)
+    // Suppression du délai artificiel pour une fluidité maximale
+    if (role === 'Directeur') {
+      router.replace('/dashboard/directeur')
+    } else if (role === 'Enseignant') {
+      router.replace('/dashboard/enseignant')
+    } else if (role === 'Élève') {
+      router.replace('/dashboard/eleve')
+    } else {
+      router.replace('/login')
+    }
   }, [router])
 
   return (

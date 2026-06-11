@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ShieldCheck, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where, limit } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import { toast } from "@/hooks/use-toast"
 import placeholderData from "@/app/lib/placeholder-images.json";
@@ -47,9 +47,10 @@ export default function LoginPage() {
     if (!id.trim()) return;
     setLoading(true);
     
-    const upperId = id.toUpperCase();
+    const upperId = id.toUpperCase().trim();
     
     try {
+      // 1. DIRECTION : Instantané
       if (upperId.startsWith('DIR')) {
         localStorage.setItem('acadex_user_id', upperId);
         localStorage.setItem('acadex_user_role', 'Directeur');
@@ -58,30 +59,52 @@ export default function LoginPage() {
         return;
       }
 
-      const teacherQuery = query(collection(db, "teachers"), where("officialId", "==", upperId));
-      const teacherSnap = await getDocs(teacherQuery);
-      
-      if (!teacherSnap.empty) {
-        const teacherData = teacherSnap.docs[0].data();
-        localStorage.setItem('acadex_user_id', upperId);
-        localStorage.setItem('acadex_user_role', 'Enseignant');
-        localStorage.setItem('acadex_user_name', teacherData.fullName || 'Professeur');
-        localStorage.setItem('acadex_user_classes', JSON.stringify(teacherData.classes || []));
-        localStorage.setItem('acadex_user_subject', teacherData.subject || "");
-        router.push('/dashboard/enseignant');
-        return;
-      }
+      // 2. ROUTAGE INTELLIGENT PAR PRÉFIXE (Gain de performance massif)
+      if (upperId.startsWith('ENS')) {
+        const teacherSnap = await getDocs(query(collection(db, "teachers"), where("officialId", "==", upperId), limit(1)));
+        if (!teacherSnap.empty) {
+          const teacherData = teacherSnap.docs[0].data();
+          localStorage.setItem('acadex_user_id', upperId);
+          localStorage.setItem('acadex_user_role', 'Enseignant');
+          localStorage.setItem('acadex_user_name', teacherData.fullName || 'Professeur');
+          localStorage.setItem('acadex_user_classes', JSON.stringify(teacherData.classes || []));
+          localStorage.setItem('acadex_user_subject', teacherData.subject || "");
+          router.push('/dashboard/enseignant');
+          return;
+        }
+      } else if (upperId.startsWith('ELV')) {
+        const studentSnap = await getDocs(query(collection(db, "students"), where("matricule", "==", upperId), limit(1)));
+        if (!studentSnap.empty) {
+          const studentData = studentSnap.docs[0].data();
+          localStorage.setItem('acadex_user_id', upperId);
+          localStorage.setItem('acadex_user_role', 'Élève');
+          localStorage.setItem('acadex_user_name', `${studentData.firstName} ${studentData.lastName}`);
+          router.push('/dashboard/eleve');
+          return;
+        }
+      } else {
+        // Fallback parallelisé si pas de préfixe reconnu
+        const [tSnap, sSnap] = await Promise.all([
+          getDocs(query(collection(db, "teachers"), where("officialId", "==", upperId), limit(1))),
+          getDocs(query(collection(db, "students"), where("matricule", "==", upperId), limit(1)))
+        ]);
 
-      const studentQuery = query(collection(db, "students"), where("matricule", "==", upperId));
-      const studentSnap = await getDocs(studentQuery);
-
-      if (!studentSnap.empty) {
-        const studentData = studentSnap.docs[0].data();
-        localStorage.setItem('acadex_user_id', upperId);
-        localStorage.setItem('acadex_user_role', 'Élève');
-        localStorage.setItem('acadex_user_name', `${studentData.firstName} ${studentData.lastName}`);
-        router.push('/dashboard/eleve');
-        return;
+        if (!tSnap.empty) {
+          const data = tSnap.docs[0].data();
+          localStorage.setItem('acadex_user_id', upperId);
+          localStorage.setItem('acadex_user_role', 'Enseignant');
+          localStorage.setItem('acadex_user_name', data.fullName || 'Professeur');
+          router.push('/dashboard/enseignant');
+          return;
+        }
+        if (!sSnap.empty) {
+          const data = sSnap.docs[0].data();
+          localStorage.setItem('acadex_user_id', upperId);
+          localStorage.setItem('acadex_user_role', 'Élève');
+          localStorage.setItem('acadex_user_name', `${data.firstName} ${data.lastName}`);
+          router.push('/dashboard/eleve');
+          return;
+        }
       }
 
       toast({ title: "Identifiant inconnu", description: "Veuillez vérifier votre code.", variant: "destructive" });
@@ -94,7 +117,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
-      {/* CORRECT PROFESSIONAL HUMAN BACKGROUND */}
       <div className="fixed inset-0 z-0">
         <Image 
           src={loginImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
@@ -106,7 +128,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/65" />
       </div>
 
-      <div className="relative z-10 w-full max-w-[420px] animate-in fade-in duration-700">
+      <div className="relative z-10 w-full max-w-[420px] animate-in fade-in duration-500">
         <div className="flex flex-col items-center mb-8 md:mb-10">
           <div className="size-16 md:size-20 bg-white rounded-[1.5rem] md:rounded-[2rem] flex items-center justify-center shadow-2xl mb-4 overflow-hidden border-4 border-white transition-transform hover:scale-105 duration-500">
             {schoolLogo ? (
