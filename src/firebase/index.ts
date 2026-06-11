@@ -11,7 +11,6 @@ import {
 import { getAuth, Auth } from 'firebase/auth';
 import { firebaseConfig } from './config';
 
-// Track initialization state to prevent multiple attempts across HMR
 let firebaseAppInstance: FirebaseApp | null = null;
 let firestoreInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
@@ -22,15 +21,12 @@ export function initializeFirebase(): {
   firestore: Firestore;
   auth: Auth;
 } {
-  // Return cached instances if they exist (HMR friendly for Next.js)
   if (firebaseAppInstance && firestoreInstance && authInstance) {
     return { firebaseApp: firebaseAppInstance, firestore: firestoreInstance, auth: authInstance };
   }
 
   firebaseAppInstance = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   
-  // Utilisation de initializeFirestore avec experimentalForceLongPolling pour une stabilité maximale
-  // dans l'environnement de développement Firebase Studio.
   firestoreInstance = initializeFirestore(firebaseAppInstance, {
     experimentalForceLongPolling: true,
     cacheSizeBytes: CACHE_SIZE_UNLIMITED,
@@ -38,7 +34,6 @@ export function initializeFirebase(): {
 
   authInstance = getAuth(firebaseAppInstance);
 
-  // Enable persistence only on the client and only once per session
   if (typeof window !== 'undefined' && !persistenceStarted) {
     persistenceStarted = true;
     

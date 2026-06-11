@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { ShieldCheck, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { doc, getDoc, getDocs, collection, query, where, limit } from "firebase/firestore"
+import { doc, getDoc, getDocs, collection, query, where, limit, onSnapshot } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import { toast } from "@/hooks/use-toast"
 import placeholderData from "@/app/lib/placeholder-images.json";
@@ -27,19 +26,14 @@ export default function LoginPage() {
   const loginImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class");
 
   useEffect(() => {
-    const fetchSchool = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, "school_settings", "main_config"))
-        if (docSnap.exists()) {
-          const data = docSnap.data()
-          setSchoolName(data.schoolName || "ACADEX")
-          setSchoolLogo(data.logoUrl || "")
-        }
-      } catch (err) {
-        console.warn("Config par défaut")
+    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        setSchoolName(data.schoolName || "ACADEX")
+        setSchoolLogo(data.logoUrl || "")
       }
-    }
-    fetchSchool()
+    }, (err) => console.warn("Offline: loading from cache", err))
+    return () => unsub()
   }, [db])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -50,7 +44,6 @@ export default function LoginPage() {
     const upperId = id.toUpperCase().trim();
     
     try {
-      // 1. DIRECTION : Instantané
       if (upperId.startsWith('DIR')) {
         localStorage.setItem('acadex_user_id', upperId);
         localStorage.setItem('acadex_user_role', 'Directeur');
@@ -59,7 +52,6 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. ROUTAGE INTELLIGENT PAR PRÉFIXE (Gain de performance massif)
       if (upperId.startsWith('ENS')) {
         const teacherSnap = await getDocs(query(collection(db, "teachers"), where("officialId", "==", upperId), limit(1)));
         if (!teacherSnap.empty) {
@@ -83,7 +75,6 @@ export default function LoginPage() {
           return;
         }
       } else {
-        // Fallback parallelisé si pas de préfixe reconnu
         const [tSnap, sSnap] = await Promise.all([
           getDocs(query(collection(db, "teachers"), where("officialId", "==", upperId), limit(1))),
           getDocs(query(collection(db, "students"), where("matricule", "==", upperId), limit(1)))
@@ -109,7 +100,7 @@ export default function LoginPage() {
 
       toast({ title: "Identifiant inconnu", description: "Veuillez vérifier votre code.", variant: "destructive" });
     } catch (err) {
-      toast({ title: "Erreur de connexion", description: "Impossible de joindre le serveur.", variant: "destructive" });
+      toast({ title: "Connexion limitée", description: "Vérifiez votre connexion internet.", variant: "destructive" });
     } finally {
       setLoading(false);
     }

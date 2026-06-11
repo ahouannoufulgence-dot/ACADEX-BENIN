@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
@@ -20,7 +19,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useFirestore, useDoc, useCollection } from "@/firebase"
-import { doc, query, collection, where } from "firebase/firestore"
+import { doc, query, collection, where, onSnapshot } from "firebase/firestore"
 import { useState, useMemo, useEffect } from "react"
 import { generateBulletinPDF, type BulletinData } from "@/lib/bulletin-generator"
 import { cn } from "@/lib/utils"
@@ -44,13 +43,10 @@ export default function OfficialBulletinPage() {
   const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
 
   useEffect(() => {
-    const unsub = doc(db, "school_settings", "main_config")
-    const fetchConfig = async () => {
-      // In a real hook it would be useDoc, but for dynamic settings:
-      const snap = await (await import("firebase/firestore")).getDoc(unsub)
+    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) setSchoolConfig(snap.data())
-    }
-    fetchConfig()
+    })
+    return () => unsub()
   }, [db])
 
   const bulletinData = useMemo(() => {
@@ -166,7 +162,6 @@ export default function OfficialBulletinPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500 max-w-6xl mx-auto pb-20">
         
-        {/* Header Actions */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
              <Button variant="ghost" onClick={() => router.back()} className="rounded-xl h-10 px-3 -ml-3 hover:bg-primary/5 text-muted-foreground font-bold text-xs uppercase tracking-widest">
@@ -206,15 +201,12 @@ export default function OfficialBulletinPage() {
           </Card>
         ) : (
           <div className="grid lg:grid-cols-12 gap-8 md:gap-10">
-            {/* Main Bulletin View */}
             <Card className="lg:col-span-8 bg-white border-none shadow-2xl rounded-[1rem] md:rounded-[3rem] overflow-hidden relative border-t-[12px] border-primary">
-               {/* Watermark */}
                <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none select-none">
                   <h2 className="text-[120px] font-black rotate-[-35deg] uppercase">{bulletinData.schoolInfo.name}</h2>
                </div>
 
                <div className="p-6 md:p-14 space-y-10 md:space-y-14 relative z-10">
-                  {/* Official Header */}
                   <div className="flex flex-col md:flex-row justify-between items-center text-center md:text-left gap-8 pb-10 border-b-2 border-muted/50 border-dashed">
                      <div className="flex flex-col items-center md:items-start gap-4">
                         <div className="size-20 md:size-24 bg-primary text-white rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20 font-black text-4xl">
@@ -237,7 +229,6 @@ export default function OfficialBulletinPage() {
                      </div>
                   </div>
 
-                  {/* Student Summary */}
                   <div className="grid md:grid-cols-2 gap-6 bg-muted/20 p-6 md:p-10 rounded-[1.5rem] md:rounded-[2.5rem] border border-muted/30">
                      <div className="space-y-4">
                         <div className="flex gap-4">
@@ -263,7 +254,6 @@ export default function OfficialBulletinPage() {
                      </div>
                   </div>
 
-                  {/* Grades Table UI */}
                   <div className="overflow-x-auto -mx-6 px-6">
                     <table className="w-full text-xs md:text-sm border-separate border-spacing-y-2">
                        <thead>
@@ -293,7 +283,6 @@ export default function OfficialBulletinPage() {
                     </table>
                   </div>
 
-                  {/* Summary Footer */}
                   <div className="grid md:grid-cols-3 gap-6 pt-10">
                      <div className="md:col-span-2 space-y-4">
                         <div className="p-6 md:p-8 bg-foreground text-white rounded-[2rem] shadow-xl relative overflow-hidden group">
@@ -322,7 +311,6 @@ export default function OfficialBulletinPage() {
                </div>
             </Card>
 
-            {/* Sidebar Tools */}
             <div className="lg:col-span-4 space-y-6 md:space-y-8">
                <Card className="p-8 rounded-[2.5rem] bg-foreground text-white shadow-2xl relative overflow-hidden group">
                   <div className="relative z-10 space-y-8">
