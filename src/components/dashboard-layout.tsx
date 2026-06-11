@@ -104,7 +104,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
-  const showBackground = pathname.includes('/dashboard/') || pathname === '/dashboard' || pathname === '/login' || pathname === '/'
+  // LOGIQUE DE FOND : Image immersive uniquement sur les écrans d'entrée et les dashboards racine.
+  // Les sous-modules (espace élèves sub-paths) récupèrent le fond gris bg-[#F8FAFC].
+  const showBackground = useMemo(() => {
+    const immersivePages = [
+      '/dashboard/eleve',
+      '/dashboard/directeur',
+      '/dashboard/enseignant',
+      '/dashboard',
+      '/login',
+      '/'
+    ];
+    return immersivePages.includes(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
