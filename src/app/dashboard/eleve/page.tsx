@@ -91,7 +91,6 @@ export default function StudentDashboard() {
     <DashboardLayout>
       <div className="relative z-10 space-y-5 md:space-y-10 animate-in">
         
-        {/* Student Banner - Optimized Mobile */}
         <div className="relative min-h-[220px] md:min-h-[380px] rounded-[2rem] md:rounded-[3.5rem] overflow-hidden shadow-xl group">
           <Image 
             src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
@@ -106,7 +105,7 @@ export default function StudentDashboard() {
           <div className="absolute inset-0 p-5 md:p-12 flex flex-col justify-end gap-3">
             <div className="space-y-1 md:space-y-4 max-w-xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white text-[8px] md:text-[10px] font-black uppercase tracking-widest">
-                <Star className="size-2 md:size-3 text-amber-400 fill-amber-400" /> Cockpit de Réussite
+                <Star className="size-2.5 md:size-3 text-amber-400 fill-amber-400" /> Cockpit de Réussite
               </div>
               <h1 className="text-2xl md:text-6xl font-black text-white tracking-tight drop-shadow-2xl leading-tight">
                 Prêt pour ton <br className="hidden md:block" /> <span className="text-emerald-400 italic">Excellence</span>, {studentName.split(' ')[0]} ?
@@ -116,14 +115,13 @@ export default function StudentDashboard() {
                   ID: {studentId}
                 </Badge>
                 <div className="flex items-center gap-1.5 md:gap-2 font-bold text-[8px] md:text-sm bg-white/10 backdrop-blur-md text-white/90 px-3 py-1 rounded-full border border-white/10">
-                  <ShieldCheck className="size-2.5 md:size-4 text-emerald-400" /> Certifié {activeYear}
+                  <ShieldCheck className="size-3 md:size-4 text-emerald-400" /> Certifié {activeYear}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Grid - Optimized Mobile grid-cols-2 */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
           {stats.map((stat, i) => (
             <Link key={stat.title} href={stat.href}>
@@ -138,7 +136,7 @@ export default function StudentDashboard() {
                 <div>
                   <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-0.5">{stat.title}</p>
                   <div className="text-lg md:text-3xl font-black text-foreground">
-                    {loadingGrades && stat.title === "Ma Moyenne" ? <Loader2 className="animate-spin size-3 md:size-3.5" /> : stat.value}
+                    {loadingGrades && stat.title === "Ma Moyenne" ? <Loader2 className="animate-spin size-3.5 md:size-5" /> : stat.value}
                   </div>
                   <p className="text-[7px] md:text-[9px] font-bold text-muted-foreground/30 mt-0.5 uppercase tracking-tighter">{stat.label}</p>
                 </div>
@@ -152,7 +150,7 @@ export default function StudentDashboard() {
              <div className="p-5 md:p-10 border-b flex items-center justify-between bg-muted/5">
                <div className="space-y-0.5">
                  <h3 className="text-base md:text-2xl font-black flex items-center gap-2">
-                   <FileText className="text-primary size-3.5 md:size-7" /> Dernières Notes
+                   <FileText className="text-primary size-4 md:size-7" /> Dernières Notes
                  </h3>
                  <p className="text-[7px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Registre Live Acadex</p>
                </div>
@@ -197,7 +195,7 @@ export default function StudentDashboard() {
             <Card className="p-6 md:p-10 bg-foreground text-white rounded-[2rem] md:rounded-[3rem] shadow-xl relative overflow-hidden group">
               <div className="relative z-10">
                 <h3 className="text-base md:text-2xl font-black mb-6 md:mb-10 flex items-center gap-2">
-                  <Calendar className="text-primary size-3.5 md:size-7" /> Planning
+                  <Calendar className="text-primary size-4 md:size-7" /> Planning
                 </h3>
                 <div className="py-8 md:py-16 text-center text-white/20 italic text-[10px] md:text-sm border-2 border-dashed border-white/5 rounded-2xl md:rounded-3xl">
                   En attente de programme...
@@ -211,7 +209,7 @@ export default function StudentDashboard() {
             <Card className="p-6 md:p-10 rounded-[1.8rem] md:rounded-[2.5rem] border-2 border-dashed border-primary/20 bg-white group hover:bg-primary/5 transition-all cursor-pointer">
                <div className="flex items-center gap-3 mb-4 md:mb-6">
                  <div className="size-9 md:size-12 bg-muted rounded-lg md:rounded-2xl flex items-center justify-center shadow-sm">
-                    <Sparkles className="text-primary size-3.5 md:size-6" />
+                    <Sparkles className="text-primary size-4 md:size-6" />
                  </div>
                  <h4 className="font-black text-sm md:text-xl text-foreground">Conseil Coach</h4>
                </div>

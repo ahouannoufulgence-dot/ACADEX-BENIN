@@ -70,7 +70,7 @@ export default function StudentAgendaPage() {
             </div>
           </div>
           <Badge className="bg-white border-2 border-primary/20 text-primary h-10 md:h-14 px-5 md:px-10 rounded-xl md:rounded-[1.8rem] flex items-center gap-2 md:gap-3 font-black text-[9px] md:text-lg shadow-xl shadow-primary/10 w-fit">
-             <ShieldCheck className="size-3 md:size-6" /> CERTIFIÉ ACADEX
+             <ShieldCheck className="size-3.5 md:size-6" /> CERTIFIÉ ACADEX
           </Badge>
         </div>
 
@@ -79,13 +79,13 @@ export default function StudentAgendaPage() {
           <div className="lg:col-span-3">
             <Card className="border-none shadow-sm bg-white rounded-[1.5rem] md:rounded-[3rem] p-3 md:p-10 h-fit">
               <h3 className="text-[7px] md:text-[9px] font-black uppercase text-muted-foreground tracking-[0.25em] px-2 mb-3 md:mb-6">Navigation Semaine</h3>
-              <div className="flex md:flex-col gap-1.5 md:gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1 md:pb-0">
+              <div className="flex md:flex-col gap-1.5 md:gap-2 overflow-x-auto no-scrollbar scroll-smooth pb-1 md:pb-0 snap-x snap-proximity">
                 {days.map((day) => (
                   <button
                     key={day}
                     onClick={() => setSelectedDay(day)}
                     className={cn(
-                      "flex-1 md:w-full text-center md:text-left p-2 md:p-6 rounded-lg md:rounded-[1.8rem] font-black text-[9px] md:text-xl transition-all border-2 whitespace-nowrap min-w-[75px] md:min-w-0",
+                      "flex-1 md:w-full text-center md:text-left p-2 md:p-6 rounded-lg md:rounded-[1.8rem] font-black text-[9px] md:text-xl transition-all border-2 whitespace-nowrap min-w-[75px] md:min-w-0 snap-start",
                       selectedDay === day 
                         ? "bg-primary text-white border-primary shadow-lg scale-[1.02]" 
                         : "bg-muted/20 text-muted-foreground border-transparent hover:bg-muted/40"
@@ -127,14 +127,14 @@ export default function StudentAgendaPage() {
                     <div className="p-3 md:p-10 flex flex-row items-center justify-between gap-3 md:gap-6">
                       <div className="flex items-center gap-3 md:gap-10 min-w-0">
                          <div className="size-11 md:size-24 bg-muted rounded-lg md:rounded-[2.5rem] flex flex-col items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0">
-                            <Clock className="size-3 md:size-7" />
+                            <Clock className="size-3.5 md:size-7" />
                             <span className="text-[7px] md:text-lg font-black uppercase">{course.startTime.split(':')[0]}H</span>
                          </div>
                          <div className="space-y-0.5 md:space-y-1 truncate">
                            <h3 className="text-xs md:text-4xl font-black text-foreground uppercase group-hover:text-primary transition-colors truncate">{course.subject}</h3>
                            <div className="flex flex-wrap gap-2 md:gap-4 text-[6px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                              <span className="flex items-center gap-1"><MapPin className="size-2 md:size-4 text-primary" /> {course.room || 'Salle...'}</span>
-                              <span className="flex items-center gap-1"><User className="size-2 md:size-4 text-primary" /> {course.teacherName?.split(' ')[0]}</span>
+                              <span className="flex items-center gap-1"><MapPin className="size-2.5 md:size-4 text-primary" /> {course.room || 'Salle...'}</span>
+                              <span className="flex items-center gap-1"><User className="size-2.5 md:size-4 text-primary" /> {course.teacherName?.split(' ')[0]}</span>
                            </div>
                          </div>
                       </div>

@@ -183,7 +183,7 @@ export default function StudentLifePage() {
             <div className={cn("lg:col-span-4 space-y-6", selectedStudent && "hidden lg:block")}>
               <Card className="p-4 md:p-8 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm h-fit">
                 <div className="relative group mb-4 md:mb-6">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <Input placeholder="Chercher un élève..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-11 h-11 md:h-14 rounded-2xl bg-muted/30 border-none font-bold text-xs md:text-sm shadow-inner" />
                 </div>
                 <ScrollArea className="h-[350px] md:h-[500px] pr-2 no-scrollbar">
@@ -245,7 +245,7 @@ export default function StudentLifePage() {
                       { id: "conduite", label: "Bonus/Malus", icon: Award },
                     ].map(t => (
                       <TabsTrigger key={t.id} value={t.id} className="rounded-lg md:rounded-[1.4rem] font-black px-4 md:px-10 text-[8px] md:text-xs uppercase tracking-widest flex items-center gap-1.5 md:gap-3 data-[state=active]:bg-primary data-[state=active]:text-white transition-all shrink-0">
-                        <t.icon className="size-3 md:size-4" /> {t.label}
+                        <t.icon className="size-3.5 md:size-4.5" /> {t.label}
                       </TabsTrigger>
                     ))}
                   </TabsList>
@@ -271,7 +271,7 @@ export default function StudentLifePage() {
                               <Input placeholder="Détails..." value={presenceForm.motif} onChange={(e) => setPresenceForm({...presenceForm, motif: e.target.value})} className="h-10 md:h-14 rounded-xl md:rounded-2xl border-2 font-bold text-xs md:text-sm" />
                             </div>
                             <Button onClick={() => handleAddEvent('presence')} disabled={loading} className="w-full h-10 md:h-14 bg-primary rounded-xl md:rounded-2xl font-black text-[9px] md:text-sm shadow-lg active:scale-95 transition-all">
-                              {loading ? <Loader2 className="animate-spin size-3 md:size-4" /> : <CheckCircle2 className="size-3 md:size-4 mr-1.5 md:mr-2" />} Sceller
+                              {loading ? <Loader2 className="animate-spin size-3 md:size-4" /> : <CheckCircle2 className="size-3.5 md:size-5 mr-1.5 md:mr-2" />} Sceller
                             </Button>
                           </div>
                         </TabsContent>
@@ -286,7 +286,7 @@ export default function StudentLifePage() {
                               <Input placeholder="Ex: Participation..." value={bonusForm.motif} onChange={(e) => setBonusForm({...bonusForm, motif: e.target.value})} className="h-10 md:h-14 rounded-xl md:rounded-2xl border-2 font-bold text-xs md:text-sm" />
                             </div>
                             <Button onClick={() => handleAddEvent('conduite')} disabled={loading} className="w-full h-10 md:h-14 bg-emerald-500 hover:bg-emerald-600 rounded-xl md:rounded-2xl font-black text-[9px] md:text-sm text-white shadow-lg active:scale-95 transition-all">
-                              <Star className="size-3 md:size-4 mr-1.5 md:mr-2" /> Appliquer
+                              <Star className="size-3.5 md:size-5 mr-1.5 md:mr-2" /> Appliquer
                             </Button>
                           </div>
                         </TabsContent>
@@ -304,7 +304,7 @@ export default function StudentLifePage() {
                               <Input placeholder="Détails du manquement..." value={disciplineForm.motif} onChange={(e) => setDisciplineForm({...disciplineForm, motif: e.target.value})} className="h-10 md:h-14 rounded-xl md:rounded-2xl border-2 font-bold text-xs md:text-sm" />
                             </div>
                             <Button onClick={() => handleAddEvent('discipline')} disabled={loading} className="w-full h-10 md:h-14 bg-destructive hover:bg-destructive/90 text-white rounded-xl md:rounded-2xl font-black text-[9px] md:text-sm shadow-lg active:scale-95 transition-all">
-                              <ShieldAlert className="size-3 md:size-4 mr-1.5 md:mr-2" /> Sceller
+                              <ShieldAlert className="size-3.5 md:size-5 mr-1.5 md:mr-2" /> Sceller
                             </Button>
                           </div>
                         </TabsContent>

@@ -166,13 +166,13 @@ export default function StudentProgressionPage() {
           <div className="space-y-1">
             <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Ma <span className="text-primary italic">Progression</span></h1>
             <div className="flex items-center gap-2 text-muted-foreground font-bold text-[8px] md:text-sm">
-              <TrendingUp className="size-3 text-primary" />
+              <TrendingUp className="size-3 md:size-4 text-primary" />
               <span>Analyse de trajectoire • {activeYear}</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
              <Badge className="bg-primary text-white h-10 md:h-14 px-5 md:px-10 rounded-xl md:rounded-[1.8rem] flex items-center gap-2 md:gap-3 font-black text-[9px] md:text-lg shadow-xl shadow-primary/20">
-               <ShieldCheck className="size-3 md:size-5" /> CERTIFIÉ ACADEX
+               <ShieldCheck className="size-3.5 md:size-5" /> CERTIFIÉ ACADEX
              </Badge>
           </div>
         </div>
@@ -242,7 +242,7 @@ export default function StudentProgressionPage() {
                           <div className="space-y-2 relative z-10">
                              <div className="flex justify-between text-[7px] md:text-[10px] font-black uppercase text-muted-foreground">
                                 <span>Évolution</span>
-                                <span className="text-emerald-600 flex items-center"><ArrowUpRight className="size-2 mr-0.5" /> +1.5</span>
+                                <span className="text-emerald-600 flex items-center"><ArrowUpRight className="size-2 md:size-3 mr-0.5" /> +1.5</span>
                              </div>
                              <div className="w-full bg-muted/30 h-1.5 md:h-2 rounded-full overflow-hidden">
                                 <div className={cn("h-full transition-all duration-1000", sub.average >= 10 ? "bg-primary" : "bg-red-500")} style={{ width: `${(sub.average / 20) * 100}%` }} />
@@ -354,7 +354,7 @@ export default function StudentProgressionPage() {
                    <Card className="p-6 md:p-12 bg-foreground text-white rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group border-none">
                       <div className="relative z-10 space-y-6 md:space-y-8">
                          <div className="flex items-center gap-4">
-                            <div className="size-10 md:size-16 bg-primary/20 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner"><Sparkles className="size-5 md:size-8 text-primary animate-pulse" /></div>
+                            <div className="size-10 md:size-16 bg-primary/20 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner"><Sparkles className="size-4 md:size-6 text-primary animate-pulse" /></div>
                             <h3 className="text-lg md:text-2xl font-black uppercase tracking-tight">Coach Brain IA</h3>
                          </div>
                          <div className="p-5 md:p-10 bg-white/5 rounded-xl md:rounded-[2rem] border border-white/10 italic text-[9px] md:text-xl font-medium leading-relaxed text-white/80 min-h-[120px] md:min-h-[200px] flex items-center justify-center text-center">

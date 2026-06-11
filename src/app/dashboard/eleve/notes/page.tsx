@@ -121,7 +121,7 @@ export default function StudentGradesPage() {
                 {activeYear}
               </Badge>
               <div className="flex items-center gap-1.5 text-muted-foreground font-bold text-[8px] md:text-[10px]">
-                <Clock className="size-2 md:size-3 text-amber-500" /> Calcul Progressif Activé
+                <Clock className="size-2.5 md:size-3 text-amber-500" /> Calcul Progressif Activé
               </div>
             </div>
           </div>
