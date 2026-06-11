@@ -208,7 +208,7 @@ export default function GradesPage() {
           </div>
           <Button 
             onClick={handleSaveGrades} 
-            disabled={saving || !selectedClass || students?.length === 0} 
+            disabled={saving || !selectedClass || (students?.length || 0) === 0} 
             className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-13 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
           >
             {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} 
@@ -298,33 +298,37 @@ export default function GradesPage() {
                 <table className="w-full">
                   <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
                     <tr>
-                      <th className="px-12 py-8 text-left tracking-widest">Élève (A-Z)</th>
-                      <th className="px-12 py-8 text-center tracking-widest">Note / 20</th>
-                      <th className="px-12 py-8 text-right bg-primary text-white tracking-widest">Moyenne Provisoire</th>
+                      <th className="px-8 py-8 text-left tracking-widest">Nom</th>
+                      <th className="px-8 py-8 text-left tracking-widest">Prénom</th>
+                      <th className="px-8 py-8 text-center tracking-widest">Note / 20</th>
+                      <th className="px-8 py-8 text-right bg-primary text-white tracking-widest">Moyenne Provisoire</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-muted/20">
                     {students?.map((student: any) => {
                       return (
                         <tr key={student.id} className="hover:bg-muted/5 transition-all group">
-                          <td className="px-12 py-8">
-                             <div className="flex items-center gap-4">
-                                <span className="font-black text-foreground tabular-nums text-xs opacity-40 shrink-0">{student.matricule}</span>
-                                <p className="font-black text-lg text-foreground uppercase leading-tight">{student.lastName} {student.firstName}</p>
+                          <td className="px-8 py-8">
+                             <div className="flex flex-col">
+                                <span className="font-black text-foreground tabular-nums text-[10px] opacity-40">{student.matricule}</span>
+                                <p className="font-black text-lg text-foreground uppercase leading-none">{student.lastName}</p>
                              </div>
                           </td>
-                          <td className="px-12 py-8 text-center">
+                          <td className="px-8 py-8">
+                             <p className="font-bold text-lg text-foreground leading-none">{student.firstName}</p>
+                          </td>
+                          <td className="px-8 py-8 text-center">
                             <Input 
                               type="number" 
                               step="0.25" 
                               placeholder="--.--"
                               value={gradesData[student.matricule] || ""} 
                               onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
-                              className="w-40 h-16 mx-auto rounded-3xl text-center text-3xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-[#F8FAFC] group-hover:bg-white transition-all" 
+                              className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-[#F8FAFC] group-hover:bg-white transition-all" 
                             />
                           </td>
-                          <td className="px-12 py-8 text-right">
-                             <Badge className="h-14 w-40 justify-center rounded-[1.5rem] bg-primary/5 text-primary border-2 border-primary/10 text-2xl font-black">
+                          <td className="px-8 py-8 text-right">
+                             <Badge className="h-12 w-32 justify-center rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xl font-black">
                                 {Number(gradesData[student.matricule] || 0).toFixed(1)}
                              </Badge>
                           </td>
