@@ -23,7 +23,9 @@ import {
   Sparkles,
   Zap,
   Calculator,
-  HardDrive
+  HardDrive,
+  Settings2,
+  Save
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
@@ -31,7 +33,7 @@ import { useState, useMemo, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, onSnapshot } from "firebase/firestore"
+import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore"
 import {
   Dialog,
   DialogContent,
@@ -48,6 +50,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 
+const OFFICIAL_CLASSES = [
+  "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
+  "2NDE A", "2NDE B", "2NDE C", "2NDE D",
+  "1ERE A", "1ERE B", "1ERE C", "1ERE D",
+  "TLE A", "TLE B", "TLE C", "TLE D"
+]
+
 export default function TreasuryModule() {
   const db = useFirestore()
   const [activeYear, setActiveYear] = useState("2026-2027")
@@ -55,8 +64,10 @@ export default function TreasuryModule() {
   const [isAdding, setIsAdding] = useState(false)
   const [isAddingExpense, setIsAddingExpense] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [savingFees, setSavingFees] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [studentSearch, setStudentSearch] = useState("")
+  const [feesData, setFeesData] = useState<Record<string, string>>({})
 
   const [formData, setFormData] = useState({
     studentId: "",
@@ -98,9 +109,40 @@ export default function TreasuryModule() {
     where("status", "==", "Actif")
   ), [db, activeYear])
 
+  const feesQuery = useMemo(() => query(
+    collection(db, "class_contributions"),
+    where("academicYear", "==", activeYear)
+  ), [db, activeYear])
+
   const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
   const { data: expenses, loading: loadingExpenses } = useCollection(expensesQuery)
   const { data: students } = useCollection(studentsQuery)
+  const { data: classFees } = useCollection(feesQuery)
+
+  useEffect(() => {
+    if (classFees) {
+      const data: Record<string, string> = {}
+      classFees.forEach((f: any) => {
+        data[f.classId] = f.amount.toString()
+      })
+      setFeesData(data)
+    }
+  }, [classFees])
+
+  const stats = useMemo(() => {
+    const totalReceived = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const totalExpenses = expenses?.reduce((acc, e: any) => acc + (Number(e.amount) || 0), 0) || 0
+    
+    let expected = 0
+    students?.forEach((s: any) => {
+      const fee = classFees?.find((f: any) => f.classId === s.classId)?.amount || 150000
+      expected += Number(fee)
+    })
+
+    const percent = expected > 0 ? (totalReceived / expected) * 100 : 0
+    const balance = totalReceived - totalExpenses
+    return { totalReceived, totalExpenses, expected, percent, balance }
+  }, [payments, expenses, students, classFees])
 
   const filteredStudents = useMemo(() => {
     if (!students) return []
@@ -109,15 +151,6 @@ export default function TreasuryModule() {
       s.matricule.toLowerCase().includes(studentSearch.toLowerCase())
     )
   }, [students, studentSearch])
-
-  const stats = useMemo(() => {
-    const totalReceived = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const totalExpenses = expenses?.reduce((acc, e: any) => acc + (Number(e.amount) || 0), 0) || 0
-    const expected = (students?.length || 0) * 150000
-    const percent = expected > 0 ? (totalReceived / expected) * 100 : 0
-    const balance = totalReceived - totalExpenses
-    return { totalReceived, totalExpenses, expected, percent, balance }
-  }, [payments, expenses, students])
 
   const handleAddPayment = async () => {
     if (!formData.studentId || !formData.amountPaid) {
@@ -170,6 +203,29 @@ export default function TreasuryModule() {
     }
   }
 
+  const handleSaveFees = async () => {
+    setSavingFees(true)
+    try {
+      const batch = writeBatch(db)
+      OFFICIAL_CLASSES.forEach(classId => {
+        const amount = Number(feesData[classId]) || 150000
+        const feeRef = doc(db, "class_contributions", `${classId}_${activeYear}`.replace(/\s/g, '_'))
+        batch.set(feeRef, {
+          classId,
+          amount,
+          academicYear: activeYear,
+          updatedAt: serverTimestamp()
+        })
+      })
+      await batch.commit()
+      toast({ title: "Tarifs scellés", description: "Les contributions par classe ont été mises à jour." })
+    } catch (e) {
+      toast({ title: "Erreur de scellage", variant: "destructive" })
+    } finally {
+      setSavingFees(false)
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
@@ -179,19 +235,19 @@ export default function TreasuryModule() {
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
               Trésorerie <span className="text-primary italic">& Finance</span>
             </h1>
-            <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
-              <ShieldCheck className="size-3.5 text-emerald-500" />
+            <div className="flex items-center gap-3 text-muted-foreground font-bold text-[9px] md:text-sm">
+              <ShieldCheck className="size-3 md:size-4 text-emerald-500" />
               <span>Année Scolaire <Badge className="bg-primary text-[10px] ml-1">{activeYear}</Badge></span>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
             <Button variant="outline" className="flex-1 md:flex-none h-11 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm transition-all active:scale-95">
-              <FileDown className="mr-2 size-4 md:size-5" /> Rapport
+              <FileDown className="mr-1.5 md:mr-2 size-3.5 md:size-5" /> Rapport
             </Button>
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
               <DialogTrigger asChild>
                 <Button className="flex-1 md:flex-none bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl font-black text-[10px] md:text-sm transition-all active:scale-95">
-                  <Plus className="mr-2 size-4 md:size-5" /> Encaisser
+                  <Plus className="mr-1.5 md:mr-2 size-3.5 md:size-5" /> Encaisser
                 </Button>
               </DialogTrigger>
               <DialogContent className="rounded-[2.2rem] md:rounded-[3rem] w-[95%] max-w-2xl p-0 overflow-hidden border-none shadow-2xl">
@@ -249,9 +305,10 @@ export default function TreasuryModule() {
               { id: "dashboard", label: "Cockpit", icon: TrendingUp },
               { id: "encaissements", label: "Recettes", icon: Banknote },
               { id: "depenses", label: "Dépenses", icon: PiggyBank },
+              { id: "tarifs", label: "Tarifs", icon: Settings2 },
             ].map(t => (
               <TabsTrigger key={t.id} value={t.id} className="rounded-xl md:rounded-[2rem] font-black px-6 md:px-10 text-[9px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex items-center gap-2 shrink-0">
-                <t.icon className="size-3.5 md:size-4" /> {t.label}
+                <t.icon className="size-3 md:size-4" /> {t.label}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -267,13 +324,13 @@ export default function TreasuryModule() {
                 <Card key={i} className={cn("p-5 md:p-9 rounded-[1.8rem] md:rounded-[3rem] border-none shadow-sm transition-all group overflow-hidden relative", kpi.premium ? "bg-foreground text-white shadow-xl" : "bg-white")}>
                   <div className={cn("absolute -top-4 -right-4 size-16 md:size-24 rounded-full opacity-[0.04] transition-transform group-hover:scale-150", kpi.premium ? "bg-primary/40" : kpi.bg)} />
                   <div className="flex items-center justify-between mb-4 md:mb-10 relative z-10">
-                    <div className={cn("p-2 md:p-4 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", kpi.premium ? "bg-white/10 text-primary" : cn(kpi.bg, kpi.color))}>
-                      <kpi.icon className="size-4 md:size-6" />
+                    <div className={cn("p-2 md:p-3.5 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", kpi.premium ? "bg-white/10 text-primary" : cn(kpi.bg, kpi.color))}>
+                      <kpi.icon className="size-3.5 md:size-5" />
                     </div>
-                    {kpi.label === 'Solde' ? <ShieldCheck className="size-4 md:size-5 text-primary/40" /> : <ArrowUpRight className="size-3.5 md:size-4.5 opacity-20" />}
+                    {kpi.label === 'Solde' ? <ShieldCheck className="size-3 md:size-4 text-primary/40" /> : <ArrowUpRight className="size-3 md:size-4 opacity-20" />}
                   </div>
                   <div className="relative z-10">
-                    <p className={cn("text-[7px] md:text-[10px] font-black uppercase tracking-widest mb-1", kpi.premium ? "text-white/40" : "text-muted-foreground")}>{kpi.label}</p>
+                    <p className={cn("text-[7px] md:text-[9px] font-black uppercase tracking-widest mb-1", kpi.premium ? "text-white/40" : "text-muted-foreground")}>{kpi.label}</p>
                     <h3 className="text-sm md:text-3xl font-black truncate tabular-nums">
                       {Number(kpi.value).toLocaleString()}<span className="text-[8px] md:text-sm opacity-40 ml-1 font-bold">{kpi.suffix}</span>
                     </h3>
@@ -287,7 +344,7 @@ export default function TreasuryModule() {
                  <div className="flex items-center justify-between mb-8 md:mb-14">
                     <div className="space-y-1">
                       <h3 className="text-lg md:text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-                        <History className="text-primary size-4 md:size-6" /> Flux Réel Live
+                        <History className="text-primary size-3.5 md:size-5" /> Flux Réel Live
                       </h3>
                       <p className="text-[7px] md:text-[10px] font-black text-muted-foreground uppercase tracking-[0.25em]">Audit des transactions scellées</p>
                     </div>
@@ -312,8 +369,8 @@ export default function TreasuryModule() {
                             return (
                               <div key={tx.id || idx} className="p-4 md:p-7 bg-muted/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/10 hover:bg-white hover:shadow-xl transition-all group flex items-center justify-between">
                                 <div className="flex items-center gap-4 md:gap-8">
-                                   <div className={cn("size-10 md:size-14 rounded-xl md:rounded-[1.2rem] flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", isExpense ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600")}>
-                                     {isExpense ? <PiggyBank className="size-4.5 md:size-6" /> : <Banknote className="size-4.5 md:size-6" />}
+                                   <div className={cn("size-9 md:size-12 rounded-xl md:rounded-[1rem] flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm", isExpense ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600")}>
+                                     {isExpense ? <PiggyBank className="size-4 md:size-5" /> : <Banknote className="size-4 md:size-5" />}
                                    </div>
                                    <div className="min-w-0">
                                       <h4 className="font-black text-xs md:text-xl truncate uppercase tracking-tight">{isExpense ? tx.motif : tx.studentName}</h4>
@@ -344,8 +401,8 @@ export default function TreasuryModule() {
                 <Card className="p-7 md:p-12 rounded-[2.5rem] md:rounded-[3.5rem] bg-primary/5 border-2 border-dashed border-primary/20 group hover:bg-primary/10 transition-all relative overflow-hidden">
                    <div className="relative z-10">
                      <div className="flex items-center gap-4 mb-6 md:mb-10">
-                       <div className="size-10 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5 animate-pulse">
-                         <Sparkles className="size-4 md:size-6 text-primary fill-primary/10" />
+                       <div className="size-9 md:size-12 bg-white rounded-xl md:rounded-[1rem] flex items-center justify-center shadow-lg shadow-primary/5 animate-pulse">
+                         <Sparkles className="size-3.5 md:size-5 text-primary fill-primary/10" />
                        </div>
                        <h4 className="font-black text-base md:text-2xl">Audit IA Financier</h4>
                      </div>
@@ -361,7 +418,7 @@ export default function TreasuryModule() {
 
                 <Card className="p-6 md:p-10 rounded-[2.2rem] md:rounded-[3.5rem] bg-amber-50 border-2 border-amber-100 flex flex-col gap-4 md:gap-8 group">
                    <div className="flex items-center gap-4 text-amber-700">
-                      <div className="size-8 md:size-11 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:rotate-12 transition-transform"><AlertTriangle className="size-3.5 md:size-5" /></div>
+                      <div className="size-7 md:size-9 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:rotate-12 transition-transform"><AlertTriangle className="size-3 md:size-4" /></div>
                       <h4 className="font-black text-[9px] md:text-sm uppercase tracking-widest">Alerte Trésorerie</h4>
                    </div>
                    <p className="text-[9px] md:text-sm font-bold text-amber-800 leading-relaxed uppercase tracking-tight">
@@ -380,7 +437,7 @@ export default function TreasuryModule() {
                       <Badge className="bg-primary text-white font-black px-4 py-1 rounded-full text-[7px] md:text-xs">{payments?.length || 0} ENCAISSEMENTS CERTIFIÉS</Badge>
                    </div>
                    <div className="relative group w-full md:w-80">
-                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3.5 md:size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3 md:size-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input 
                         placeholder="Chercher par nom..." 
                         value={searchTerm}
@@ -390,65 +447,30 @@ export default function TreasuryModule() {
                    </div>
                 </div>
                 
-                <div className="md:hidden p-4 space-y-3">
+                <div className="p-4 space-y-3">
                    {loadingPayments ? (
                      <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary size-7" /></div>
                    ) : payments?.filter((p: any) => 
                       (p.studentName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
                       (p.studentId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
                     ).map((p: any) => (
-                      <div key={p.id} className="p-5 bg-muted/10 rounded-[1.8rem] border border-muted/50 flex flex-col gap-4 active:scale-95 transition-all">
-                         <div className="flex justify-between items-start">
-                            <div>
-                               <p className="font-black text-xs uppercase">{p.studentName}</p>
-                               <p className="text-[8px] font-bold text-muted-foreground uppercase">{p.studentId}</p>
-                            </div>
-                            <Badge className="bg-emerald-500 text-white font-black text-[10px] h-9 px-3 rounded-xl">{Number(p.amountPaid).toLocaleString()} F</Badge>
-                         </div>
-                         <div className="flex justify-between items-center text-[7px] font-black uppercase text-muted-foreground">
-                            <span>{p.description}</span>
-                            <span>{new Date(p.date).toLocaleDateString('fr-FR')}</span>
-                         </div>
+                      <div key={p.id} className="p-4 md:p-8 bg-muted/5 rounded-[1.5rem] md:rounded-[2.5rem] border border-muted/20 hover:border-primary/10 hover:bg-white hover:shadow-xl transition-all group flex items-center justify-between">
+                        <div className="flex items-center gap-3 md:gap-6 min-w-0">
+                           <div className="size-9 md:size-14 bg-primary/10 text-primary rounded-xl md:rounded-[1rem] flex items-center justify-center font-black text-sm md:text-xl group-hover:scale-110 transition-transform">{(p.studentName || "?")[0]}</div>
+                           <div className="min-w-0">
+                             <p className="font-black text-xs md:text-xl text-foreground uppercase tracking-tight group-hover:text-primary transition-colors truncate">{p.studentName}</p>
+                             <div className="flex items-center gap-2">
+                               <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[7px] md:text-[10px] px-2 md:px-4 py-0.5 rounded-full">{p.description}</Badge>
+                               <span className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase hidden sm:inline-block">Le {new Date(p.date).toLocaleDateString('fr-FR')}</span>
+                             </div>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="font-black text-sm md:text-2xl text-emerald-600 tabular-nums">+{Number(p.amountPaid).toLocaleString()} F</p>
+                           <span className="text-[7px] md:text-[9px] font-black text-muted-foreground uppercase opacity-40 sm:hidden">{new Date(p.date).toLocaleDateString('fr-FR')}</span>
+                        </div>
                       </div>
                    ))}
-                </div>
-
-                <div className="hidden md:block overflow-x-auto">
-                   <table className="w-full">
-                      <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b">
-                         <tr>
-                            <th className="px-12 py-8 text-left tracking-widest">Élève & Identifiant</th>
-                            <th className="px-12 py-8 text-left tracking-widest">Date Officielle</th>
-                            <th className="px-12 py-8 text-left tracking-widest">Description</th>
-                            <th className="px-12 py-8 text-right tracking-widest">Montant Encaissé</th>
-                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-muted/30">
-                        {payments?.filter((p: any) => 
-                          (p.studentName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-                          (p.studentId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-                        ).map((p: any) => (
-                          <tr key={p.id} className="hover:bg-muted/5 transition-all group">
-                            <td className="px-12 py-8">
-                               <div className="flex items-center gap-6">
-                                  <div className="size-14 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">{(p.studentName || "?")[0]}</div>
-                                  <div>
-                                    <p className="font-black text-xl text-foreground uppercase tracking-tight group-hover:text-primary transition-colors">{p.studentName}</p>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase">{p.studentId}</p>
-                                  </div>
-                               </div>
-                            </td>
-                            <td className="px-12 py-8 font-bold text-muted-foreground text-sm uppercase">{new Date(p.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
-                            <td className="px-12 py-8">
-                               <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[10px] px-4 py-1 rounded-full">{p.description}</Badge>
-                            </td>
-                            <td className="px-12 py-8 text-right">
-                               <span className="font-black text-2xl text-emerald-600 tabular-nums">{Number(p.amountPaid).toLocaleString()} F</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                   </table>
                 </div>
              </Card>
           </TabsContent>
@@ -463,7 +485,7 @@ export default function TreasuryModule() {
                 <Dialog open={isAddingExpense} onOpenChange={setIsAddingExpense}>
                    <DialogTrigger asChild>
                      <Button className="bg-red-600 hover:bg-red-700 shadow-xl shadow-red-600/20 rounded-2xl font-black px-10 h-12 md:h-18 w-full md:w-auto active:scale-95 transition-all text-xs md:text-lg relative z-10">
-                       <Plus className="mr-2 size-4 md:size-6" /> Nouvelle Dépense
+                       <Plus className="mr-1.5 md:mr-2 size-3.5 md:size-5" /> Nouvelle Dépense
                      </Button>
                    </DialogTrigger>
                    <DialogContent className="rounded-[2.5rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
@@ -479,7 +501,7 @@ export default function TreasuryModule() {
                                   <SelectTrigger className="h-12 rounded-xl border-2 font-bold text-sm"><SelectValue /></SelectTrigger>
                                   <SelectContent className="rounded-xl p-1">
                                      {["Fournitures", "Maintenance", "Factures", "Internet", "Événement"].map(v => (
-                                       <SelectItem key={v} value={v} className="font-bold p-3 rounded-lg">{v}</SelectItem>
+                                       <SelectItem key={v} value={v} className="font-bold p-3 rounded-lg text-xs">{v}</SelectItem>
                                      ))}
                                   </SelectContent>
                                </Select>
@@ -494,7 +516,7 @@ export default function TreasuryModule() {
                             <Input value={expenseForm.motif} onChange={e => setExpenseForm({...expenseForm, motif: e.target.value})} className="h-12 rounded-xl border-2 font-bold text-sm" placeholder="Ex: Achat fournitures..." />
                          </div>
                          <Button onClick={handleAddExpense} disabled={loading} className="w-full h-14 md:h-16 bg-red-600 hover:bg-red-700 rounded-2xl font-black text-sm md:text-lg shadow-xl shadow-red-600/20 active:scale-95 transition-all">
-                            {loading ? <Loader2 className="animate-spin mr-2 size-5" /> : <ShieldAlert className="size-5 mr-2" />}
+                            {loading ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldAlert className="size-4 md:size-5 mr-1.5 md:mr-2" />}
                             Sceller la Dépense
                          </Button>
                       </div>
@@ -503,61 +525,66 @@ export default function TreasuryModule() {
              </div>
              
              <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] overflow-hidden min-h-[400px]">
-                <div className="md:hidden p-4 space-y-3">
+                <div className="p-4 space-y-3">
                    {loadingExpenses ? (
                      <div className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-primary size-7" /></div>
                    ) : expenses?.length === 0 ? (
-                     <p className="text-center italic opacity-30 py-20 text-sm font-bold">Aucune dépense enregistrée.</p>
+                     <div className="py-20 text-center space-y-4 opacity-30">
+                        <PiggyBank className="size-12 md:size-16 mx-auto text-muted-foreground" />
+                        <p className="italic font-bold">Aucune dépense enregistrée.</p>
+                     </div>
                    ) : expenses.map((e: any) => (
-                      <div key={e.id} className="p-5 bg-red-50/50 rounded-[1.8rem] border border-red-100 flex flex-col gap-3 active:scale-95 transition-all">
-                         <div className="flex justify-between items-start">
-                            <div>
-                               <p className="font-black text-xs uppercase truncate max-w-[150px]">{e.motif}</p>
-                               <p className="text-[7px] font-black text-red-600 uppercase tracking-widest">{e.category}</p>
+                      <div key={e.id} className="p-4 md:p-8 bg-red-50/30 rounded-[1.5rem] md:rounded-[2.5rem] border border-red-100 flex items-center justify-between group active:scale-95 transition-all">
+                         <div className="flex items-center gap-3 md:gap-6 min-w-0">
+                            <div className="size-9 md:size-12 bg-red-50 text-red-600 rounded-xl md:rounded-[1rem] flex items-center justify-center transition-transform group-hover:rotate-12 shadow-sm shrink-0">
+                               <PiggyBank className="size-4 md:size-5" />
                             </div>
-                            <p className="font-black text-red-600 text-sm">-{Number(e.amount).toLocaleString()} F</p>
+                            <div className="min-w-0">
+                               <p className="font-black text-xs md:text-xl text-foreground uppercase tracking-tight truncate">{e.motif}</p>
+                               <div className="flex items-center gap-2">
+                                  <Badge className="bg-red-50 text-red-700 border-red-100 font-black uppercase text-[7px] md:text-[9px] px-3 py-0.5 rounded-full">{e.category}</Badge>
+                                  <span className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase hidden sm:inline-block">Par {e.author?.split(' ')[0]}</span>
+                               </div>
+                            </div>
                          </div>
-                         <div className="flex justify-between items-center text-[6px] font-black uppercase text-muted-foreground opacity-60 pt-2 border-t border-red-100/50">
-                            <span>Par: {e.author?.split(' ')[0]}</span>
-                            <span>{new Date(e.date).toLocaleDateString('fr-FR')}</span>
+                         <div className="text-right shrink-0">
+                            <p className="font-black text-sm md:text-2xl text-red-600 tabular-nums">-{Number(e.amount).toLocaleString()} F</p>
+                            <span className="text-[7px] md:text-[9px] font-black text-muted-foreground uppercase opacity-40 sm:hidden">{new Date(e.date).toLocaleDateString('fr-FR')}</span>
                          </div>
                       </div>
                    ))}
                 </div>
+             </Card>
+          </TabsContent>
 
-                <div className="hidden md:block overflow-x-auto">
-                   <table className="w-full">
-                      <thead className="bg-red-50/50 text-[10px] font-black uppercase text-red-700 border-b border-red-100">
-                         <tr>
-                            <th className="px-12 py-8 text-left tracking-widest">Motif & Responsable</th>
-                            <th className="px-12 py-8 text-left tracking-widest">Catégorie</th>
-                            <th className="px-12 py-8 text-left tracking-widest">Date</th>
-                            <th className="px-12 py-8 text-right tracking-widest">Montant Sorti</th>
-                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-muted/30">
-                        {expenses?.map((e: any) => (
-                          <tr key={e.id} className="hover:bg-red-50/10 transition-all group">
-                            <td className="px-12 py-8">
-                               <div className="flex items-center gap-6">
-                                  <div className="size-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center transition-transform group-hover:rotate-12"><PiggyBank className="size-7" /></div>
-                                  <div>
-                                    <p className="font-black text-xl text-foreground uppercase tracking-tight group-hover:text-red-700 transition-colors">{e.motif}</p>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Auteur: {e.author}</p>
-                                  </div>
-                               </div>
-                            </td>
-                            <td className="px-12 py-8">
-                               <Badge className="bg-red-50 text-red-700 border-red-100 font-black uppercase text-[10px] px-5 py-1.5 rounded-full shadow-sm">{e.category}</Badge>
-                            </td>
-                            <td className="px-12 py-8 font-bold text-muted-foreground text-sm uppercase">{new Date(e.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
-                            <td className="px-12 py-8 text-right">
-                               <span className="font-black text-2xl text-red-600 tabular-nums">-{Number(e.amount).toLocaleString()} F</span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                   </table>
+          <TabsContent value="tarifs" className="animate-in fade-in">
+             <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] overflow-hidden">
+                <div className="p-6 md:p-14 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                   <div className="space-y-1">
+                      <h3 className="text-lg md:text-3xl font-black tracking-tight uppercase">Contribution par <span className="text-primary italic">Classe</span></h3>
+                      <p className="text-[8px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Définir les frais de scolarité attendus</p>
+                   </div>
+                   <Button onClick={handleSaveFees} disabled={savingFees} className="w-full md:w-auto h-12 md:h-16 px-8 md:px-14 rounded-xl md:rounded-2xl bg-primary font-black text-[10px] md:text-lg shadow-xl shadow-primary/20 active:scale-95 transition-all">
+                      {savingFees ? <Loader2 className="animate-spin mr-2 size-4 md:size-5" /> : <Save className="mr-2 size-4 md:size-5" />} Sceller les Tarifs
+                   </Button>
+                </div>
+                <div className="p-4 md:p-14">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+                      {OFFICIAL_CLASSES.map((classId) => (
+                        <div key={classId} className="space-y-2 p-4 md:p-6 bg-muted/5 rounded-2xl md:rounded-[2rem] border-2 border-transparent hover:border-primary/10 transition-all group">
+                           <Label className="font-black text-[9px] md:text-[10px] uppercase text-muted-foreground px-1">{classId}</Label>
+                           <div className="relative">
+                             <Input 
+                               type="number" 
+                               value={feesData[classId] || "150000"} 
+                               onChange={(e) => setFeesData({...feesData, [classId]: e.target.value})}
+                               className="h-12 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-sm md:text-xl text-center pr-8 shadow-inner focus:ring-primary" 
+                             />
+                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-muted-foreground">F</span>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
                 </div>
              </Card>
           </TabsContent>
