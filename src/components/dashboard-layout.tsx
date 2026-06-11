@@ -18,7 +18,8 @@ import {
   History,
   ClipboardList,
   Layers,
-  CalendarDays
+  CalendarDays,
+  TrendingUp
 } from "lucide-react"
 import {
   Sidebar,
@@ -81,6 +82,7 @@ const navigationConfig = {
   ],
   Élève: [
     { name: "Mon Cockpit", href: "/dashboard/eleve", icon: LayoutDashboard },
+    { name: "Ma Progression", href: "/dashboard/eleve/progression", icon: TrendingUp },
     { name: "Cahier de Vie", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Mon Planning", href: "/dashboard/eleve/agenda", icon: CalendarDays },
     { name: "Mes Notes", href: "/dashboard/eleve/notes", icon: PenTool },
@@ -104,8 +106,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
-  // LOGIQUE DE FOND : Image immersive uniquement sur les écrans d'entrée et les dashboards racine.
-  // Les sous-modules (espace élèves sub-paths) récupèrent le fond gris bg-[#F8FAFC].
   const showBackground = useMemo(() => {
     const immersivePages = [
       '/dashboard/eleve',
@@ -217,7 +217,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           tooltip={item.name}
                         >
                           <Link href={item.href}>
-                            <item.icon className={cn("size-4 md:size-5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
+                            <item.icon className={cn("size-4 md:size-4.5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
                             <span className="font-bold text-[11px] md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
                               <Badge className="ml-auto bg-amber-400 text-[7px] font-black h-3.5 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden animate-pulse">IA</Badge>
