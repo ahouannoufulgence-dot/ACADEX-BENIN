@@ -29,7 +29,7 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs, orderBy } from "firebase/firestore"
+import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs, orderBy, setDoc } from "firebase/firestore"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
@@ -72,7 +72,7 @@ export default function GradesPage() {
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
   const [completionStats, setCompletionStats] = useState<Record<string, boolean>>({})
-  const [classCoefficient, setClassCoefficient] = useState<number>(1)
+  const [classCoefficient, setClassCoefficient] = useState<string>("2")
 
   useEffect(() => {
     setMounted(true)
@@ -89,12 +89,21 @@ export default function GradesPage() {
       
       setLoadingExisting(true)
       try {
+        // Tentative de récupération du coef spécifique à la classe
         const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
-        const configSnap = await getDoc(doc(db, "subject_configs", configId))
+        let configSnap = await getDoc(doc(db, "subject_configs", configId))
+        
+        if (!configSnap.exists()) {
+          // Repli sur le niveau général (6EME au lieu de 6EME A)
+          const level = selectedClass.split(' ')[0]
+          const levelConfigId = `${level}_${userSubject}`.replace(/\s/g, '_')
+          configSnap = await getDoc(doc(db, "subject_configs", levelConfigId))
+        }
+
         if (configSnap.exists()) {
-          setClassCoefficient(Number(configSnap.data().coef) || 1)
+          setClassCoefficient(configSnap.data().coef.toString())
         } else {
-          setClassCoefficient(2)
+          setClassCoefficient("2")
         }
 
         const q = query(
@@ -155,6 +164,18 @@ export default function GradesPage() {
     const batch = writeBatch(db)
 
     try {
+      // 1. Sauvegarder le coefficient pour cette classe/matière
+      const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
+      const configRef = doc(db, "subject_configs", configId)
+      batch.set(configRef, {
+        level: selectedClass.split(' ')[0],
+        classId: selectedClass,
+        subject: userSubject,
+        coef: Number(classCoefficient) || 2,
+        updatedAt: serverTimestamp()
+      }, { merge: true })
+
+      // 2. Sauvegarder les notes
       students?.forEach((student: any) => {
         const valStr = gradesData[student.matricule]
         if (valStr === undefined || valStr === "") return 
@@ -171,7 +192,7 @@ export default function GradesPage() {
           term: selectedTrimestre,
           type: selectedEvalType,
           value: val,
-          coefficient: Number(classCoefficient) || 1,
+          coefficient: Number(classCoefficient) || 2,
           teacherName: userName,
           academicYear: activeYear,
           updatedAt: serverTimestamp()
@@ -179,7 +200,7 @@ export default function GradesPage() {
       })
 
       await batch.commit()
-      toast({ title: "Note scellée avec succès", description: `Le registre de ${selectedClass} est mis à jour.` })
+      toast({ title: "Registre scellé", description: `Les notes et le coefficient de ${selectedClass} sont à jour.` })
       setCompletionStats(prev => ({ ...prev, [selectedEvalType]: true }))
     } catch (e) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'grades', operation: 'write' }))
@@ -201,7 +222,7 @@ export default function GradesPage() {
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
               Saisie <span className="text-primary italic">Progressive</span>
             </h1>
-            <div className="flex items-center gap-3 text-muted-foreground font-bold text-[10px] md:text-sm">
+            <div className="flex items-center gap-3 text-muted-foreground font-bold text-[9px] md:text-sm">
               <Clock className="size-3.5 text-amber-500" />
               <span>Mode Trimestriel • Moyenne Provisoire Activée</span>
             </div>
@@ -219,12 +240,20 @@ export default function GradesPage() {
         <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[10px] md:border-l-[15px] border-primary relative overflow-hidden">
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 relative z-10">
               <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière & Coef</label>
-                 <div className="flex items-center gap-4 bg-muted/20 p-4 rounded-2xl">
-                    <div className="size-10 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm"><Calculator className="size-5" /></div>
-                    <div>
-                       <p className="font-black text-xs md:text-lg uppercase text-foreground truncate">{userSubject || "Non défini"}</p>
-                       <p className="text-[9px] font-black text-primary">COEF {classCoefficient}</p>
+                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière & Coefficient</label>
+                 <div className="flex items-center gap-4 bg-muted/20 p-3 md:p-4 rounded-2xl">
+                    <div className="size-10 md:size-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0"><Calculator className="size-5 md:size-6" /></div>
+                    <div className="flex-1 min-w-0">
+                       <p className="font-black text-xs md:text-sm uppercase text-foreground truncate">{userSubject || "Non défini"}</p>
+                       <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[9px] font-black text-primary uppercase">COEF:</span>
+                          <Input 
+                            type="number" 
+                            value={classCoefficient} 
+                            onChange={(e) => setClassCoefficient(e.target.value)}
+                            className="h-7 w-12 bg-white border-primary/20 text-center font-black text-xs rounded-md p-0"
+                          />
+                       </div>
                     </div>
                  </div>
               </div>
