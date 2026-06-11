@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -41,7 +42,6 @@ export default function StudentProgressionPage() {
 
   const { data: grades, loading } = useCollection(gradesQuery)
 
-  // CALCULS RÉELS BASÉS SUR LES NOTES SCELLÉES
   const analysis = useMemo(() => {
     if (!grades || grades.length === 0) return { generalAvg: "0.00", topSubjects: [], calculatedSubjects: [] }
     
@@ -63,8 +63,15 @@ export default function StudentProgressionPage() {
     })
 
     const calculatedSubjects = Object.values(subjects).map((s: any) => {
-      const avgInt = ((s.i1 || 0) + (s.i2 || 0) + (s.i3 || 0)) / 3
-      const subjectAvg = (avgInt + (s.d1 || 0) + (s.d2 || 0)) / 3
+      const interros = [s.i1, s.i2, s.i3].filter(v => v !== null)
+      const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : null
+      
+      const pillars = []
+      if (avgInt !== null) pillars.push(avgInt)
+      if (s.d1 !== null) pillars.push(s.d1)
+      if (s.d2 !== null) pillars.push(s.d2)
+
+      const subjectAvg = pillars.length > 0 ? (pillars.reduce((a:number, b:number) => a+b, 0) / pillars.length) : 0
       return {
         name: s.name,
         average: subjectAvg,
@@ -88,7 +95,7 @@ export default function StudentProgressionPage() {
     if (!analysis.calculatedSubjects || analysis.calculatedSubjects.length === 0) {
       toast({ 
         title: "Notes manquantes", 
-        description: "L'IA a besoin de vos notes scellées pour vous diagnostiquer.", 
+        description: "L'IA a besoin de tes notes scellées pour te coacher.", 
         variant: "destructive" 
       })
       return
@@ -103,15 +110,14 @@ export default function StudentProgressionPage() {
           grade: Number(s.average.toFixed(2)),
           maxGrade: 20
         })),
-        evaluationContext: "Diagnostic de mi-trimestre",
-        teacherComments: "Demande autonome de l'élève via son cockpit."
+        evaluationContext: "Diagnostic de réussite ACADEX",
+        teacherComments: "Analyse autonome par l'élève."
       }
       const data = await generateAcademicFeedback(input)
       setResult(data)
-      toast({ title: "Analyse réussie", description: "Le coach IA a scellé votre rapport." })
+      toast({ title: "Analyse réussie", description: "Le coach IA a scellé ton rapport." })
     } catch (e) {
-      console.error(e)
-      toast({ title: "Échec du Diagnostic", description: "Le cerveau ACADEX est momentanément indisponible.", variant: "destructive" })
+      toast({ title: "Échec du Diagnostic", variant: "destructive" })
     } finally {
       setAnalyzing(false)
     }
@@ -119,142 +125,117 @@ export default function StudentProgressionPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-black tracking-tight text-foreground">Ma <span className="text-primary italic">Progression</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Analyse temps réel de votre évolution certifiée.</p>
+      <div className="space-y-6 md:space-y-10 animate-in">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-5xl font-black tracking-tight text-foreground uppercase">Ma <span className="text-primary italic">Progression</span></h1>
+            <p className="text-muted-foreground font-medium text-[10px] md:text-lg">Analyse certifiée de ton évolution scolaire.</p>
           </div>
           <Button 
             onClick={handleAnalyze} 
             disabled={analyzing || loading || !grades?.length}
-            className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-2xl h-14 px-8 font-black text-lg group transition-all active:scale-95"
+            className="bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 rounded-xl md:rounded-[2rem] h-12 md:h-16 px-6 md:px-10 font-black text-xs md:text-lg group transition-all active:scale-95 w-full md:w-auto"
           >
-            {analyzing ? <Loader2 className="mr-3 size-6 animate-spin" /> : <Sparkles className="mr-3 size-6 group-hover:scale-125 transition-transform" />}
-            {analyzing ? "Analyse en cours..." : "Lancer le Diagnostic IA"}
+            {analyzing ? <Loader2 className="mr-2 md:mr-3 size-4 md:size-6 animate-spin" /> : <Sparkles className="mr-2 md:mr-3 size-4 md:size-6" />}
+            {analyzing ? "Coach IA..." : "Lancer Diagnostic IA"}
           </Button>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-12">
-          {/* Stats de progression */}
-          <div className="lg:col-span-4 space-y-6">
-            <Card className="premium-card p-8 bg-foreground text-white overflow-hidden relative group">
-              <div className="relative z-10 space-y-6">
-                <div className="size-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
-                  <Trophy className="size-8" />
+        <div className="grid gap-6 md:gap-10 lg:grid-cols-12">
+          {/* Stats - Vertical on Mobile */}
+          <div className="lg:col-span-4 space-y-4 md:space-y-8">
+            <Card className="p-6 md:p-10 bg-foreground text-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden relative group">
+              <div className="relative z-10 space-y-4 md:space-y-8">
+                <div className="size-11 md:size-20 bg-primary rounded-xl md:rounded-3xl flex items-center justify-center shadow-lg">
+                  <Trophy className="size-5 md:size-10" />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-1">Moyenne Générale</p>
-                  <p className="text-5xl font-black">{loading ? "..." : analysis.generalAvg}</p>
-                  <p className="text-xs font-medium text-primary mt-2">Objectif : Excellence Pédagogique</p>
-                </div>
-                <div className="pt-4 border-t border-white/10 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-white/40">
-                   <span>Certification ACADEX</span>
-                   <Badge className="bg-primary/20 text-primary border-none">LIVE</Badge>
+                  <p className="text-[8px] md:text-[10px] font-black uppercase text-white/40 tracking-[0.2em] mb-1">Moyenne Générale</p>
+                  <p className="text-3xl md:text-6xl font-black tabular-nums">{loading ? "..." : analysis.generalAvg}</p>
+                  <Badge className="bg-primary/20 text-primary border-none text-[8px] mt-2 font-black uppercase tracking-widest h-5">LIVE ACADEX</Badge>
                 </div>
               </div>
-              <TrendingUp className="absolute -bottom-10 -right-10 size-48 text-white/5 pointer-events-none group-hover:scale-110 transition-transform duration-700" />
+              <TrendingUp className="absolute -bottom-10 -right-10 size-32 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700" />
             </Card>
 
-            <Card className="premium-card p-8 border-l-[10px] border-primary bg-white">
-               <h3 className="font-black text-lg mb-6 flex items-center gap-3"><Target className="text-primary" /> Mes points forts</h3>
-               <div className="space-y-4">
+            <Card className="p-6 md:p-10 border-l-[8px] md:border-l-[15px] border-primary bg-white rounded-[1.8rem] md:rounded-[3rem] shadow-sm">
+               <h3 className="font-black text-sm md:text-2xl mb-5 md:mb-8 flex items-center gap-2 md:gap-4 uppercase tracking-tight"><Target className="text-primary size-4 md:size-8" /> Mes Atouts</h3>
+               <div className="space-y-3">
                  {loading ? (
-                   <div className="animate-pulse space-y-3">
-                     <div className="h-14 bg-muted rounded-2xl" />
-                     <div className="h-14 bg-muted rounded-2xl" />
+                   <div className="animate-pulse space-y-2">
+                     <div className="h-10 bg-muted rounded-xl" />
+                     <div className="h-10 bg-muted rounded-xl" />
                    </div>
                  ) : analysis.topSubjects.length === 0 ? (
-                   <div className="text-center py-6">
-                      <p className="text-sm font-medium text-muted-foreground italic">En attente de vos premiers points scellés.</p>
-                   </div>
+                   <p className="text-[10px] md:text-sm font-medium text-muted-foreground italic text-center py-4">En attente de tes premiers points.</p>
                  ) : (
                    analysis.topSubjects.map((s, i) => (
-                     <div key={i} className="flex items-center justify-between p-5 bg-muted/30 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all">
-                        <span className="font-black text-foreground uppercase tracking-tight">{s.name}</span>
-                        <Badge className="bg-primary text-white h-8 px-4 rounded-xl font-black text-base">{s.average.toFixed(2)}</Badge>
+                     <div key={i} className="flex items-center justify-between p-3 md:p-6 bg-muted/20 rounded-xl md:rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all">
+                        <span className="font-black text-xs md:text-xl text-foreground uppercase truncate pr-4">{s.name}</span>
+                        <Badge className="bg-primary text-white h-7 md:h-10 px-3 md:px-5 rounded-lg md:rounded-xl font-black text-xs md:text-xl">{s.average.toFixed(1)}</Badge>
                      </div>
                    ))
                  )}
                </div>
             </Card>
-            
-            <Card className="p-6 bg-amber-50 border-2 border-amber-100 rounded-[2rem] flex items-start gap-4">
-              <Info className="size-6 text-amber-600 shrink-0 mt-1" />
-              <p className="text-[11px] font-bold text-amber-800 leading-relaxed uppercase tracking-tight">
-                Les statistiques de progression sont synchronisées spontanément avec les carnets de notes de vos professeurs.
-              </p>
-            </Card>
           </div>
 
-          {/* Analyse IA ou Placeholder */}
+          {/* Analysis View */}
           <div className="lg:col-span-8">
              {!result ? (
-               <Card className="border-none shadow-sm bg-white rounded-[3rem] p-20 text-center flex flex-col items-center justify-center h-full space-y-8 border-4 border-dashed border-muted">
-                 <div className="size-32 bg-muted rounded-[2.5rem] flex items-center justify-center opacity-20 shadow-inner">
-                    <Sparkles className="size-16" />
+               <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] p-10 md:p-24 text-center flex flex-col items-center justify-center h-full space-y-6 md:space-y-10 border-4 border-dashed border-muted/50">
+                 <div className="size-20 md:size-40 bg-muted/40 rounded-[2rem] md:rounded-[3.5rem] flex items-center justify-center shadow-inner group">
+                    <Sparkles className="size-10 md:size-20 text-muted-foreground opacity-20 group-hover:scale-110 group-hover:text-primary group-hover:opacity-100 transition-all duration-700" />
                  </div>
-                 <div className="space-y-3">
-                   <h3 className="text-3xl font-black text-foreground tracking-tight">Le Coach Personnel ACADEX</h3>
-                   <p className="text-muted-foreground font-medium max-w-sm mx-auto leading-relaxed">
-                     L'intelligence artificielle analyse vos notes réelles pour identifier vos forces et vous proposer un plan de réussite sur-mesure.
+                 <div className="space-y-2 md:space-y-4">
+                   <h3 className="text-xl md:text-4xl font-black text-foreground uppercase tracking-tight">Le Coach IA ACADEX</h3>
+                   <p className="text-muted-foreground font-medium max-w-sm mx-auto text-[10px] md:text-xl leading-relaxed">
+                     L'IA analyse tes notes scellées pour tracer ton plan vers l'excellence.
                    </p>
                  </div>
                  <Button 
                    onClick={handleAnalyze} 
                    disabled={analyzing || loading || !grades?.length} 
-                   className="rounded-2xl h-16 px-12 bg-primary font-black text-lg shadow-xl shadow-primary/20 hover:scale-105 transition-all active:scale-95"
+                   className="rounded-xl md:rounded-[1.8rem] h-12 md:h-18 px-8 md:px-16 bg-primary font-black text-xs md:text-xl shadow-xl transition-all active:scale-95"
                  >
-                   {loading ? "Calcul des moyennes..." : "Débloquer mon diagnostic personnel"}
+                   Débloquer mon diagnostic
                  </Button>
-                 {!grades?.length && !loading && (
-                   <div className="flex items-center gap-2 text-destructive font-black text-[10px] uppercase tracking-widest">
-                     <TrendingDown className="size-3" /> Aucune note scellée détectée pour le moment.
-                   </div>
-                 )}
                </Card>
              ) : (
-               <div className="space-y-8 animate-in zoom-in-95 duration-500">
-                 <Card className="premium-card p-10 border-l-[12px] border-primary shadow-2xl bg-white">
-                    <div className="flex justify-between items-start mb-10">
-                      <Badge className="bg-primary px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest">RAPPORT D'ANALYSE IA</Badge>
-                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted px-4 py-1.5 rounded-full">Généré le {new Date().toLocaleDateString('fr-FR')}</span>
+               <div className="space-y-6 md:space-y-10 animate-in zoom-in-95 duration-500">
+                 <Card className="p-6 md:p-14 border-l-[10px] md:border-l-[18px] border-primary shadow-2xl bg-white rounded-[2rem] md:rounded-[4rem] relative overflow-hidden">
+                    <div className="flex justify-between items-start mb-8 md:mb-14 relative z-10">
+                      <Badge className="bg-primary px-4 md:px-8 py-1 md:py-3 rounded-full font-black text-[8px] md:text-sm uppercase tracking-widest">RAPPORT IA SCÉLLÉ</Badge>
+                      <span className="text-[7px] md:text-xs font-black text-muted-foreground uppercase tracking-widest bg-muted px-3 md:px-5 py-1 md:py-2 rounded-full">{new Date().toLocaleDateString('fr-FR')}</span>
                     </div>
                     
-                    <div className="space-y-12">
-                      <section className="space-y-6">
-                        <h4 className="flex items-center gap-3 font-black text-2xl text-foreground">
-                          <CheckCircle2 className="size-8 text-primary" /> Observation Pédagogique
+                    <div className="space-y-8 md:space-y-16 relative z-10">
+                      <section className="space-y-4 md:space-y-8">
+                        <h4 className="flex items-center gap-3 md:gap-5 font-black text-lg md:text-4xl text-foreground uppercase tracking-tight">
+                          <CheckCircle2 className="size-6 md:size-12 text-primary" /> Observation
                         </h4>
-                        <div className="p-8 bg-primary/5 rounded-[2.5rem] border-2 border-primary/10 italic font-medium text-xl leading-relaxed text-foreground/80 shadow-inner">
+                        <div className="p-6 md:p-12 bg-primary/5 rounded-[1.5rem] md:rounded-[3.5rem] border-2 border-primary/10 italic font-medium text-xs md:text-2xl leading-relaxed text-foreground/80 shadow-inner">
                           "{result.academicFeedback}"
                         </div>
                       </section>
 
-                      <section className="space-y-6">
-                         <h4 className="flex items-center gap-3 font-black text-2xl text-foreground">
-                           <Target className="size-8 text-primary" /> Stratégie de Réussite
+                      <section className="space-y-4 md:space-y-8">
+                         <h4 className="flex items-center gap-3 md:gap-5 font-black text-lg md:text-4xl text-foreground uppercase tracking-tight">
+                           <Target className="size-6 md:size-12 text-primary" /> Plan d'Action
                          </h4>
-                         <div className="grid gap-4">
+                         <div className="grid gap-3 md:gap-6">
                             {result.recommendations.map((rec, i) => (
-                              <div key={i} className="flex gap-6 items-start p-6 bg-white border-2 border-muted/50 rounded-[2rem] group hover:border-primary/30 transition-all hover:shadow-md">
-                                <div className="size-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center font-black shrink-0 text-xl group-hover:bg-primary group-hover:text-white transition-all">
+                              <div key={i} className="flex gap-4 md:gap-8 items-start p-5 md:p-8 bg-white border-2 border-muted/50 rounded-[1.2rem] md:rounded-[2.5rem] group hover:border-primary/30 transition-all hover:shadow-md">
+                                <div className="size-8 md:size-16 bg-primary/10 text-primary rounded-lg md:rounded-[1.4rem] flex items-center justify-center font-black shrink-0 text-xs md:text-3xl group-hover:bg-primary group-hover:text-white transition-all">
                                   {i + 1}
                                 </div>
-                                <p className="font-bold text-foreground/90 text-lg leading-tight pt-2">{rec}</p>
+                                <p className="font-bold text-foreground/90 text-[10px] md:text-xl leading-tight pt-1 md:pt-4">{rec}</p>
                               </div>
                             ))}
                          </div>
                       </section>
-
-                      <div className="pt-8 border-t border-dashed flex flex-col sm:flex-row justify-between items-center gap-6">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] text-center">Intelligence Pédagogique certifiée ACADEX V1</p>
-                        <div className="flex gap-4">
-                           <Button variant="outline" className="font-black text-xs rounded-xl h-10 border-2">Signaler Erreur</Button>
-                           <Button className="font-black text-xs rounded-xl h-10 bg-foreground text-white px-6">Partager aux parents</Button>
-                        </div>
-                      </div>
                     </div>
+                    <Zap className="absolute -bottom-10 -right-10 size-32 md:size-64 text-primary/5 pointer-events-none" />
                  </Card>
                </div>
              )}
