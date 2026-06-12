@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Le "Cerveau ACADEX" - Assistant IA avec Restriction de Sécurité par Rôle.
@@ -78,8 +77,16 @@ const acadexBrainFlow = ai.defineFlow(
     outputSchema: BrainOutputSchema,
   },
   async (input) => {
-    const { output } = await acadexBrainPrompt(input);
-    if (!output) throw new Error('Le Cerveau ACADEX est resté silencieux.');
-    return output;
+    try {
+      const { output } = await acadexBrainPrompt(input);
+      if (!output) throw new Error('Le Cerveau ACADEX est resté silencieux.');
+      return output;
+    } catch (error: any) {
+      console.error("--- ERREUR FLOW BRAIN ---");
+      console.error("Message:", error.message);
+      console.error("Stack:", error.stack);
+      console.error("-------------------------");
+      throw error;
+    }
   }
 );

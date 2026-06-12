@@ -70,10 +70,17 @@ const generateAcademicFeedbackFlow = ai.defineFlow(
     outputSchema: GenerateAcademicFeedbackOutputSchema,
   },
   async (input) => {
-    const { output } = await academicFeedbackPrompt(input);
-    if (!output) {
-      throw new Error('Le moteur IA ACADEX n\'a pas pu générer de réponse.');
+    try {
+      const { output } = await academicFeedbackPrompt(input);
+      if (!output) {
+        throw new Error('Le moteur IA ACADEX n\'a pas pu générer de réponse.');
+      }
+      return output;
+    } catch (error: any) {
+      console.error("--- ERREUR FLOW FEEDBACK ---");
+      console.error("Message:", error.message);
+      console.error("----------------------------");
+      throw error;
     }
-    return output;
   }
 );
