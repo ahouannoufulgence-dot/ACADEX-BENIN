@@ -3,7 +3,7 @@
  * @fileOverview Flux Genkit pour la génération de feedbacks académiques personnalisés.
  */
 
-import { ai, googleAI } from '@/ai/genkit';
+import { ai, googleAI, isAiConfigured } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateAcademicFeedbackInputSchema = z.object({
@@ -30,6 +30,9 @@ const GenerateAcademicFeedbackOutputSchema = z.object({
 export type GenerateAcademicFeedbackOutput = z.infer<typeof GenerateAcademicFeedbackOutputSchema>;
 
 export async function generateAcademicFeedback(input: GenerateAcademicFeedbackInput): Promise<GenerateAcademicFeedbackOutput> {
+  if (!isAiConfigured) {
+    throw new Error("MISSING_API_KEY: Le module IA n'est pas configuré.");
+  }
   return generateAcademicFeedbackFlow(input);
 }
 

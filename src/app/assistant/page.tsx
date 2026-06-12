@@ -12,7 +12,8 @@ import {
   Loader2, 
   ShieldCheck, 
   Lock,
-  WifiOff
+  WifiOff,
+  AlertCircle
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
@@ -127,13 +128,25 @@ export default function AssistantPage() {
       }
       setMessages(prev => [...prev, aiMessage])
     } catch (e: any) {
+      console.error("Assistant Error:", e.message);
+      
+      let errorContent = "Désolé, j'ai rencontré une difficulté technique. Veuillez vérifier votre connexion internet et réessayer.";
+      
+      if (e.message.includes("MISSING_API_KEY")) {
+        errorContent = "Le Cerveau ACADEX nécessite une configuration système. Veuillez contacter l'administrateur pour activer les capacités d'intelligence artificielle.";
+      }
+
       const errorMsg: Message = {
         role: 'error',
-        content: "Désolé, j'ai rencontré une difficulté technique. Veuillez vérifier votre connexion internet et réessayer.",
+        content: errorContent,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMsg])
-      toast({ title: "Erreur IA", description: "Le cerveau est momentanément indisponible sur votre réseau.", variant: "destructive" })
+      toast({ 
+        title: "Système IA", 
+        description: "Configuration requise ou service indisponible.", 
+        variant: "destructive" 
+      })
     } finally {
       setLoading(false)
     }
@@ -173,7 +186,7 @@ export default function AssistantPage() {
                     msg.role === 'user' ? 'bg-foreground text-white' : 
                     msg.role === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white')}>
                     {msg.role === 'user' ? <User className="size-4 md:size-5" /> : 
-                     msg.role === 'error' ? <WifiOff className="size-4 md:size-5" /> : <Bot className="size-4 md:size-5" />}
+                     msg.role === 'error' ? <AlertCircle className="size-4 md:size-5" /> : <Bot className="size-4 md:size-5" />}
                   </div>
                   <div className="space-y-3">
                     <div className={cn("p-4 md:p-6 rounded-2xl md:rounded-3xl text-xs md:text-base font-medium leading-relaxed shadow-sm",

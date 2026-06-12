@@ -6,7 +6,7 @@
  * - BrainInput - Schéma d'entrée sécurisé.
  */
 
-import { ai, googleAI } from '@/ai/genkit';
+import { ai, googleAI, isAiConfigured } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const BrainInputSchema = z.object({
@@ -26,6 +26,9 @@ export type BrainInput = z.infer<typeof BrainInputSchema>;
 export type BrainOutput = z.infer<typeof BrainOutputSchema>;
 
 export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
+  if (!isAiConfigured) {
+    throw new Error("MISSING_API_KEY: Le module IA n'est pas configuré sur ce serveur.");
+  }
   return acadexBrainFlow(input);
 }
 
