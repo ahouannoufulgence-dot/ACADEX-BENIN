@@ -2,11 +2,11 @@
 /**
  * @fileOverview Le "Cerveau ACADEX" - Assistant IA avec Restriction de Sécurité par Rôle.
  * 
- * Ce module gère les requêtes avec une logique de "Zero Trust" :
- * l'IA ne répond qu'aux données autorisées pour le rôle spécifique.
+ * - askAcadexBrain - Fonction principale d'interrogation.
+ * - BrainInput - Schéma d'entrée sécurisé.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, googleAI } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const BrainInputSchema = z.object({
@@ -31,6 +31,7 @@ export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
 
 const acadexBrainPrompt = ai.definePrompt({
   name: 'acadexBrainPrompt',
+  model: googleAI.model('gemini-1.5-flash-latest'),
   input: { schema: BrainInputSchema },
   output: { schema: BrainOutputSchema },
   prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire pour l'établissement "{{contextData.schoolName}}".
@@ -40,34 +41,23 @@ Votre réponse doit être STRICTEMENT limitée par le rôle de l'utilisateur : {
 
 1. SI RÔLE = "Directeur" (Espace Pilotage) :
    - Vous avez accès à TOUT : trésorerie, notes globales, assiduité profs, dossiers élèves.
-   - Vous pouvez analyser les dépenses, les impayés et la rentabilité.
    - Ton : Analytique, stratégique et professionnel.
-   - Objectif : Optimiser la gestion de l'école.
 
 2. SI RÔLE = "Enseignant" (Espace Pédagogique) :
    - Vous ne répondez QUE sur ses matières et ses élèves.
-   - INTERDICTION ABSOLUE : de parler d'argent (écolages), des salaires, ou des données privées des autres collègues.
-   - Ton : Pédagogique, collaboratif.
+   - INTERDICTION ABSOLUE : de parler d'argent (écolages) ou des salaires.
 
 3. SI RÔLE = "Élève" (Espace Réussite) :
-   - Vous ne répondez QUE sur SES PROPRES DONNÉES (ses notes, ses absences, ses propres paiements).
-   - INTERDICTION ABSOLUE : de comparer avec d'autres élèves nommés ou de donner les moyennes de la classe.
+   - Vous ne répondez QUE sur SES PROPRES DONNÉES.
    - Ton : Encourageant, motivant, comme un coach personnel.
 
-**IDENTITÉ ÉTABLISSEMENT :**
-Nom : {{contextData.schoolName}}
-Année : {{contextData.year}}
-
-**CONTEXTE FINANCIER & ACADÉMIQUE DISPONIBLE :**
+**CONTEXTE :**
 {{{json contextData}}}
 
-**QUESTION UTILISATEUR :**
+**QUESTION :**
 {{{question}}}
 
-**RÈGLES D'OR :**
-- Ne jamais inventer de données non présentes dans le contexte.
-- Répondez toujours en français.
-- Si la question porte sur la trésorerie et que l'utilisateur est "Directeur", soyez très précis.`,
+Répondez en français. Ne jamais inventer de données.`,
 });
 
 const acadexBrainFlow = ai.defineFlow(
@@ -82,10 +72,7 @@ const acadexBrainFlow = ai.defineFlow(
       if (!output) throw new Error('Le Cerveau ACADEX est resté silencieux.');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR FLOW BRAIN ---");
-      console.error("Message:", error.message);
-      console.error("Stack:", error.stack);
-      console.error("-------------------------");
+      console.error("--- ERREUR FLOW BRAIN ---", error.message);
       throw error;
     }
   }

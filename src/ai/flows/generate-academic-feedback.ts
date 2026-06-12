@@ -1,13 +1,9 @@
 'use server';
 /**
  * @fileOverview Flux Genkit pour la génération de feedbacks académiques personnalisés.
- *
- * - generateAcademicFeedback - Analyse les notes et produit un rapport détaillé.
- * - GenerateAcademicFeedbackInput - Schéma d'entrée (Nom, Notes, Contexte).
- * - GenerateAcademicFeedbackOutput - Schéma de sortie (Observation, Synthèse, Actions).
  */
 
-import { ai } from '@/ai/genkit';
+import { ai, googleAI } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateAcademicFeedbackInputSchema = z.object({
@@ -39,28 +35,20 @@ export async function generateAcademicFeedback(input: GenerateAcademicFeedbackIn
 
 const academicFeedbackPrompt = ai.definePrompt({
   name: 'academicFeedbackPrompt',
+  model: googleAI.model('gemini-1.5-flash-latest'),
   input: { schema: GenerateAcademicFeedbackInputSchema },
   output: { schema: GenerateAcademicFeedbackOutputSchema },
-  prompt: `Vous êtes le Conseiller Pédagogique Expert d'ACADEX Bénin. Votre mission est d'analyser les résultats réels de l'élève {{{studentName}}} pour l'orienter vers l'excellence.
+  prompt: `Vous êtes le Conseiller Pédagogique Expert d'ACADEX. Analysez les résultats de {{{studentName}}}.
 
-**RESULTATS RÉELS :**
+**RESULTATS :**
 {{#each grades}}
 - {{{subject}}} : {{{grade}}}/{{{maxGrade}}}
 {{/each}}
 
-**CONTEXTE :**
-{{{evaluationContext}}}
-
-**REMARQUES ENSEIGNANT :**
+**COMMENTAIRES :**
 {{{teacherComments}}}
 
-**VOTRE ANALYSE :**
-1. Identifiez les matières où l'élève excelle.
-2. Repérez les zones de fragilité (moyenne < 10).
-3. Produisez une observation motivante, professionnelle et constructive.
-4. Donnez 3 conseils ultra-spécifiques pour la période suivante.
-
-Répondez uniquement avec l'objet structuré selon le schéma de sortie.`,
+Produisez une analyse motivante et 3 conseils spécifiques.`,
 });
 
 const generateAcademicFeedbackFlow = ai.defineFlow(
@@ -72,14 +60,10 @@ const generateAcademicFeedbackFlow = ai.defineFlow(
   async (input) => {
     try {
       const { output } = await academicFeedbackPrompt(input);
-      if (!output) {
-        throw new Error('Le moteur IA ACADEX n\'a pas pu générer de réponse.');
-      }
+      if (!output) throw new Error('Échec génération feedback.');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR FLOW FEEDBACK ---");
-      console.error("Message:", error.message);
-      console.error("----------------------------");
+      console.error("--- ERREUR FLOW FEEDBACK ---", error.message);
       throw error;
     }
   }

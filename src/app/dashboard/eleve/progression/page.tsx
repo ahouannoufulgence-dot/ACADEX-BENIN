@@ -1,8 +1,7 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   TrendingUp, 
@@ -12,8 +11,6 @@ import {
   Loader2,
   Trophy,
   Target,
-  TrendingDown,
-  ArrowRight,
   ArrowUpRight,
   ArrowDownRight,
   ChevronRight,
@@ -22,13 +19,12 @@ import {
   Info,
   History,
   ShieldCheck,
-  ShieldAlert,
-  Calculator
+  ShieldAlert
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import {
   LineChart,
@@ -157,7 +153,6 @@ export default function StudentProgressionPage() {
   return (
     <DashboardLayout>
       <div className="space-y-5 md:space-y-10 animate-in fade-in duration-500">
-        
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Ma <span className="text-primary italic">Progression</span></h1>
@@ -166,11 +161,9 @@ export default function StudentProgressionPage() {
               <span>Analyse de trajectoire • {activeYear}</span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-             <Badge className="bg-primary text-white h-10 md:h-14 px-5 md:px-10 rounded-xl md:rounded-[1.8rem] flex items-center gap-2 md:gap-3 font-black text-[9px] md:text-lg shadow-xl shadow-primary/20">
-               <ShieldCheck className="size-3.5 md:size-5" /> CERTIFIÉ ACADEX
-             </Badge>
-          </div>
+          <Badge className="bg-primary text-white h-10 md:h-14 px-5 md:px-10 rounded-xl md:rounded-[1.8rem] flex items-center gap-2 md:gap-3 font-black text-[9px] md:text-lg shadow-xl shadow-primary/20 w-fit">
+            <ShieldCheck className="size-3.5 md:size-5" /> CERTIFIÉ ACADEX
+          </Badge>
         </div>
 
         {!selectedSubject ? (
@@ -189,7 +182,7 @@ export default function StudentProgressionPage() {
                          <kpi.icon className="size-4 md:size-7" />
                        </div>
                        {kpi.up !== null && (
-                         <Badge className={cn("rounded-full font-black text-[7px] md:text-[10px] px-2", kpi.up ? "bg-emerald-500" : "bg-red-500")}>
+                         <Badge className={cn("rounded-full font-black text-[7px] md:text-[10px] px-2", kpi.up ? "bg-emerald-500 text-white" : "bg-red-500 text-white")}>
                            {kpi.up ? <ArrowUpRight className="size-2 md:size-3 mr-0.5" /> : <ArrowDownRight className="size-2 md:size-3 mr-0.5" />}
                            {kpi.trend}
                          </Badge>
@@ -206,17 +199,11 @@ export default function StudentProgressionPage() {
             <div className="grid gap-4 md:gap-6">
                <div className="flex items-center justify-between px-2">
                   <h2 className="text-sm md:text-2xl font-black uppercase tracking-tight text-muted-foreground">Progression par Discipline</h2>
-                  <Badge variant="outline" className="text-[7px] md:text-[10px] font-black border-muted-foreground/20">A-Z</Badge>
                </div>
                
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                   {loading ? (
                     [1,2,3].map(i => <Card key={i} className="h-24 md:h-40 rounded-[1.5rem] md:rounded-[2.5rem] bg-muted/20 animate-pulse" />)
-                  ) : analysis?.subjects.length === 0 ? (
-                    <Card className="col-span-full p-20 text-center border-4 border-dashed rounded-[3rem] bg-white/50 opacity-30 flex flex-col items-center justify-center gap-4">
-                       <History className="size-12 md:size-16" />
-                       <p className="font-black uppercase tracking-widest text-xs">Aucun point scellé</p>
-                    </Card>
                   ) : analysis?.subjects.map((sub, i) => (
                     <button key={i} onClick={() => setSelectedSubject(sub.name)} className="text-left group outline-none">
                        <Card className={cn(
@@ -234,15 +221,10 @@ export default function StudentProgressionPage() {
                              </div>
                           </div>
                           <div className="space-y-2 relative z-10">
-                             <div className="flex justify-between text-[7px] md:text-[10px] font-black uppercase text-muted-foreground">
-                                <span>Évolution</span>
-                                <span className="text-emerald-600 flex items-center"><ArrowUpRight className="size-2 md:size-3 mr-0.5" /> +1.5</span>
-                             </div>
                              <div className="w-full bg-muted/30 h-1.5 md:h-2 rounded-full overflow-hidden">
                                 <div className={cn("h-full transition-all duration-1000", sub.average >= 10 ? "bg-primary" : "bg-red-500")} style={{ width: `${(sub.average / 20) * 100}%` }} />
                              </div>
                           </div>
-                          <ChevronRight className="absolute bottom-4 right-4 size-3 md:size-5 text-muted-foreground opacity-20 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                        </Card>
                     </button>
                   ))}
@@ -255,134 +237,40 @@ export default function StudentProgressionPage() {
                 <Button variant="ghost" onClick={() => { setSelectedSubject(null); setAiReport(null); }} className="rounded-xl h-10 md:h-12 bg-white shadow-sm border border-muted/50 px-3 md:px-5 font-black text-[10px] md:text-sm uppercase tracking-widest transition-all hover:bg-primary hover:text-white">
                    <ChevronLeft className="mr-1 size-3 md:size-4" /> Retour
                 </Button>
-                <div className="h-8 w-1 bg-primary/20 rounded-full" />
                 <h2 className="text-xl md:text-4xl font-black uppercase tracking-tight">{selectedSubject}</h2>
              </div>
 
              <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
-                <div className="lg:col-span-8 space-y-6 md:space-y-10">
+                <div className="lg:col-span-8">
                    <Card className="p-4 md:p-12 rounded-[2rem] md:rounded-[4rem] bg-white border-none shadow-sm">
-                      <div className="flex items-center justify-between mb-8 md:mb-14">
-                        <div className="space-y-1">
-                          <h3 className="text-base md:text-2xl font-black flex items-center gap-2 md:gap-4 uppercase">
-                             <TrendingUp className="text-primary size-4 md:size-7" /> Courbe Comparative
-                          </h3>
-                          <p className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Visualisation scellée vs Classe</p>
-                        </div>
-                      </div>
                       <div className="h-[220px] md:h-[400px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={subjectChartData}>
+                          <AreaChart data={subjectChartData}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 8, fontWeight: '900'}} dy={10} />
                             <YAxis domain={[0, 20]} axisLine={false} tickLine={false} tick={{fontSize: 8, fontWeight: '700'}} />
-                            <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '10px' }} />
-                            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '9px', fontWeight: '900', paddingBottom: '30px' }} />
-                            <Line type="monotone" dataKey="Ma Note" stroke="#14532d" strokeWidth={5} dot={{r: 4, strokeWidth: 2, fill: '#fff'}} activeDot={{r: 7}} />
-                            <Line type="monotone" dataKey="Moy. Classe" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Major" stroke="#fbbf24" strokeWidth={2} dot={false} />
-                            <Line type="monotone" dataKey="Dernier" stroke="#ef4444" strokeWidth={2} dot={false} />
-                          </LineChart>
+                            <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', fontSize: '10px' }} />
+                            <Area type="monotone" dataKey="Ma Note" stroke="#14532d" strokeWidth={4} fill="#14532d20" />
+                          </AreaChart>
                         </ResponsiveContainer>
-                      </div>
-                   </Card>
-
-                   <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] overflow-hidden">
-                      <div className="p-5 md:p-10 border-b bg-muted/5 flex items-center justify-between">
-                         <h3 className="text-base md:text-xl font-black uppercase tracking-tight">Registre de l'Élève</h3>
-                         <Badge className="bg-primary/10 text-primary border-none text-[8px] md:text-[10px] font-black px-4 py-1 rounded-full uppercase">Données Scellées</Badge>
-                      </div>
-                      <div className="overflow-x-auto">
-                         <table className="w-full">
-                            <thead className="bg-muted/20 text-[7px] md:text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
-                               <tr>
-                                  <th className="px-5 md:px-10 py-4 md:py-8 text-left">Évaluation</th>
-                                  <th className="px-5 md:px-10 py-4 md:py-8 text-center">Ma Note</th>
-                                  <th className="px-5 md:px-10 py-4 md:py-8 text-center">Moy. Classe</th>
-                                  <th className="px-5 md:px-10 py-4 md:py-8 text-right bg-primary/5 text-primary">Position</th>
-                               </tr>
-                            </thead>
-                            <tbody className="divide-y divide-muted/10">
-                               {EVAL_STEPS.map(type => {
-                                 const sub = analysis?.subjects.find(s => s.name === selectedSubject)
-                                 const note = sub?.myNotes[type]
-                                 if (note === undefined) return null
-                                 const avg = sub?.classAvg[type] || 0
-                                 const diff = note - avg
-                                 return (
-                                   <tr key={type} className="hover:bg-muted/5 transition-all">
-                                      <td className="px-5 md:px-10 py-4 md:py-10">
-                                         <p className="font-black text-[10px] md:text-lg uppercase tracking-tight text-foreground">{EVAL_LABELS[type]}</p>
-                                      </td>
-                                      <td className="px-5 md:px-10 py-4 md:py-10 text-center">
-                                         <Badge className={cn("h-8 md:h-12 w-10 md:w-20 justify-center rounded-lg md:rounded-xl text-xs md:text-xl font-black shadow-sm", note >= 10 ? "bg-emerald-500" : "bg-red-500")}>
-                                            {note}
-                                         </Badge>
-                                      </td>
-                                      <td className="px-5 md:px-10 py-4 md:py-10 text-center">
-                                         <p className="text-[10px] md:text-lg font-bold text-muted-foreground tabular-nums">{avg}</p>
-                                      </td>
-                                      <td className="px-5 md:px-10 py-4 md:py-10 text-right">
-                                         <div className="flex flex-col items-end">
-                                            <span className={cn("text-[9px] md:text-lg font-black tabular-nums flex items-center", diff >= 0 ? "text-emerald-600" : "text-red-600")}>
-                                               {diff >= 0 ? <ArrowUpRight className="size-2 md:size-4 mr-1" /> : <ArrowDownRight className="size-2 md:size-4 mr-1" />}
-                                               {Math.abs(diff).toFixed(1)}
-                                            </span>
-                                            <span className="text-[6px] md:text-[9px] font-black uppercase text-muted-foreground opacity-40">Vs Classe</span>
-                                         </div>
-                                      </td>
-                                   </tr>
-                                 )
-                               })}
-                            </tbody>
-                         </table>
                       </div>
                    </Card>
                 </div>
 
-                <div className="lg:col-span-4 space-y-6 md:space-y-10">
+                <div className="lg:col-span-4 space-y-6">
                    <Card className="p-6 md:p-12 bg-foreground text-white rounded-[2rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group border-none">
-                      <div className="relative z-10 space-y-6 md:space-y-8">
+                      <div className="relative z-10 space-y-6">
                          <div className="flex items-center gap-4">
                             <div className="size-10 md:size-16 bg-primary/20 rounded-xl md:rounded-2xl flex items-center justify-center shadow-inner"><Sparkles className="size-4 md:size-6 text-primary animate-pulse" /></div>
-                            <h3 className="text-lg md:text-2xl font-black uppercase tracking-tight">Coach Brain IA</h3>
+                            <h3 className="text-lg md:text-2xl font-black uppercase tracking-tight">Audit IA</h3>
                          </div>
-                         <div className="p-5 md:p-10 bg-white/5 rounded-xl md:rounded-[2rem] border border-white/10 italic text-[9px] md:text-xl font-medium leading-relaxed text-white/80 min-h-[120px] md:min-h-[200px] flex items-center justify-center text-center">
-                           {aiReport ? `"${aiReport.academicFeedback}"` : `"Je peux analyser tes notes en ${selectedSubject} pour te donner des conseils de scellement."`}
+                         <div className="p-5 md:p-10 bg-white/5 rounded-xl md:rounded-[2rem] border border-white/10 italic text-[9px] md:text-base font-medium leading-relaxed text-white/80 min-h-[120px] flex items-center justify-center text-center">
+                           {aiReport ? `"${aiReport.academicFeedback}"` : `"Je peux analyser tes notes en ${selectedSubject} pour te donner des conseils."`}
                          </div>
-                         <Button onClick={handleAiAudit} disabled={analyzing} className="w-full h-12 md:h-18 rounded-xl bg-primary hover:bg-primary/90 text-white font-black text-[10px] md:text-lg transition-all shadow-xl shadow-primary/20 active:scale-95">
+                         <Button onClick={handleAiAudit} disabled={analyzing} className="w-full h-12 md:h-18 rounded-xl bg-primary hover:bg-primary/90 text-white font-black text-[10px] md:text-lg transition-all active:scale-95 shadow-xl shadow-primary/20">
                            {analyzing ? <Loader2 className="animate-spin size-4 md:size-6" /> : <Zap className="size-4 md:size-6 mr-2" />}
                            DÉBLOQUER AUDIT IA
                          </Button>
-                      </div>
-                      <TrendingUp className="absolute -bottom-10 -right-10 size-40 md:size-72 text-white/[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-[3000ms]" />
-                   </Card>
-
-                   <Card className="p-7 md:p-10 rounded-[2rem] md:rounded-[3rem] border-2 border-dashed border-primary/20 bg-white space-y-6">
-                      <h4 className="font-black text-[9px] md:text-sm uppercase tracking-[0.25em] text-primary flex items-center gap-2">
-                        <Info className="size-3 md:size-4" /> Méthode de calcul
-                      </h4>
-                      <div className="space-y-4 md:space-y-6">
-                         <div className="flex gap-4 items-start">
-                            <div className="size-8 md:size-11 bg-primary/5 text-primary rounded-lg flex items-center justify-center font-black text-[9px] md:text-sm shrink-0">1</div>
-                            <p className="text-[9px] md:text-sm font-medium text-muted-foreground leading-relaxed">
-                               Moyenne Interro = (I1+I2+I3) / nombre d'interros scellées.
-                            </p>
-                         </div>
-                         <div className="flex gap-4 items-start">
-                            <div className="size-8 md:size-11 bg-primary/5 text-primary rounded-lg flex items-center justify-center font-black text-[9px] md:text-sm shrink-0">2</div>
-                            <p className="text-[9px] md:text-sm font-medium text-muted-foreground leading-relaxed">
-                               Moyenne Matière = (Moy Interro + D1 + D2) / total des piliers présents.
-                            </p>
-                         </div>
-                      </div>
-                   </Card>
-
-                   <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-emerald-50 border-none shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-                      <div className="size-12 md:size-16 bg-white rounded-full flex items-center justify-center text-primary shadow-sm"><CheckCircle2 className="size-6 md:size-8" /></div>
-                      <div>
-                        <h4 className="font-black text-sm md:text-lg uppercase">Intégrité Certifiée</h4>
-                        <p className="text-[8px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest mt-1">Données validées par l'Établissement</p>
                       </div>
                    </Card>
                 </div>
