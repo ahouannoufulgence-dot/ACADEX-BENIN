@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -13,7 +12,7 @@ import {
   Loader2, 
   ShieldCheck, 
   Lock,
-  ChevronLeft
+  WifiOff
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
@@ -24,7 +23,7 @@ import { useFirestore } from "@/firebase"
 import { cn } from "@/lib/utils"
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'error';
   content: string;
   timestamp: Date;
   suggestions?: string[];
@@ -127,8 +126,14 @@ export default function AssistantPage() {
         suggestions: result.suggestions
       }
       setMessages(prev => [...prev, aiMessage])
-    } catch (e) {
-      toast({ title: "Erreur IA", description: "Le cerveau est momentanément indisponible.", variant: "destructive" })
+    } catch (e: any) {
+      const errorMsg: Message = {
+        role: 'error',
+        content: "Désolé, j'ai rencontré une difficulté technique. Veuillez vérifier votre connexion internet et réessayer.",
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMsg])
+      toast({ title: "Erreur IA", description: "Le cerveau est momentanément indisponible sur votre réseau.", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -164,13 +169,18 @@ export default function AssistantPage() {
             {messages.map((msg, i) => (
               <div key={i} className={cn("flex animate-in slide-in-from-bottom-2", msg.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div className={cn("max-w-[90%] md:max-w-[85%] flex gap-3 md:gap-4", msg.role === 'user' ? 'flex-row-reverse' : '')}>
-                  <div className={cn("size-8 md:size-10 rounded-xl md:rounded-2xl shrink-0 flex items-center justify-center shadow-sm", msg.role === 'user' ? 'bg-foreground text-white' : 'bg-primary text-white')}>
-                    {msg.role === 'user' ? <User className="size-4 md:size-5" /> : <Bot className="size-4 md:size-5" />}
+                  <div className={cn("size-8 md:size-10 rounded-xl md:rounded-2xl shrink-0 flex items-center justify-center shadow-sm", 
+                    msg.role === 'user' ? 'bg-foreground text-white' : 
+                    msg.role === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white')}>
+                    {msg.role === 'user' ? <User className="size-4 md:size-5" /> : 
+                     msg.role === 'error' ? <WifiOff className="size-4 md:size-5" /> : <Bot className="size-4 md:size-5" />}
                   </div>
                   <div className="space-y-3">
                     <div className={cn("p-4 md:p-6 rounded-2xl md:rounded-3xl text-xs md:text-base font-medium leading-relaxed shadow-sm",
                       msg.role === 'user' 
                         ? 'bg-primary text-white rounded-tr-none' 
+                        : msg.role === 'error' 
+                        ? 'bg-red-50 text-red-700 border border-red-100 rounded-tl-none' 
                         : 'bg-white text-foreground rounded-tl-none border border-muted/50'
                     )}>
                       {msg.content}

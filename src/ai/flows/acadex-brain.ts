@@ -34,6 +34,14 @@ const acadexBrainPrompt = ai.definePrompt({
   model: googleAI.model('gemini-1.5-flash-latest'),
   input: { schema: BrainInputSchema },
   output: { schema: BrainOutputSchema },
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    ]
+  },
   prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire pour l'établissement "{{contextData.schoolName}}".
 
 **PROTOCOLE DE SÉCURITÉ CRITIQUE :**
@@ -73,7 +81,7 @@ const acadexBrainFlow = ai.defineFlow(
       return output;
     } catch (error: any) {
       console.error("--- ERREUR FLOW BRAIN ---", error.message);
-      throw error;
+      throw new Error(`Le cerveau ACADEX a rencontré une difficulté : ${error.message}`);
     }
   }
 );
