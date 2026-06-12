@@ -12,11 +12,12 @@ import {
   Loader2, 
   ShieldCheck, 
   Lock,
-  WifiOff,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  ExternalLink
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
-import { askAcadexBrain, type BrainOutput } from "@/ai/flows/acadex-brain"
+import { askAcadexBrain } from "@/ai/flows/acadex-brain"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
@@ -28,6 +29,7 @@ interface Message {
   content: string;
   timestamp: Date;
   suggestions?: string[];
+  isConfigError?: boolean;
 }
 
 export default function AssistantPage() {
@@ -130,21 +132,22 @@ export default function AssistantPage() {
     } catch (e: any) {
       console.error("Assistant Error:", e.message);
       
-      let errorContent = "Désolé, j'ai rencontré une difficulté technique. Veuillez vérifier votre connexion internet et réessayer.";
-      
-      if (e.message.includes("MISSING_API_KEY")) {
-        errorContent = "Le Cerveau ACADEX nécessite une configuration système. Veuillez contacter l'administrateur pour activer les capacités d'intelligence artificielle.";
-      }
+      let isConfigError = e.message.includes("MISSING_API_KEY");
+      let errorContent = isConfigError 
+        ? "Le Cerveau ACADEX n'est pas encore activé sur ce serveur. Une clé API Google AI est requise dans les variables d'environnement."
+        : "Désolé, j'ai rencontré une difficulté technique. Veuillez vérifier votre connexion internet et réessayer.";
 
       const errorMsg: Message = {
         role: 'error',
         content: errorContent,
-        timestamp: new Date()
+        timestamp: new Date(),
+        isConfigError
       }
       setMessages(prev => [...prev, errorMsg])
+      
       toast({ 
-        title: "Système IA", 
-        description: "Configuration requise ou service indisponible.", 
+        title: isConfigError ? "Configuration Requise" : "Erreur Technique", 
+        description: isConfigError ? "Clé API manquante sur Vercel." : "Service momentanément indisponible.", 
         variant: "destructive" 
       })
     } finally {
@@ -197,6 +200,23 @@ export default function AssistantPage() {
                         : 'bg-white text-foreground rounded-tl-none border border-muted/50'
                     )}>
                       {msg.content}
+                      
+                      {msg.isConfigError && (
+                        <div className="mt-6 p-4 bg-white/50 rounded-2xl border border-red-200 space-y-4">
+                          <p className="text-[10px] font-black uppercase text-red-800">Action requise (Admin) :</p>
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between bg-red-100/50 p-2 rounded-lg border border-red-200">
+                              <code className="text-[10px] font-bold text-red-900">GOOGLE_GENAI_API_KEY</code>
+                              <Badge className="bg-red-200 text-red-900 border-none text-[8px]">MANQUANTE</Badge>
+                            </div>
+                            <Button asChild size="sm" variant="outline" className="w-full h-8 rounded-lg text-[10px] font-bold border-red-200 text-red-700 hover:bg-red-50">
+                              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer">
+                                <Settings className="size-3 mr-2" /> Configurer sur Vercel <ExternalLink className="size-2 ml-1" />
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {msg.suggestions && msg.suggestions.length > 0 && (
                       <div className="flex flex-wrap gap-2 pt-1">
