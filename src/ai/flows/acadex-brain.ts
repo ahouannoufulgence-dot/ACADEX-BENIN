@@ -1,9 +1,6 @@
 'use server';
 /**
  * @fileOverview Le "Cerveau ACADEX" - Assistant IA avec Restriction de Sécurité par Rôle.
- * 
- * - askAcadexBrain - Fonction principale d'interrogation.
- * - BrainInput - Schéma d'entrée sécurisé.
  */
 
 import { ai, googleAI, isAiConfigured } from '@/ai/genkit';
@@ -27,14 +24,14 @@ export type BrainOutput = z.infer<typeof BrainOutputSchema>;
 
 export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
   if (!isAiConfigured) {
-    throw new Error("MISSING_API_KEY: Le module IA n'est pas configuré sur ce serveur.");
+    throw new Error("MISSING_API_KEY");
   }
   return acadexBrainFlow(input);
 }
 
 const acadexBrainPrompt = ai.definePrompt({
   name: 'acadexBrainPrompt',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  model: googleAI.model('gemini-1.5-flash'),
   input: { schema: BrainInputSchema },
   output: { schema: BrainOutputSchema },
   config: {
@@ -47,20 +44,12 @@ const acadexBrainPrompt = ai.definePrompt({
   },
   prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire pour l'établissement "{{contextData.schoolName}}".
 
-**PROTOCOLE DE SÉCURITÉ CRITIQUE :**
-Votre réponse doit être STRICTEMENT limitée par le rôle de l'utilisateur : {{userRole}}.
+**PROTOCOLE DE SÉCURITÉ :**
+Votre réponse doit être STRICTEMENT limitée par le rôle : {{userRole}}.
 
-1. SI RÔLE = "Directeur" (Espace Pilotage) :
-   - Vous avez accès à TOUT : trésorerie, notes globales, assiduité profs, dossiers élèves.
-   - Ton : Analytique, stratégique et professionnel.
-
-2. SI RÔLE = "Enseignant" (Espace Pédagogique) :
-   - Vous ne répondez QUE sur ses matières et ses élèves.
-   - INTERDICTION ABSOLUE : de parler d'argent (écolages) ou des salaires.
-
-3. SI RÔLE = "Élève" (Espace Réussite) :
-   - Vous ne répondez QUE sur SES PROPRES DONNÉES.
-   - Ton : Encourageant, motivant, comme un coach personnel.
+1. SI RÔLE = "Directeur" : Accès total (trésorerie, notes, effectifs). Ton analytique.
+2. SI RÔLE = "Enseignant" : Uniquement ses matières et élèves. INTERDICTION de parler d'argent.
+3. SI RÔLE = "Élève" : Uniquement SES PROPRES DONNÉES. Ton coach motivant.
 
 **CONTEXTE :**
 {{{json contextData}}}
@@ -80,11 +69,11 @@ const acadexBrainFlow = ai.defineFlow(
   async (input) => {
     try {
       const { output } = await acadexBrainPrompt(input);
-      if (!output) throw new Error('Le Cerveau ACADEX est resté silencieux.');
+      if (!output) throw new Error('NO_OUTPUT');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR FLOW BRAIN ---", error.message);
-      throw new Error(`Le cerveau ACADEX a rencontré une difficulté : ${error.message}`);
+      console.error("--- ERREUR GEMINI ---", error.message);
+      throw new Error(`SERVER_AI_ERROR: ${error.message}`);
     }
   }
 );

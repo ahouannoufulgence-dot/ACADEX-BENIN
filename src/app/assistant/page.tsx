@@ -14,7 +14,8 @@ import {
   Lock,
   AlertCircle,
   Settings,
-  ExternalLink
+  ExternalLink,
+  RefreshCw
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
@@ -134,8 +135,8 @@ export default function AssistantPage() {
       
       let isConfigError = e.message.includes("MISSING_API_KEY");
       let errorContent = isConfigError 
-        ? "Le Cerveau ACADEX n'est pas encore activé sur ce serveur. Une clé API Google AI est requise dans les variables d'environnement."
-        : "Désolé, j'ai rencontré une difficulté technique. Veuillez vérifier votre connexion internet et réessayer.";
+        ? "Le Cerveau ACADEX n'est pas encore activé. Une clé API Google AI est requise pour débloquer l'intelligence."
+        : `Erreur technique : ${e.message.replace("SERVER_AI_ERROR: ", "")}`;
 
       const errorMsg: Message = {
         role: 'error',
@@ -146,8 +147,8 @@ export default function AssistantPage() {
       setMessages(prev => [...prev, errorMsg])
       
       toast({ 
-        title: isConfigError ? "Configuration Requise" : "Erreur Technique", 
-        description: isConfigError ? "Clé API manquante sur Vercel." : "Service momentanément indisponible.", 
+        title: isConfigError ? "Configuration Requise" : "Erreur Serveur", 
+        description: isConfigError ? "Variable manquante sur Vercel." : "Gemini a rejeté la requête.", 
         variant: "destructive" 
       })
     } finally {

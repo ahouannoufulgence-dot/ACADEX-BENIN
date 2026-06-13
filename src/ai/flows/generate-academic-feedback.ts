@@ -31,14 +31,14 @@ export type GenerateAcademicFeedbackOutput = z.infer<typeof GenerateAcademicFeed
 
 export async function generateAcademicFeedback(input: GenerateAcademicFeedbackInput): Promise<GenerateAcademicFeedbackOutput> {
   if (!isAiConfigured) {
-    throw new Error("MISSING_API_KEY: Le module IA n'est pas configuré.");
+    throw new Error("MISSING_API_KEY");
   }
   return generateAcademicFeedbackFlow(input);
 }
 
 const academicFeedbackPrompt = ai.definePrompt({
   name: 'academicFeedbackPrompt',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  model: googleAI.model('gemini-1.5-flash'),
   input: { schema: GenerateAcademicFeedbackInputSchema },
   output: { schema: GenerateAcademicFeedbackOutputSchema },
   prompt: `Vous êtes le Conseiller Pédagogique Expert d'ACADEX. Analysez les résultats de {{{studentName}}}.
