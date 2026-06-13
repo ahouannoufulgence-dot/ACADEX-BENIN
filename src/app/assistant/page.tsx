@@ -1,219 +1,195 @@
-'use server';
+"use client"
 
-export interface BrainInput {
-  question: string;
-  userRole: 'Directeur' | 'Enseignant' | 'Élève';
-  userId: string;
-  contextData?: any;
-}
+import { DashboardLayout } from "@/components/dashboard-layout"
+import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { 
+  Bot, 
+  Send, 
+  Sparkles, 
+  Loader2, 
+  User, 
+  ChevronRight,
+  ShieldCheck,
+  Zap,
+  Info
+} from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { useFirestore } from "@/firebase"
+import { collection, query, where, getDocs } from "firebase/firestore"
+import { askAcadexBrain } from "@/ai/flows/acadex-brain"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
-export interface BrainOutput {
-  answer: string;
-  suggestions: string[];
-  securityAlert?: boolean;
-  error?: string;
-}
+export default function AssistantPage() {
+  const db = useFirestore()
+  const [messages, setMessages] = useState<any[]>([
+    { role: 'bot', content: "Bonjour. Je suis le Cerveau ACADEX. Je suis prêt à analyser vos données scolaires et à vous conseiller avec bienveillance. Comment puis-je vous aider aujourd'hui ?" }
+  ])
+  const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-export type { BrainInput as default };
-
-function apprecier(moyenne: number): string {
-  if (moyenne >= 16) return "excellent";
-  if (moyenne >= 14) return "très bien";
-  if (moyenne >= 12) return "bien";
-  if (moyenne >= 10) return "passable";
-  return "insuffisant";
-}
-
-function conseilProfesseur(matiere: string, moyenne: number): string {
-  if (moyenne >= 16) return `En ${matiere}, tu fais un excellent travail. Maintiens cet effort et aide tes camarades si tu le peux.`;
-  if (moyenne >= 14) return `En ${matiere}, tu es sur la bonne voie. Quelques révisions supplémentaires te permettront d'atteindre l'excellence.`;
-  if (moyenne >= 12) return `En ${matiere}, tu travailles bien. Relis tes cours le soir même après les leçons pour consolider ce que tu as appris.`;
-  if (moyenne >= 10) return `En ${matiere}, tu passes mais tu peux faire mieux. Je te conseille de refaire les exercices du cours, pas seulement de les lire.`;
-  if (moyenne >= 7) return `En ${matiere}, tu es en difficulté. N'attends pas les examens pour demander de l'aide à ton professeur. Prends rendez-vous avec lui cette semaine.`;
-  return `En ${matiere}, la situation est préoccupante. Il faut absolument revoir les bases depuis le début. Parle-en à tes parents et à ton professeur dès maintenant.`;
-}
-
-function analyserEleveContext(data: any, question: string): BrainOutput {
-  const notes = data?.notes || {};
-  const matieres = Object.keys(notes);
-  const nomEleve = data?.nomEleve || "l'élève";
-  const q = question.toLowerCase();
-
-  if (matieres.length === 0) {
-    return {
-      answer: "Je n'ai pas encore de notes enregistrées pour toi ce trimestre. Reviens me voir dès que tes professeurs auront saisi tes premières évaluations.",
-      suggestions: ["Voir mes absences", "Comment bien travailler ?", "Mes conseils généraux"],
-    };
-  }
-
-  const moyennesParMatiere: Record<string, number> = {};
-  matieres.forEach((m) => {
-    const val = notes[m];
-    moyennesParMatiere[m] = typeof val === 'number' ? val : 0;
-  });
-
-  const toutesLesMoyennes = Object.values(moyennesParMatiere);
-  const moyenneGenerale = toutesLesMoyennes.reduce((a, b) => a + b, 0) / toutesLesMoyennes.length;
-
-  const meilleureMatiere = matieres.reduce((a, b) =>
-    moyennesParMatiere[a] > moyennesParMatiere[b] ? a : b, matieres[0]);
-  const pireMatiere = matieres.reduce((a, b) =>
-    moyennesParMatiere[a] < moyennesParMatiere[b] ? a : b, matieres[0]);
-
-  if (q.includes('moyenne') || q.includes('résultat') || q.includes('note') || q.includes('general')) {
-    const lignes = matieres.map(
-      (m) => `${m} : ${moyennesParMatiere[m].toFixed(2)} sur 20, soit un niveau ${apprecier(moyennesParMatiere[m])}.`
-    ).join('\n');
-
-    return {
-      answer: `Voici tes résultats du trimestre en cours.\n\n${lignes}\n\nTa moyenne générale est de ${moyenneGenerale.toFixed(2)} sur 20, ce qui est ${apprecier(moyenneGenerale)}. Tu te démarques particulièrement en ${meilleureMatiere}. La matière qui nécessite le plus d'attention de ta part reste ${pireMatiere}.`,
-      suggestions: [
-        "Quels conseils pour progresser ?",
-        "Comment améliorer mon niveau en " + pireMatiere + " ?",
-        "Combien d'absences j'ai ?",
-      ],
-    };
-  }
-
-  if (q.includes('conseil') || q.includes('améliorer') || q.includes('progresser') || q.includes('aider')) {
-    const matieresFaibles = matieres.filter((m) => moyennesParMatiere[m] < 12);
-
-    if (matieresFaibles.length === 0) {
-      return {
-        answer: `Tu as de bons résultats dans l'ensemble, et c'est une vraie satisfaction. Pour continuer à progresser, je te recommande de ne jamais te reposer sur tes acquis. En ${meilleureMatiere} particulièrement, tu pourrais viser des notes encore plus hautes en approfondissant les chapitres difficiles. La régularité dans le travail quotidien est ce qui fait la différence entre un bon élève et un excellent élève.`,
-        suggestions: [
-          "Voir mes résultats complets",
-          "Ma moyenne générale",
-          "Mes absences ce trimestre",
-        ],
-      };
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
+  }, [messages])
 
-    const conseils = matieresFaibles.map((m) => conseilProfesseur(m, moyennesParMatiere[m])).join('\n\n');
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!input.trim() || loading) return
 
-    return {
-      answer: `Voici mes conseils personnalisés pour toi ce trimestre.\n\n${conseils}\n\nDe manière générale, essaie de travailler un peu chaque jour plutôt que de tout faire la veille des devoirs. C'est cette régularité qui construit une vraie réussite scolaire.`,
-      suggestions: [
-        "Voir ma moyenne générale",
-        "Quelles matières prioriser ?",
-        "Mes résultats complets",
-      ],
-    };
-  }
+    const userMsg = input
+    setInput("")
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }])
+    setLoading(true)
 
-  if (q.includes('absent') || q.includes('absence') || q.includes('présence')) {
-    const absences = data?.absences || 0;
-    return {
-      answer: absences === 0
-        ? "Tu n'as aucune absence enregistrée pour le moment. C'est très bien. La présence régulière en classe est l'un des facteurs les plus importants de la réussite scolaire. Continue comme ça."
-        : `Tu as ${absences} absence${absences > 1 ? 's' : ''} enregistrée${absences > 1 ? 's' : ''} ce trimestre. Chaque heure de cours manquée est une leçon qu'il faut rattraper seul, ce qui est toujours plus difficile. Si ces absences sont justifiées, assure-toi de récupérer les cours auprès de tes camarades. Si elles ne le sont pas, parles-en avec tes parents.`,
-      suggestions: [
-        "Voir mes notes",
-        "Ma moyenne générale",
-        "Mes conseils pour progresser",
-      ],
-    };
-  }
+    try {
+      const userId = localStorage.getItem('acadex_user_id') || ""
+      const userRole = localStorage.getItem('acadex_user_role') || "Élève"
+      const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
-  return {
-    answer: `Bonjour. Je suis le Cerveau ACADEX, ton assistant scolaire personnel. Ta moyenne générale est actuellement de ${moyenneGenerale.toFixed(2)} sur 20, ce qui est ${apprecier(moyenneGenerale)}. Tu peux me poser des questions sur tes notes, tes absences, ou me demander des conseils pour progresser dans une matière.`,
-    suggestions: [
-      "Voir mes résultats complets",
-      "Quels conseils pour progresser ?",
-      "Combien d'absences j'ai ?",
-    ],
-  };
-}
+      // RÉCUPÉRATION DES VRAIES DONNÉES FIREBASE
+      let contextData = {}
+      
+      if (userRole === 'Élève') {
+        const gradesSnap = await getDocs(query(
+          collection(db, "grades"), 
+          where("studentId", "==", userId),
+          where("academicYear", "==", activeYear)
+        ))
+        
+        const grades = gradesSnap.docs.map(d => d.data())
+        const subjects: Record<string, number[]> = {}
+        grades.forEach((g: any) => {
+          if (!subjects[g.subject]) subjects[g.subject] = []
+          subjects[g.subject].push(Number(g.value))
+        })
 
-function analyserDirecteurContext(data: any, question: string): BrainOutput {
-  const eleves = data?.eleves || [];
-  const q = question.toLowerCase();
-  const elevesDifficulte = eleves.filter((e: any) => (e.moyenne || 0) < 10);
+        const averages: Record<string, number> = {}
+        Object.entries(subjects).forEach(([sub, vals]) => {
+          averages[sub] = Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2))
+        })
 
-  if (q.includes('élève') || q.includes('effectif') || q.includes('nombre')) {
-    return {
-      answer: `L'établissement compte actuellement ${eleves.length} élèves enregistrés pour cette année scolaire. Parmi eux, ${elevesDifficulte.length} élève${elevesDifficulte.length > 1 ? 's sont' : ' est'} en situation de difficulté avec une moyenne inférieure à 10 sur 20.`,
-      suggestions: [
-        "Quels élèves sont en difficulté ?",
-        "Statistiques des moyennes",
-        "Taux de présence global",
-      ],
-    };
-  }
+        const lifeSnap = await getDocs(query(
+          collection(db, "student_life"),
+          where("studentId", "==", userId),
+          where("academicYear", "==", activeYear)
+        ))
+        const life = lifeSnap.docs.map(d => d.data())
 
-  if (q.includes('difficulté') || q.includes('faible') || q.includes('risque')) {
-    const liste = elevesDifficulte.slice(0, 5)
-      .map((e: any) => `${e.nom || 'Élève'} avec une moyenne de ${(e.moyenne || 0).toFixed(2)} sur 20`)
-      .join(', ');
-    return {
-      answer: elevesDifficulte.length === 0
-        ? "Aucun élève n'est actuellement en dessous de la moyenne. Les résultats généraux sont satisfaisants."
-        : `Il y a ${elevesDifficulte.length} élève${elevesDifficulte.length > 1 ? 's' : ''} en difficulté cette période. ${liste ? 'Les plus concernés sont : ' + liste + '.' : ''} Une attention particulière de leurs enseignants serait recommandée.`,
-      suggestions: [
-        "Voir l'effectif total",
-        "Statistiques générales",
-        "Taux d'absences global",
-      ],
-    };
-  }
+        contextData = {
+          nomEleve: localStorage.getItem('acadex_user_name'),
+          moyennesParMatiere: averages,
+          totalNotesSaisies: grades.length,
+          evenementsVieScolaire: life.map((l: any) => ({ motif: l.motif, type: l.category, impact: l.pointsImpact })),
+          anneeScolaire: activeYear
+        }
+      } else {
+        // Pour le Directeur/Enseignant, on peut ajouter d'autres stats globales ici
+        contextData = { info: "Analyse administrative globale demandée." }
+      }
 
-  return {
-    answer: `Bonjour. Voici un aperçu rapide de l'établissement. Vous avez ${eleves.length} élèves inscrits et ${elevesDifficulte.length} en situation de difficulté académique. Posez-moi une question précise sur les élèves, les résultats ou les présences.`,
-    suggestions: [
-      "Combien d'élèves sont en difficulté ?",
-      "Effectif total",
-      "Statistiques des moyennes",
-    ],
-  };
-}
+      const res = await askAcadexBrain({
+        question: userMsg,
+        userRole: userRole as any,
+        userId: userId,
+        contextData
+      })
 
-function analyserEnseignantContext(data: any, question: string): BrainOutput {
-  const eleves = data?.eleves || [];
-  const matiere = data?.matiere || 'votre matière';
-  const moyennes = eleves.map((e: any) => e.moyenne || 0);
-  const moyenneClasse = moyennes.length > 0 ? moyennes.reduce((a: number, b: number) => a + b, 0) / moyennes.length : 0;
-  const elevesDifficulte = eleves.filter((e: any) => (e.moyenne || 0) < 10);
-
-  return {
-    answer: `En ${matiere}, la classe compte ${eleves.length} élèves avec une moyenne générale de ${moyenneClasse.toFixed(2)} sur 20, ce qui est ${apprecier(moyenneClasse)}. ${elevesDifficulte.length === 0 ? 'Tous les élèves sont au-dessus de la moyenne, ce qui est encourageant.' : `Il y a ${elevesDifficulte.length} élève${elevesDifficulte.length > 1 ? 's' : ''} en dessous de la moyenne : ${elevesDifficulte.map((e: any) => e.nom || 'Élève').join(', ')}. Un suivi individualisé serait bénéfique pour ces élèves.`}`,
-    suggestions: [
-      "Quels élèves ont besoin d'aide ?",
-      "Moyenne de la classe",
-      "Meilleurs élèves",
-    ],
-  };
-}
-
-export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
-  try {
-    const { question, userRole, contextData } = input;
-
-    if (!question || question.trim() === '') {
-      return {
-        answer: "Bonjour, je suis prêt à vous aider. Posez-moi une question sur vos résultats, vos absences ou demandez des conseils.",
-        suggestions: ["Quelle est ma moyenne ?", "Mes conseils pour progresser", "Mes absences"],
-      };
+      setMessages(prev => [...prev, { role: 'bot', content: res.answer }])
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'bot', content: "Je rencontre une difficulté technique pour accéder à vos dossiers. Veuillez vérifier votre connexion." }])
+    } finally {
+      setLoading(false)
     }
-
-    switch (userRole) {
-      case 'Élève':
-        return analyserEleveContext(contextData, question);
-      case 'Directeur':
-        return analyserDirecteurContext(contextData, question);
-      case 'Enseignant':
-        return analyserEnseignantContext(contextData, question);
-      default:
-        return {
-          answer: "Rôle non reconnu.",
-          suggestions: [],
-          securityAlert: true,
-        };
-    }
-  } catch (error: any) {
-    return {
-      answer: "",
-      suggestions: [],
-      error: `Erreur analyse : ${error.message}`,
-    };
   }
+
+  return (
+    <DashboardLayout>
+      <div className="max-w-5xl mx-auto h-[calc(100vh-12rem)] flex flex-col space-y-6 animate-in fade-in duration-500">
+        
+        <div className="flex items-center justify-between px-2">
+           <div className="space-y-1">
+              <h1 className="text-2xl md:text-4xl font-black tracking-tight uppercase flex items-center gap-3">
+                <div className="size-10 md:size-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg">
+                   <Bot className="size-6 md:size-7" />
+                </div>
+                Cerveau <span className="text-primary italic">ACADEX</span>
+              </h1>
+              <p className="text-[9px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                 <ShieldCheck className="size-3.5 text-emerald-500" /> Analyse en temps réel • Llama 3.3
+              </p>
+           </div>
+           <Badge className="hidden md:flex bg-white border-2 border-primary/10 text-primary font-black px-6 py-2 rounded-full shadow-sm">
+              INTELLIGENCE PÉDAGOGIQUE
+           </Badge>
+        </div>
+
+        <Card className="flex-1 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3rem] flex flex-col overflow-hidden relative">
+           <div className="absolute top-0 right-0 p-12 opacity-[0.02] pointer-events-none"><Zap className="size-64" /></div>
+           
+           <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 md:p-14 space-y-8 no-scrollbar scroll-smooth">
+              {messages.map((msg, i) => (
+                <div key={i} className={cn("flex items-start gap-4 animate-in slide-in-from-bottom-2", msg.role === 'user' ? "flex-row-reverse" : "flex-row")}>
+                   <Avatar className={cn("size-10 md:size-14 border-4 shadow-sm shrink-0", msg.role === 'user' ? "border-primary/10" : "border-emerald-50")}>
+                      <AvatarFallback className={cn("font-black text-xs md:text-lg", msg.role === 'user' ? "bg-muted text-foreground" : "bg-primary text-white")}>
+                         {msg.role === 'user' ? <User className="size-5" /> : <Bot className="size-5" />}
+                      </AvatarFallback>
+                   </Avatar>
+                   <div className={cn(
+                     "p-5 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] text-xs md:text-lg font-medium leading-relaxed max-w-[85%] md:max-w-[75%] shadow-sm",
+                     msg.role === 'user' ? "bg-muted/50 text-foreground rounded-tr-none" : "bg-primary/5 text-foreground rounded-tl-none border border-primary/5"
+                   )}>
+                      {msg.content}
+                   </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex items-center gap-4 text-primary animate-pulse px-8">
+                   <Loader2 className="size-5 animate-spin" />
+                   <span className="text-[10px] md:text-sm font-black uppercase tracking-widest">Le Cerveau analyse vos données...</span>
+                </div>
+              )}
+           </div>
+
+           <div className="p-4 md:p-10 bg-muted/20 border-t border-muted/30">
+              <form onSubmit={handleSend} className="flex items-center gap-3 md:gap-6 bg-white p-2 md:p-3 pl-6 md:pl-10 rounded-[2rem] md:rounded-[3.5rem] shadow-xl border-2 border-primary/5 focus-within:border-primary/20 transition-all">
+                 <Input 
+                   placeholder="Posez une question sur vos notes ou vos absences..." 
+                   className="flex-1 border-none shadow-none focus-visible:ring-0 font-bold text-sm md:text-xl placeholder:text-muted-foreground/30 h-11 md:h-16"
+                   value={input}
+                   onChange={e => setInput(e.target.value)}
+                 />
+                 <Button type="submit" disabled={loading || !input.trim()} className="size-11 md:size-16 rounded-[1.2rem] md:rounded-3xl bg-primary text-white shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+                    <Send className="size-5 md:size-8" />
+                 </Button>
+              </form>
+           </div>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+           {[
+             { label: "Bilan des notes", icon: Zap },
+             { label: "Conseils de travail", icon: Sparkles },
+             { label: "Point sur l'assiduité", icon: Info }
+           ].map((s, i) => (
+             <button 
+               key={i} 
+               onClick={() => { setInput(s.label); }}
+               className="p-4 bg-white rounded-2xl border-2 border-transparent hover:border-primary/20 hover:shadow-lg transition-all text-left flex items-center justify-between group"
+             >
+                <div className="flex items-center gap-3">
+                   <div className="size-8 bg-primary/5 rounded-lg flex items-center justify-center text-primary"><s.icon className="size-4" /></div>
+                   <span className="text-xs font-black uppercase tracking-tight text-muted-foreground group-hover:text-primary transition-colors">{s.label}</span>
+                </div>
+                <ChevronRight className="size-4 text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+             </button>
+           ))}
+        </div>
+      </div>
+    </DashboardLayout>
+  )
 }
