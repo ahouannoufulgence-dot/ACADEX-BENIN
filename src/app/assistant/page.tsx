@@ -39,7 +39,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2024-2025" })
+  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2026-2027" })
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export default function AssistantPage() {
     
     const initialMsg: Message = {
       role: 'assistant',
-      content: `Bonjour ! Je suis le Cerveau ACADEX. Pour activer mes capacités d'analyse, assurez-vous d'avoir configuré une clé API valide (commençant par AIza). Comment puis-je vous aider ?`,
+      content: `Bonjour ! Je suis le Cerveau ACADEX. Pour activer mes capacités d'analyse, vous devez configurer une clé API valide (commençant par AIza). Comment puis-je vous aider aujourd'hui ?`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
         ? ["Analyse des moyennes", "Point sur la trésorerie", "Élèves en difficulté"]
@@ -65,7 +65,7 @@ export default function AssistantPage() {
           const data = docSnap.data()
           setSchoolInfo({
             name: data.schoolName || "ACADEX",
-            year: data.academicYear || "2024-2025"
+            year: data.academicYear || "2026-2027"
           })
         }
       } catch (err) {
@@ -94,18 +94,6 @@ export default function AssistantPage() {
     setLoading(true)
 
     try {
-      let contextGrades: any[] = []
-      
-      if (userRole === "Élève") {
-        const q = query(collection(db, "grades"), where("studentId", "==", userId))
-        const snap = await getDocs(q)
-        contextGrades = snap.docs.map(d => d.data())
-      } else if (userRole === "Enseignant" && userClasses.length > 0) {
-        const q = query(collection(db, "grades"), where("classId", "in", userClasses))
-        const snap = await getDocs(q)
-        contextGrades = snap.docs.map(d => d.data())
-      }
-
       const result = await askAcadexBrain({
         question: text,
         userRole: userRole as any,
@@ -113,7 +101,6 @@ export default function AssistantPage() {
         contextData: { 
           schoolName: schoolInfo.name,
           year: schoolInfo.year,
-          gradesCount: contextGrades.length,
         }
       })
 
@@ -130,7 +117,7 @@ export default function AssistantPage() {
       const errorMsg: Message = {
         role: 'error',
         content: isAuthError 
-          ? "ALERTE CONFIGURATION : Votre clé API est manquante ou invalide. Une clé Gemini doit impérativement commencer par 'AIza'."
+          ? "ALERTE CONFIGURATION : Votre clé API est absente ou invalide. Une clé Gemini doit impérativement commencer par 'AIza'."
           : `Une erreur est survenue : ${e.message}`,
         timestamp: new Date(),
         isConfigError: isAuthError
@@ -201,10 +188,6 @@ export default function AssistantPage() {
                             <div className="flex gap-3">
                               <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">3</span>
                               <p>Copiez la clé. Elle <b>DOIT</b> commencer par <b>AIza...</b></p>
-                            </div>
-                            <div className="flex gap-3">
-                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">4</span>
-                              <p>Ajoutez-la dans Vercel (Variable: <b>GOOGLE_GENAI_API_KEY</b>).</p>
                             </div>
                           </div>
                           <Button asChild className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-12 shadow-lg shadow-red-600/20">

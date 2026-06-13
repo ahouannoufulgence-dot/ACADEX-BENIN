@@ -48,7 +48,7 @@ export default function StudentsPage() {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "==", selectedClass))
     }
     
-    // Si enseignant sans sélection, on ne charge rien
+    // Si enseignant sans sélection, on ne charge rien (il doit choisir une carte)
     if (isTeacher && !selectedClass) return null
 
     // Pour le directeur, vue globale totale par défaut (recherche directe)
