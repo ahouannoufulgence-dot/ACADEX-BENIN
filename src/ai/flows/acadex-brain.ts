@@ -54,8 +54,7 @@ const acadexBrainPrompt = ai.definePrompt({
 
 **PROTOCOLE DE SÉCURITÉ :**
 Votre réponse doit être STRICTEMENT limitée par le rôle de l'utilisateur : {{userRole}}.
-
-1. SI RÔLE = "Directeur" : Accès total (trésorerie, notes, effectifs).
+1. SI RÔLE = "Directeur" : Accès total.
 2. SI RÔLE = "Enseignant" : Uniquement ses matières et élèves.
 3. SI RÔLE = "Élève" : Uniquement SES PROPRES DONNÉES.
 
@@ -85,11 +84,12 @@ const acadexBrainFlow = ai.defineFlow(
         contextString: contextString
       });
 
-      if (!output) throw new Error('DÉFAUT_RÉPONSE_IA');
+      if (!output) throw new Error('ERREUR_IA_NULLE');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR GEMINI ---", error.message);
-      throw new Error(error.message || "Erreur inconnue de l'IA");
+      console.error("--- ERREUR CRITIQUE IA ---", error.message);
+      // On évite de renvoyer l'objet error complet pour la sérialisation
+      throw new Error(error.message || "Erreur de traitement IA");
     }
   }
 );

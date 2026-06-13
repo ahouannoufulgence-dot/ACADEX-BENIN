@@ -48,13 +48,13 @@ export default function AssistantPage() {
     
     const initialMsg: Message = {
       role: 'assistant',
-      content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Je connais vos résultats scellés en temps réel. Comment puis-je vous aider ?`,
+      content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Comment puis-je vous aider aujourd'hui ?`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
-        ? ["Analyse des moyennes par classe", "Point sur la trésorerie", "Élèves en difficulté"]
+        ? ["Analyse des moyennes", "Point sur la trésorerie", "Élèves en difficulté"]
         : role === "Enseignant"
-        ? ["Moyennes de ma matière", "Évolution de mes classes", "Saisie des notes"]
-        : ["Analyse ma moyenne", "Matières à progresser", "Conseils Trimestre"]
+        ? ["Moyennes de ma matière", "Evolution des classes"]
+        : ["Analyse ma moyenne", "Conseils réussite"]
     }
     setMessages([initialMsg])
 
@@ -70,7 +70,7 @@ export default function AssistantPage() {
           })
         }
       } catch (err) {
-        console.warn("Erreur chargement config école assistant", err)
+        console.warn("School config fetch error", err)
       }
     }
     fetchSchool()
@@ -97,16 +97,13 @@ export default function AssistantPage() {
     try {
       let contextGrades: any[] = []
       
+      // Récupération sécurisée du contexte
       if (userRole === "Élève") {
         const q = query(collection(db, "grades"), where("studentId", "==", userId))
         const snap = await getDocs(q)
         contextGrades = snap.docs.map(d => d.data())
-      } else if (userRole === "Enseignant") {
+      } else if (userRole === "Enseignant" && userClasses.length > 0) {
         const q = query(collection(db, "grades"), where("classId", "in", userClasses))
-        const snap = await getDocs(q)
-        contextGrades = snap.docs.map(d => d.data())
-      } else if (userRole === "Directeur") {
-        const q = query(collection(db, "grades"))
         const snap = await getDocs(q)
         contextGrades = snap.docs.map(d => d.data())
       }
@@ -117,9 +114,8 @@ export default function AssistantPage() {
         userId,
         contextData: { 
           schoolName: schoolInfo.name,
-          motto: schoolInfo.motto,
           year: schoolInfo.year,
-          grades: contextGrades,
+          gradesCount: contextGrades.length,
         }
       })
 
@@ -131,12 +127,12 @@ export default function AssistantPage() {
       }
       setMessages(prev => [...prev, aiMessage])
     } catch (e: any) {
-      console.error("Assistant Error:", e.message);
+      console.error("AI Error:", e.message);
       
-      let isConfigError = e.message.includes("MISSING_API_KEY");
-      let errorContent = isConfigError 
-        ? "Le Cerveau ACADEX n'est pas encore activé. Une clé API Google AI est requise."
-        : `L'IA a répondu : "${e.message}". Veuillez vérifier la validité de votre clé API ou les limites de quota.`;
+      const isConfigError = e.message.includes("MISSING_API_KEY") || e.message.includes("render");
+      const errorContent = isConfigError 
+        ? "Le Cerveau IA est actuellement indisponible. Veuillez vérifier la validité de la clé API (format AIza...) dans les paramètres de production."
+        : `Une erreur est survenue lors de l'analyse : "${e.message}".`;
 
       const errorMsg: Message = {
         role: 'error',
@@ -147,8 +143,8 @@ export default function AssistantPage() {
       setMessages(prev => [...prev, errorMsg])
       
       toast({ 
-        title: isConfigError ? "Configuration Requise" : "Gemini a refusé", 
-        description: isConfigError ? "Variable manquante." : "Détails de l'erreur affichés dans le chat.", 
+        title: "Incident IA", 
+        description: "Échec de connexion au modèle.", 
         variant: "destructive" 
       })
     } finally {
@@ -163,19 +159,16 @@ export default function AssistantPage() {
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
             <div className="size-10 md:size-12 bg-primary rounded-2xl flex items-center justify-center shadow-xl shadow-primary/20">
-              <Sparkles className="size-5 md:size-6 text-white fill-white/20" />
+              <Sparkles className="size-5 md:size-6 text-white" />
             </div>
             <div>
               <h1 className="text-lg md:text-2xl font-black text-foreground tracking-tight uppercase">Cerveau {schoolInfo.name}</h1>
               <p className="text-[7px] md:text-xs font-black text-muted-foreground uppercase tracking-[0.2em] flex items-center gap-2">
                 <Lock className="size-2.5 text-emerald-500" />
-                Accès {userRole} Scellé
+                Session {userRole} Sécurisée
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="hidden sm:flex rounded-full border-primary/20 text-primary font-black px-4 bg-primary/5 text-[10px]">
-            {schoolInfo.year}
-          </Badge>
         </div>
 
         <Card className="flex-1 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden flex flex-col relative">
@@ -201,16 +194,10 @@ export default function AssistantPage() {
                         : 'bg-white text-foreground rounded-tl-none border border-muted/50'
                     )}>
                       {msg.content}
-                      
                       {msg.isConfigError && (
-                        <div className="mt-6 p-4 bg-white/50 rounded-2xl border border-red-200 space-y-4">
-                          <p className="text-[10px] font-black uppercase text-red-800">Action requise (Admin) :</p>
-                          <div className="flex flex-col gap-2">
-                            <div className="flex items-center justify-between bg-red-100/50 p-2 rounded-lg border border-red-200">
-                              <code className="text-[10px] font-bold text-red-900">GOOGLE_GENAI_API_KEY</code>
-                              <Badge className="bg-red-200 text-red-900 border-none text-[8px]">À VÉRIFIER</Badge>
-                            </div>
-                          </div>
+                        <div className="mt-4 p-3 bg-white/50 rounded-xl border border-red-200">
+                          <p className="text-[10px] font-black uppercase text-red-800">Note Technique :</p>
+                          <p className="text-[10px] text-red-700 mt-1">La clé fournie semble invalide. Générez une clé Gemini standard (commençant par AIza) sur Google AI Studio.</p>
                         </div>
                       )}
                     </div>
@@ -220,7 +207,7 @@ export default function AssistantPage() {
                           <button 
                             key={idx}
                             onClick={() => handleSend(s)}
-                            className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-primary/5 hover:bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/10 transition-all active:scale-95"
+                            className="text-[8px] md:text-[10px] font-black uppercase tracking-wider bg-primary/5 hover:bg-primary/10 text-primary px-3 py-1.5 rounded-full border border-primary/10 transition-all"
                           >
                             {s}
                           </button>
@@ -237,8 +224,8 @@ export default function AssistantPage() {
                   <div className="size-8 md:size-10 rounded-xl md:rounded-2xl bg-muted flex items-center justify-center">
                     <Loader2 className="size-4 md:size-5 text-muted-foreground animate-spin" />
                   </div>
-                  <div className="p-4 md:p-6 bg-muted/50 rounded-2xl md:rounded-3xl rounded-tl-none border border-muted/50">
-                    <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest">Analyse en cours...</p>
+                  <div className="p-4 md:p-6 bg-muted/50 rounded-2xl md:rounded-3xl rounded-tl-none">
+                    <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase tracking-widest">Le Cerveau réfléchit...</p>
                   </div>
                 </div>
               </div>
@@ -252,7 +239,7 @@ export default function AssistantPage() {
             >
               <Input 
                 placeholder={`Poser une question...`} 
-                className="flex-1 bg-transparent border-none shadow-none h-10 md:h-14 font-bold placeholder:text-muted-foreground/30 focus-visible:ring-0 text-xs md:text-lg"
+                className="flex-1 bg-transparent border-none shadow-none h-10 md:h-14 font-bold focus-visible:ring-0 text-xs md:text-lg"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={loading}
@@ -260,9 +247,9 @@ export default function AssistantPage() {
               <Button 
                 type="submit" 
                 disabled={!input.trim() || loading}
-                className="bg-primary hover:bg-primary/90 text-white size-10 md:size-14 rounded-[0.9rem] md:rounded-2xl shadow-xl shadow-primary/20 transition-all active:scale-90"
+                className="bg-primary text-white size-10 md:size-14 rounded-xl md:rounded-2xl shadow-xl transition-all"
               >
-                {loading ? <Loader2 className="size-4 md:size-6 animate-spin" /> : <Send className="size-4 md:size-6" />}
+                <Send className="size-4 md:size-6" />
               </Button>
             </form>
           </div>
