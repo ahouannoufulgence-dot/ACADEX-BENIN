@@ -15,7 +15,8 @@ import {
   AlertCircle,
   Settings,
   ExternalLink,
-  RefreshCw
+  RefreshCw,
+  Key
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
@@ -97,7 +98,6 @@ export default function AssistantPage() {
     try {
       let contextGrades: any[] = []
       
-      // Récupération sécurisée du contexte
       if (userRole === "Élève") {
         const q = query(collection(db, "grades"), where("studentId", "==", userId))
         const snap = await getDocs(q)
@@ -129,22 +129,24 @@ export default function AssistantPage() {
     } catch (e: any) {
       console.error("AI Error:", e.message);
       
-      const isConfigError = e.message.includes("MISSING_API_KEY") || e.message.includes("render");
-      const errorContent = isConfigError 
-        ? "Le Cerveau IA est actuellement indisponible. Veuillez vérifier la validité de la clé API (format AIza...) dans les paramètres de production."
-        : `Une erreur est survenue lors de l'analyse : "${e.message}".`;
+      const isAuthError = e.message.includes("401") || e.message.includes("authentication") || e.message.includes("credentials");
+      
+      let errorContent = `Une erreur est survenue lors de l'analyse : "${e.message}".`;
+      if (isAuthError) {
+        errorContent = "ALERTE SÉCURITÉ : La clé API fournie est invalide. Une clé Gemini valide doit impérativement commencer par 'AIza'. Le format actuel ('AQ...') n'est pas autorisé par Google.";
+      }
 
       const errorMsg: Message = {
         role: 'error',
         content: errorContent,
         timestamp: new Date(),
-        isConfigError
+        isConfigError: isAuthError
       }
       setMessages(prev => [...prev, errorMsg])
       
       toast({ 
-        title: "Incident IA", 
-        description: "Échec de connexion au modèle.", 
+        title: "Erreur de Clé", 
+        description: isAuthError ? "La clé fournie est invalide." : "Échec de connexion au modèle.", 
         variant: "destructive" 
       })
     } finally {
@@ -195,9 +197,23 @@ export default function AssistantPage() {
                     )}>
                       {msg.content}
                       {msg.isConfigError && (
-                        <div className="mt-4 p-3 bg-white/50 rounded-xl border border-red-200">
-                          <p className="text-[10px] font-black uppercase text-red-800">Note Technique :</p>
-                          <p className="text-[10px] text-red-700 mt-1">La clé fournie semble invalide. Générez une clé Gemini standard (commençant par AIza) sur Google AI Studio.</p>
+                        <div className="mt-4 p-4 bg-white rounded-xl border-2 border-red-200">
+                          <div className="flex items-center gap-3 text-red-800 mb-3">
+                            <Key className="size-5" />
+                            <p className="text-[10px] font-black uppercase">Action Requise : Obtenir une clé valide</p>
+                          </div>
+                          <p className="text-[10px] text-red-700 leading-relaxed">
+                            La clé que vous avez configurée n'est pas une clé Gemini. <br /><br />
+                            1. Allez sur <b>aistudio.google.com</b><br />
+                            2. Créez une nouvelle <b>API Key</b>.<br />
+                            3. Copiez la clé (elle doit commencer par <b>AIza...</b>).<br />
+                            4. Collez-la dans les variables d'environnement Vercel.
+                          </p>
+                          <Button asChild variant="outline" className="w-full mt-4 h-9 rounded-lg border-red-200 text-red-700 font-bold text-[10px]">
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+                              Aller sur Google AI Studio <ExternalLink className="ml-2 size-3" />
+                            </a>
+                          </Button>
                         </div>
                       )}
                     </div>
