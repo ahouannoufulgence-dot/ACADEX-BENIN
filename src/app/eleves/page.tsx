@@ -42,9 +42,11 @@ export default function StudentsPage() {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
     
+    // Si enseignant, on filtre par ses classes
     if (userRole === "Enseignant" && userClasses.length > 0) {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "in", userClasses))
     }
+    // Si directeur ou autre, vue globale par défaut
     return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
   }, [db, userRole, userClasses, activeYear])
 
@@ -114,7 +116,7 @@ export default function StudentsPage() {
           )}
         </div>
 
-        {/* VUE ENSEIGNANT : CARTES DE CLASSES */}
+        {/* VUE ENSEIGNANT : CARTES DE CLASSES (S'affiche uniquement si aucun élève spécifique n'est sélectionné) */}
         {isTeacher && !selectedClass && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {userClasses.sort().map(classId => {
@@ -143,36 +145,41 @@ export default function StudentsPage() {
               </div>
             </div>
 
-            <Card className="border-none shadow-sm bg-white rounded-[2rem] overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground">
-                  <tr>
-                    <th className="px-8 py-6 text-left">Élève</th>
-                    <th className="px-8 py-6 text-left">Classe</th>
-                    <th className="px-8 py-6 text-center">Statut</th>
-                    <th className="px-8 py-6 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-muted/10">
-                  {(isTeacher ? currentClassData : filteredStudentsGlobal).map((s: any) => (
-                    <tr key={s.id} className="hover:bg-muted/5 transition-all">
-                      <td className="px-8 py-5">
-                        <p className="font-black text-lg uppercase">{s.lastName} {s.firstName}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground">{s.matricule}</p>
-                      </td>
-                      <td className="px-8 py-5">
-                        <Badge className="bg-primary text-white">{s.classId}</Badge>
-                      </td>
-                      <td className="px-8 py-5 text-center">
-                        <Badge variant="outline" className="font-black border-emerald-100 text-emerald-600 bg-emerald-50">{s.status?.toUpperCase()}</Badge>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <Button asChild variant="ghost" size="icon" className="size-12 rounded-xl hover:bg-primary hover:text-white"><Link href={`/eleves/${s.id}`}><ChevronRight /></Link></Button>
-                      </td>
+            <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/30 text-[10px] font-black uppercase text-muted-foreground border-b">
+                    <tr>
+                      <th className="px-8 py-6 text-left">Élève</th>
+                      <th className="px-8 py-6 text-left">Classe</th>
+                      <th className="px-8 py-6 text-center">Statut</th>
+                      <th className="px-8 py-6 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-muted/10">
+                    {(isTeacher ? currentClassData : filteredStudentsGlobal).map((s: any) => (
+                      <tr key={s.id} className="hover:bg-muted/5 transition-all">
+                        <td className="px-8 py-5">
+                          <p className="font-black text-lg uppercase">{s.lastName} {s.firstName}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground">{s.matricule}</p>
+                        </td>
+                        <td className="px-8 py-5">
+                          <Badge className="bg-primary text-white">{s.classId}</Badge>
+                        </td>
+                        <td className="px-8 py-5 text-center">
+                          <Badge variant="outline" className="font-black border-emerald-100 text-emerald-600 bg-emerald-50">{s.status?.toUpperCase() || 'ACTIF'}</Badge>
+                        </td>
+                        <td className="px-8 py-5 text-right">
+                          <Button asChild variant="ghost" size="icon" className="size-12 rounded-xl hover:bg-primary hover:text-white"><Link href={`/eleves/${s.id}`}><ChevronRight /></Link></Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {(isTeacher ? currentClassData : filteredStudentsGlobal).length === 0 && (
+                      <tr><td colSpan={4} className="p-20 text-center text-muted-foreground italic">Aucun élève trouvé.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </Card>
           </div>
         )}
