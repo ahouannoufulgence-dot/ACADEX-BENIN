@@ -3,23 +3,25 @@ import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Configuration centrale de Genkit pour ACADEX.
- * Cette version est optimisée pour le déploiement Serverless (Vercel).
+ * Optimisée pour le déploiement local et la production (Vercel).
  */
 
 const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
 
 // Indicateur de configuration pour l'interface utilisateur
-export const isAiConfigured = !!(apiKey && apiKey.length > 10);
+export const isAiConfigured = !!(apiKey && apiKey.length > 5);
 
-if (!isAiConfigured && process.env.NODE_ENV === 'production') {
-  console.error('--- ALERTE ACADEX --- : Aucune clé API Google AI détectée en production. Le module IA est désactivé.');
+if (isAiConfigured) {
+  console.log('--- ACADEX AI --- : Module IA configuré et prêt.');
+} else if (process.env.NODE_ENV === 'production') {
+  console.error('--- ALERTE ACADEX --- : Aucune clé API détectée. Le module IA est désactivé.');
 }
 
-// Initialisation sécurisée : on ne charge le plugin que si la clé est présente
+// Initialisation sécurisée
 export const ai = genkit({
-  plugins: isAiConfigured ? [
-    googleAI({ apiKey }),
-  ] : [],
+  plugins: [
+    googleAI({ apiKey: apiKey || 'dummy-key-to-avoid-crash' }),
+  ],
 });
 
 export { googleAI };
