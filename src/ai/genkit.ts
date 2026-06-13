@@ -1,6 +1,6 @@
 /**
  * Connecteur direct ACADEX vers l'API Groq
- * Remplace Genkit pour une performance maximale et une gratuité d'usage.
+ * Performance maximale et analyse en temps réel.
  */
 
 export async function callGroq(messages: {role: string, content: string}[]) {
@@ -8,7 +8,7 @@ export async function callGroq(messages: {role: string, content: string}[]) {
   
   if (!apiKey) {
     console.error("GROQ_API_KEY manquante dans l'environnement.");
-    return "Le service d'intelligence est en maintenance technique. Veuillez configurer la clé API.";
+    return "Le service d'intelligence est en maintenance technique. Veuillez configurer la clé API dans Vercel.";
   }
 
   try {
@@ -21,7 +21,7 @@ export async function callGroq(messages: {role: string, content: string}[]) {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages,
-        temperature: 0.6,
+        temperature: 0.5,
         max_completion_tokens: 1024,
       }),
     });

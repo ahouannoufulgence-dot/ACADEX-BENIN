@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Le Cerveau ACADEX v2.0 - Propulsé par Groq Llama 3.3
+ * @fileOverview Le Cerveau ACADEX - Propulsé par Groq Llama 3.3
  * Analyse directe des données scolaires sans intermédiaire.
  */
 
@@ -33,10 +33,10 @@ export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
   - Ne donne pas de réponses trop longues, sois concis et inspirant.
   - Si les données montrent des difficultés, reste positif et propose des méthodes de travail.
   
-  CONTEXTE ACTUEL :
-  ${JSON.stringify(contextData || "Aucune donnée disponible")}
+  CONTEXTE ACTUEL (Données réelles de l'élève) :
+  ${JSON.stringify(contextData || "Aucune donnée disponible pour le moment")}
   
-  Ton rôle est d'analyser ces données et de répondre à la question de l'utilisateur qui a le rôle de ${userRole}.`;
+  Ton rôle est d'analyser ces données et de répondre à la question de l'utilisateur qui a le rôle de ${userRole}. Si c'est un élève, encourage-le par son nom si disponible.`;
 
   const response = await callGroq([
     { role: "system", content: systemPrompt },

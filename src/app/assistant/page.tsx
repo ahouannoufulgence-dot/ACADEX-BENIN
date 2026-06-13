@@ -52,7 +52,7 @@ export default function AssistantPage() {
       const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
       // RÉCUPÉRATION DES VRAIES DONNÉES FIREBASE
-      let contextData = {}
+      let contextData: any = {}
       
       if (userRole === 'Élève') {
         const gradesSnap = await getDocs(query(
@@ -88,8 +88,7 @@ export default function AssistantPage() {
           anneeScolaire: activeYear
         }
       } else {
-        // Pour le Directeur/Enseignant, on peut ajouter d'autres stats globales ici
-        contextData = { info: "Analyse administrative globale demandée." }
+        contextData = { info: "Analyse administrative globale demandée par le personnel." }
       }
 
       const res = await askAcadexBrain({
