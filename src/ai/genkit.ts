@@ -4,13 +4,9 @@
  */
 
 export async function callGroq(messages: {role: string, content: string}[]) {
-  const apiKey = process.env.GROQ_API_KEY;
+  // Clé API fournie par l'utilisateur
+  const apiKey = "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";
   
-  if (!apiKey) {
-    console.error("GROQ_API_KEY manquante dans l'environnement.");
-    return "Le service d'intelligence est en maintenance technique. Veuillez configurer la clé API dans Vercel.";
-  }
-
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -21,15 +17,15 @@ export async function callGroq(messages: {role: string, content: string}[]) {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages,
-        temperature: 0.5,
-        max_completion_tokens: 1024,
+        temperature: 0.4, // Un peu plus bas pour plus de précision sur les chiffres
+        max_completion_tokens: 1500,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Groq API Error:", errorData);
-      return "Je rencontre une difficulté pour me connecter à mon centre de calcul. Veuillez réessayer dans quelques instants.";
+      return "Je rencontre une difficulté technique pour accéder à mon centre de calcul. Veuillez vérifier la connexion.";
     }
 
     const data = await response.json();
