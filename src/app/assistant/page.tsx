@@ -21,7 +21,7 @@ import {
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
 import { toast } from "@/hooks/use-toast"
-import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
+import { doc, getDoc } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import { cn } from "@/lib/utils"
 
@@ -48,7 +48,7 @@ export default function AssistantPage() {
     
     const initialMsg: Message = {
       role: 'assistant',
-      content: `Bonjour ! Je suis le Cerveau ACADEX. Pour activer mes capacités d'analyse, vous devez configurer une clé API valide (commençant par AIza). Comment puis-je vous aider aujourd'hui ?`,
+      content: `Bonjour ! Je suis le Cerveau ACADEX. Je suis prêt à analyser vos données. Si vous n'avez pas encore configuré votre clé Gemini (commençant par AIza), je ne pourrai pas traiter vos requêtes complexes. Comment puis-je vous aider aujourd'hui ?`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
         ? ["Analyse des moyennes", "Point sur la trésorerie", "Élèves en difficulté"]
@@ -86,8 +86,6 @@ export default function AssistantPage() {
     if (!text.trim() || loading || !userRole) return
 
     const userId = localStorage.getItem('acadex_user_id') || ""
-    const userClasses = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
-
     const newMessage: Message = { role: 'user', content: text, timestamp: new Date() }
     setMessages(prev => [...prev, newMessage])
     setInput("")
@@ -112,12 +110,12 @@ export default function AssistantPage() {
       }
       setMessages(prev => [...prev, aiMessage])
     } catch (e: any) {
-      const isAuthError = e.message.includes("401") || e.message.includes("invalid") || e.message.includes("MISSING_API_KEY") || e.message.includes("AIza");
+      const isAuthError = e.message.includes("401") || e.message.includes("AUTH_INVALID") || e.message.includes("AIza");
       
       const errorMsg: Message = {
         role: 'error',
         content: isAuthError 
-          ? "ALERTE CONFIGURATION : Votre clé API est absente ou invalide. Une clé Gemini doit impérativement commencer par 'AIza'."
+          ? "ALERTE CONFIGURATION : Votre clé API est invalide. Gemini exige une clé commençant impérativement par 'AIza'. La clé fournie commençant par 'AQ' est un jeton Firebase et non une clé d'intelligence artificielle."
           : `Une erreur est survenue : ${e.message}`,
         timestamp: new Date(),
         isConfigError: isAuthError
@@ -174,7 +172,7 @@ export default function AssistantPage() {
                         <div className="mt-6 p-6 bg-white rounded-[1.5rem] border-2 border-red-200 shadow-inner">
                           <div className="flex items-center gap-3 text-red-800 mb-4">
                             <Key className="size-6" />
-                            <h4 className="font-black text-xs uppercase tracking-tight">Guide : Créer votre clé Gemini</h4>
+                            <h4 className="font-black text-xs uppercase tracking-tight">Guide : Obtenir une clé valide</h4>
                           </div>
                           <div className="space-y-4 text-[10px] md:text-sm text-red-700 leading-relaxed font-medium">
                             <div className="flex gap-3">
@@ -183,11 +181,11 @@ export default function AssistantPage() {
                             </div>
                             <div className="flex gap-3">
                               <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">2</span>
-                              <p>Cliquez sur <b>"Create API key"</b> (bouton bleu).</p>
+                              <p>Cliquez sur <b>"Create API key"</b>. Elle commencera par <b>AIza...</b></p>
                             </div>
                             <div className="flex gap-3">
                               <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">3</span>
-                              <p>Copiez la clé. Elle <b>DOIT</b> commencer par <b>AIza...</b></p>
+                              <p>Transmettez-moi cette nouvelle clé pour l'activer.</p>
                             </div>
                           </div>
                           <Button asChild className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-12 shadow-lg shadow-red-600/20">

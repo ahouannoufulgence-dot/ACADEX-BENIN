@@ -3,7 +3,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Configuration centrale de Genkit pour ACADEX.
- * Le système vérifie impérativement le préfixe 'AIza' pour garantir la validité de la clé Gemini.
+ * Le système est conçu pour être résilient aux erreurs d'initialisation.
  */
 
 const getApiKey = () => {
@@ -12,12 +12,14 @@ const getApiKey = () => {
 
 const apiKey = getApiKey();
 
-// Une clé Gemini valide commence TOUJOURS par AIza
-export const isAiConfigured = !!(apiKey && apiKey.startsWith('AIza'));
+// Vérification de sécurité : Les clés Gemini commencent par AIza.
+// Nous permettons cependant l'essai de la clé fournie.
+export const isAiConfigured = !!(apiKey && apiKey.length > 10);
+export const isStandardKey = !!(apiKey && apiKey.startsWith('AIza'));
 
 export const ai = genkit({
   plugins: [
-    googleAI({ apiKey: isAiConfigured ? apiKey : 'INVALID_KEY_MUST_START_WITH_AIza' }),
+    googleAI({ apiKey: isAiConfigured ? apiKey : 'MISSING_KEY' }),
   ],
 });
 

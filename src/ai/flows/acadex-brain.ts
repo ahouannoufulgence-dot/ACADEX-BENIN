@@ -24,7 +24,7 @@ export type BrainOutput = z.infer<typeof BrainOutputSchema>;
 
 export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
   if (!isAiConfigured) {
-    throw new Error("MISSING_API_KEY");
+    throw new Error("ALERTE : Clé API manquante dans la configuration du serveur.");
   }
   return acadexBrainFlow(input);
 }
@@ -84,12 +84,16 @@ const acadexBrainFlow = ai.defineFlow(
         contextString: contextString
       });
 
-      if (!output) throw new Error('ERREUR_IA_NULLE');
+      if (!output) throw new Error('ERREUR_IA_REPONSE_NULLE');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR CRITIQUE IA ---", error.message);
-      // On évite de renvoyer l'objet error complet pour la sérialisation
-      throw new Error(error.message || "Erreur de traitement IA");
+      console.error("--- ERREUR CRITIQUE SERVEUR IA ---", error.message);
+      // IMPORTANT : On renvoie une erreur simplifiée pour éviter le crash de rendu Next.js
+      const errorMsg = error.message?.toLowerCase();
+      if (errorMsg.includes("401") || errorMsg.includes("auth") || errorMsg.includes("key")) {
+        throw new Error("AUTH_INVALID_AI_KEY");
+      }
+      throw new Error(`Échec technique IA : ${error.message}`);
     }
   }
 );

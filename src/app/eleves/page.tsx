@@ -43,15 +43,15 @@ export default function StudentsPage() {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
     
-    // Pour l'enseignant, on filtre par classe sélectionnée
+    // Si c'est un enseignant, on filtre par la classe qu'il a sélectionnée
     if (isTeacher && selectedClass) {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "==", selectedClass))
     }
     
-    // Si enseignant sans sélection, on ne charge rien (il doit choisir une carte)
+    // Si c'est un enseignant mais qu'il n'a pas encore choisi de classe (via les cartes)
     if (isTeacher && !selectedClass) return null
 
-    // Pour le directeur, vue globale totale par défaut (recherche directe)
+    // Pour le directeur, on affiche TOUT directement (Liste globale alphabétique)
     return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
   }, [db, userRole, selectedClass, activeYear, isTeacher])
 
@@ -70,7 +70,7 @@ export default function StudentsPage() {
       <div className="space-y-6 md:space-y-10 animate-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
-            {isTeacher && !selectedClass ? "Mes Classes" : isDirector ? "Répertoire Élèves" : `Registre ${selectedClass}`}
+            {isDirector ? "Répertoire Élèves" : isTeacher && !selectedClass ? "Mes Classes" : `Registre ${selectedClass}`}
           </h1>
           {isDirector && (
             <Button asChild className="bg-primary shadow-xl rounded-2xl h-12 md:h-14 px-8 font-black">
@@ -79,7 +79,7 @@ export default function StudentsPage() {
           )}
         </div>
 
-        {/* VUE ENSEIGNANT : CARTES DE CLASSES */}
+        {/* VUE ENSEIGNANT : CARTES DE CLASSES (S'affiche uniquement pour l'enseignant au début) */}
         {isTeacher && !selectedClass && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
             {userClasses.sort().map(classId => (
@@ -91,14 +91,14 @@ export default function StudentsPage() {
           </div>
         )}
 
-        {/* VUE DIRECTEUR (DIRECTE) OU REGISTRE CLASSE ENSEIGNANT */}
+        {/* VUE DIRECTEUR (LISTE DIRECTE) OU REGISTRE CLASSE ENSEIGNANT */}
         {(isDirector || (isTeacher && selectedClass)) && (
           <div className="space-y-6 animate-in fade-in">
             <div className="flex items-center gap-4">
               {isTeacher && <Button variant="ghost" onClick={() => setSelectedClass(null)} className="font-black text-primary hover:bg-primary/5 rounded-xl">RETOUR AUX CLASSES</Button>}
               <div className="relative flex-1 max-w-xl">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                <Input placeholder="Chercher un élève..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm font-bold" />
+                <Input placeholder="Chercher par nom ou matricule..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm font-bold" />
               </div>
             </div>
 
@@ -124,7 +124,7 @@ export default function StudentsPage() {
                             <p className="text-[10px] font-bold text-muted-foreground">{s.matricule}</p>
                           </td>
                           <td className="px-8 py-5">
-                            <Badge className="bg-primary text-white px-3">{s.classId}</Badge>
+                            <Badge className="bg-primary text-white px-3 font-black">{s.classId}</Badge>
                           </td>
                           <td className="px-8 py-5 text-center">
                             <Badge variant="outline" className="font-black border-emerald-100 text-emerald-600 bg-emerald-50">{s.status?.toUpperCase() || 'ACTIF'}</Badge>
@@ -135,7 +135,7 @@ export default function StudentsPage() {
                         </tr>
                       ))}
                       {filteredStudents.length === 0 && (
-                        <tr><td colSpan={4} className="p-20 text-center text-muted-foreground italic font-medium">Aucun profil scellé ne correspond.</td></tr>
+                        <tr><td colSpan={4} className="p-20 text-center text-muted-foreground italic font-medium">Aucun élève trouvé dans le registre officiel.</td></tr>
                       )}
                     </tbody>
                   </table>
