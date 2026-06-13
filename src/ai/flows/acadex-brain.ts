@@ -47,6 +47,7 @@ const acadexBrainPrompt = ai.definePrompt({
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
     ]
   },
   prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire pour l'établissement "{{schoolName}}".
@@ -54,17 +55,17 @@ const acadexBrainPrompt = ai.definePrompt({
 **PROTOCOLE DE SÉCURITÉ :**
 Votre réponse doit être STRICTEMENT limitée par le rôle de l'utilisateur : {{userRole}}.
 
-1. SI RÔLE = "Directeur" : Accès total (trésorerie, notes, effectifs). Ton analytique et stratégique.
-2. SI RÔLE = "Enseignant" : Uniquement ses matières et élèves. INTERDICTION de parler d'argent.
-3. SI RÔLE = "Élève" : Uniquement SES PROPRES DONNÉES. Ton coach motivant et bienveillant.
+1. SI RÔLE = "Directeur" : Accès total (trésorerie, notes, effectifs).
+2. SI RÔLE = "Enseignant" : Uniquement ses matières et élèves.
+3. SI RÔLE = "Élève" : Uniquement SES PROPRES DONNÉES.
 
-**DONNÉES DE CONTEXTE RÉELLES :**
+**DONNÉES DE CONTEXTE :**
 {{{contextString}}}
 
-**QUESTION DE L'UTILISATEUR :**
+**QUESTION :**
 {{{question}}}
 
-Répondez en français de manière concise et précise. Ne jamais inventer de données qui ne sont pas dans le contexte.`,
+Répondez en français de manière concise. Ne jamais inventer de données.`,
 });
 
 const acadexBrainFlow = ai.defineFlow(
@@ -75,7 +76,6 @@ const acadexBrainFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      // Transformation du contexte JSON en string pour éviter les erreurs Handlebars
       const contextString = JSON.stringify(input.contextData || {}, null, 2);
       
       const { output } = await acadexBrainPrompt({
@@ -88,8 +88,8 @@ const acadexBrainFlow = ai.defineFlow(
       if (!output) throw new Error('DÉFAUT_RÉPONSE_IA');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR CRITIQUE CERVEAU ---", error.message);
-      throw new Error(`SERVER_AI_ERROR: ${error.message}`);
+      console.error("--- ERREUR GEMINI ---", error.message);
+      throw new Error(error.message || "Erreur inconnue de l'IA");
     }
   }
 );

@@ -41,15 +41,20 @@ const academicFeedbackPrompt = ai.definePrompt({
   model: googleAI.model('gemini-1.5-flash'),
   input: { schema: GenerateAcademicFeedbackInputSchema },
   output: { schema: GenerateAcademicFeedbackOutputSchema },
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    ]
+  },
   prompt: `Vous êtes le Conseiller Pédagogique Expert d'ACADEX. Analysez les résultats de {{{studentName}}}.
 
 **RESULTATS :**
 {{#each grades}}
 - {{{subject}}} : {{{grade}}}/{{{maxGrade}}}
 {{/each}}
-
-**COMMENTAIRES :**
-{{{teacherComments}}}
 
 Produisez une analyse motivante et 3 conseils spécifiques.`,
 });
@@ -66,7 +71,7 @@ const generateAcademicFeedbackFlow = ai.defineFlow(
       if (!output) throw new Error('Échec génération feedback.');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR FLOW FEEDBACK ---", error.message);
+      console.error("--- ERREUR GEMINI FEEDBACK ---", error.message);
       throw error;
     }
   }

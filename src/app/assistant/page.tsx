@@ -135,8 +135,8 @@ export default function AssistantPage() {
       
       let isConfigError = e.message.includes("MISSING_API_KEY");
       let errorContent = isConfigError 
-        ? "Le Cerveau ACADEX n'est pas encore activé. Une clé API Google AI est requise pour débloquer l'intelligence."
-        : `Erreur technique : ${e.message.replace("SERVER_AI_ERROR: ", "")}`;
+        ? "Le Cerveau ACADEX n'est pas encore activé. Une clé API Google AI est requise."
+        : `L'IA a répondu : "${e.message}". Veuillez vérifier la validité de votre clé API ou les limites de quota.`;
 
       const errorMsg: Message = {
         role: 'error',
@@ -147,8 +147,8 @@ export default function AssistantPage() {
       setMessages(prev => [...prev, errorMsg])
       
       toast({ 
-        title: isConfigError ? "Configuration Requise" : "Erreur Serveur", 
-        description: isConfigError ? "Variable manquante sur Vercel." : "Gemini a rejeté la requête.", 
+        title: isConfigError ? "Configuration Requise" : "Gemini a refusé", 
+        description: isConfigError ? "Variable manquante." : "Détails de l'erreur affichés dans le chat.", 
         variant: "destructive" 
       })
     } finally {
@@ -197,7 +197,7 @@ export default function AssistantPage() {
                       msg.role === 'user' 
                         ? 'bg-primary text-white rounded-tr-none' 
                         : msg.role === 'error' 
-                        ? 'bg-red-50 text-red-700 border border-red-100 rounded-tl-none' 
+                        ? 'bg-red-50 text-red-700 border border-red-100 rounded-tl-none font-bold' 
                         : 'bg-white text-foreground rounded-tl-none border border-muted/50'
                     )}>
                       {msg.content}
@@ -208,13 +208,8 @@ export default function AssistantPage() {
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center justify-between bg-red-100/50 p-2 rounded-lg border border-red-200">
                               <code className="text-[10px] font-bold text-red-900">GOOGLE_GENAI_API_KEY</code>
-                              <Badge className="bg-red-200 text-red-900 border-none text-[8px]">MANQUANTE</Badge>
+                              <Badge className="bg-red-200 text-red-900 border-none text-[8px]">À VÉRIFIER</Badge>
                             </div>
-                            <Button asChild size="sm" variant="outline" className="w-full h-8 rounded-lg text-[10px] font-bold border-red-200 text-red-700 hover:bg-red-50">
-                              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer">
-                                <Settings className="size-3 mr-2" /> Configurer sur Vercel <ExternalLink className="size-2 ml-1" />
-                              </a>
-                            </Button>
                           </div>
                         </div>
                       )}
