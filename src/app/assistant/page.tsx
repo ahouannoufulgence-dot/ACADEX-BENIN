@@ -50,6 +50,7 @@ export default function AssistantPage() {
 
     try {
       const userId = localStorage.getItem('acadex_user_id') || ""
+      console.log("USER ID:", userId)
       const userRole = localStorage.getItem('acadex_user_role') || "Élève"
       const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
@@ -58,8 +59,8 @@ export default function AssistantPage() {
       if (userRole === 'Élève') {
         // RÉCUPÉRATION DONNÉES ÉLÈVE
         const [gradesSnap, lifeSnap] = await Promise.all([
-          getDocs(query(collection(db, "grades"), where("studentId", "==", userId), where("academicYear", "==", activeYear))),
-          getDocs(query(collection(db, "student_life"), where("studentId", "==", userId), where("academicYear", "==", activeYear)))
+               getDocs(query(collection(db, "grades"), where("studentId", "==", userId), where("academicYear", "==", activeYear))),
+               getDocs(query(collection(db, "student_life"), where("studentId", "==", userId), where("academicYear", "==", activeYear)))
         ])
         
         const grades = gradesSnap.docs.map(d => d.data())
@@ -129,6 +130,9 @@ export default function AssistantPage() {
         }
       }
 
+      console.log("USER ID:", userId)
+      console.log("CONTEXT DATA:", JSON.stringify(contextData))
+      
       const res = await askAcadexBrain({
         question: userMsg,
         userRole: userRole as any,
