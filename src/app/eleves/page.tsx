@@ -39,20 +39,19 @@ export default function StudentsPage() {
   const isTeacher = userRole === "Enseignant"
   const isDirector = userRole === "Directeur"
 
-  // Requête adaptée au rôle
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
     
-    // Si enseignant et dans sa vue "Mes Classes", on filtre par classe sélectionnée
+    // Pour l'enseignant, on filtre par classe sélectionnée
     if (isTeacher && selectedClass) {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "==", selectedClass))
     }
     
-    // Si enseignant sans classe sélectionnée, on ne charge rien (il choisira via les cartes)
+    // Si enseignant sans sélection, on ne charge rien
     if (isTeacher && !selectedClass) return null
 
-    // Si directeur, vue globale totale par défaut
+    // Pour le directeur, vue globale totale par défaut (recherche directe)
     return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
   }, [db, userRole, selectedClass, activeYear, isTeacher])
 

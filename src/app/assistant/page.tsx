@@ -13,15 +13,14 @@ import {
   ShieldCheck, 
   Lock,
   AlertCircle,
-  Settings,
   ExternalLink,
-  RefreshCw,
-  Key
+  Key,
+  Copy,
+  CheckCircle2
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
 import { toast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore"
 import { useFirestore } from "@/firebase"
 import { cn } from "@/lib/utils"
@@ -40,7 +39,7 @@ export default function AssistantPage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [userRole, setUserRole] = useState<string | null>(null)
-  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", motto: "", year: "2024-2025" })
+  const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", year: "2024-2025" })
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -49,7 +48,7 @@ export default function AssistantPage() {
     
     const initialMsg: Message = {
       role: 'assistant',
-      content: `Bonjour ! Je suis le Cerveau ACADEX configuré pour l'espace ${role}. Comment puis-je vous aider aujourd'hui ?`,
+      content: `Bonjour ! Je suis le Cerveau ACADEX. Pour activer mes capacités d'analyse, assurez-vous d'avoir configuré une clé API valide (commençant par AIza). Comment puis-je vous aider ?`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
         ? ["Analyse des moyennes", "Point sur la trésorerie", "Élèves en difficulté"]
@@ -66,7 +65,6 @@ export default function AssistantPage() {
           const data = docSnap.data()
           setSchoolInfo({
             name: data.schoolName || "ACADEX",
-            motto: data.motto || "",
             year: data.academicYear || "2024-2025"
           })
         }
@@ -127,29 +125,17 @@ export default function AssistantPage() {
       }
       setMessages(prev => [...prev, aiMessage])
     } catch (e: any) {
-      console.error("AI Error:", e.message);
+      const isAuthError = e.message.includes("401") || e.message.includes("invalid") || e.message.includes("MISSING_API_KEY") || e.message.includes("AIza");
       
-      // Détection explicite des erreurs d'authentification (401 ou message de credentials)
-      const isAuthError = e.message.includes("401") || e.message.includes("authentication") || e.message.includes("credentials") || e.message.includes("MISSING_API_KEY");
-      
-      let errorContent = `Une erreur est survenue lors de l'analyse : "${e.message}".`;
-      if (isAuthError) {
-        errorContent = "ALERTE SÉCURITÉ : La clé API fournie est invalide. Une clé Gemini valide doit impérativement commencer par 'AIza'. Le format actuel ('AQ...') n'est pas autorisé par Google.";
-      }
-
       const errorMsg: Message = {
         role: 'error',
-        content: errorContent,
+        content: isAuthError 
+          ? "ALERTE CONFIGURATION : Votre clé API est manquante ou invalide. Une clé Gemini doit impérativement commencer par 'AIza'."
+          : `Une erreur est survenue : ${e.message}`,
         timestamp: new Date(),
         isConfigError: isAuthError
       }
       setMessages(prev => [...prev, errorMsg])
-      
-      toast({ 
-        title: "Erreur de Clé", 
-        description: isAuthError ? "La clé fournie est invalide." : "Échec de connexion au modèle.", 
-        variant: "destructive" 
-      })
     } finally {
       setLoading(false)
     }
@@ -198,27 +184,38 @@ export default function AssistantPage() {
                     )}>
                       {msg.content}
                       {msg.isConfigError && (
-                        <div className="mt-4 p-4 bg-white rounded-xl border-2 border-red-200">
-                          <div className="flex items-center gap-3 text-red-800 mb-3">
-                            <Key className="size-5" />
-                            <p className="text-[10px] font-black uppercase">Action Requise : Obtenir une clé valide</p>
+                        <div className="mt-6 p-6 bg-white rounded-[1.5rem] border-2 border-red-200 shadow-inner">
+                          <div className="flex items-center gap-3 text-red-800 mb-4">
+                            <Key className="size-6" />
+                            <h4 className="font-black text-xs uppercase tracking-tight">Guide : Créer votre clé Gemini</h4>
                           </div>
-                          <p className="text-[10px] text-red-700 leading-relaxed">
-                            La clé que vous avez configurée n'est pas une clé Gemini. <br /><br />
-                            1. Allez sur <b>aistudio.google.com</b><br />
-                            2. Créez une nouvelle <b>API Key</b>.<br />
-                            3. Copiez la clé (elle doit commencer par <b>AIza...</b>).<br />
-                            4. Collez-la dans les variables d'environnement Vercel.
-                          </p>
-                          <Button asChild variant="outline" className="w-full mt-4 h-9 rounded-lg border-red-200 text-red-700 font-bold text-[10px]">
+                          <div className="space-y-4 text-[10px] md:text-sm text-red-700 leading-relaxed font-medium">
+                            <div className="flex gap-3">
+                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">1</span>
+                              <p>Allez sur <b>aistudio.google.com</b></p>
+                            </div>
+                            <div className="flex gap-3">
+                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">2</span>
+                              <p>Cliquez sur <b>"Create API key"</b> (bouton bleu).</p>
+                            </div>
+                            <div className="flex gap-3">
+                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">3</span>
+                              <p>Copiez la clé. Elle <b>DOIT</b> commencer par <b>AIza...</b></p>
+                            </div>
+                            <div className="flex gap-3">
+                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">4</span>
+                              <p>Ajoutez-la dans Vercel (Variable: <b>GOOGLE_GENAI_API_KEY</b>).</p>
+                            </div>
+                          </div>
+                          <Button asChild className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-12 shadow-lg shadow-red-600/20">
                             <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-                              Aller sur Google AI Studio <ExternalLink className="ml-2 size-3" />
+                              Ouvrir Google AI Studio <ExternalLink className="ml-2 size-4" />
                             </a>
                           </Button>
                         </div>
                       )}
                     </div>
-                    {msg.suggestions && msg.suggestions.length > 0 && (
+                    {msg.suggestions && !msg.isConfigError && (
                       <div className="flex flex-wrap gap-2 pt-1">
                         {msg.suggestions.map((s, idx) => (
                           <button 
