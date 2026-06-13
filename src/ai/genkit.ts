@@ -13,7 +13,6 @@ const getApiKey = () => {
 const apiKey = getApiKey();
 
 // Vérification de sécurité : Les clés Gemini commencent par AIza.
-// Nous permettons cependant l'essai de la clé fournie.
 export const isAiConfigured = !!(apiKey && apiKey.length > 10);
 export const isStandardKey = !!(apiKey && apiKey.startsWith('AIza'));
 

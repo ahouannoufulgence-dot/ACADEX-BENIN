@@ -3,7 +3,7 @@
  * @fileOverview Le "Cerveau ACADEX" - Assistant IA avec Restriction de Sécurité par Rôle.
  */
 
-import { ai, googleAI, isAiConfigured } from '@/ai/genkit';
+import { ai, googleAI, isAiConfigured, isStandardKey } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const BrainInputSchema = z.object({
@@ -17,14 +17,19 @@ const BrainOutputSchema = z.object({
   answer: z.string().describe("La réponse de l'IA, filtrée selon les permissions."),
   suggestions: z.array(z.string()).describe("Suggestions de questions contextuelles."),
   securityAlert: z.boolean().optional().describe("Indique si l'utilisateur a tenté d'accéder à des données interdites."),
+  error: z.string().optional().describe("Message d'erreur si l'IA échoue."),
 });
 
 export type BrainInput = z.infer<typeof BrainInputSchema>;
 export type BrainOutput = z.infer<typeof BrainOutputSchema>;
 
 export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
-  if (!isAiConfigured) {
-    throw new Error("ALERTE : Clé API manquante dans la configuration du serveur.");
+  if (!isStandardKey) {
+    return {
+      answer: "",
+      suggestions: [],
+      error: "Clé API non conforme. Une clé Gemini doit commencer par 'AIza'."
+    };
   }
   return acadexBrainFlow(input);
 }
@@ -47,7 +52,6 @@ const acadexBrainPrompt = ai.definePrompt({
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
       { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
     ]
   },
   prompt: `Vous êtes le "Cerveau ACADEX", l'intelligence centrale de gestion scolaire pour l'établissement "{{schoolName}}".
@@ -87,13 +91,12 @@ const acadexBrainFlow = ai.defineFlow(
       if (!output) throw new Error('ERREUR_IA_REPONSE_NULLE');
       return output;
     } catch (error: any) {
-      console.error("--- ERREUR CRITIQUE SERVEUR IA ---", error.message);
-      // IMPORTANT : On renvoie une erreur simplifiée pour éviter le crash de rendu Next.js
-      const errorMsg = error.message?.toLowerCase();
-      if (errorMsg.includes("401") || errorMsg.includes("auth") || errorMsg.includes("key")) {
-        throw new Error("AUTH_INVALID_AI_KEY");
-      }
-      throw new Error(`Échec technique IA : ${error.message}`);
+      console.error("--- ERREUR IA ---", error.message);
+      return {
+        answer: "",
+        suggestions: [],
+        error: `Détail technique : ${error.message}`
+      };
     }
   }
 );

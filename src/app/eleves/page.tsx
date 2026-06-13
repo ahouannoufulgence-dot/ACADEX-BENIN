@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import Link from "next/link"
+import Link from "link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, where, orderBy } from "firebase/firestore"
@@ -39,21 +39,27 @@ export default function StudentsPage() {
   const isTeacher = userRole === "Enseignant"
   const isDirector = userRole === "Directeur"
 
+  // LOGIQUE DE VUE :
+  // Le Directeur voit TOUJOURS la liste complète (isShowingList = true)
+  // L'Enseignant voit les cartes de classes SAUF s'il en a sélectionné une (isShowingList = isDirector || !!selectedClass)
+  const isShowingList = isDirector || !!selectedClass
+
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
     
-    // Si c'est un enseignant, on filtre par la classe qu'il a sélectionnée
+    // Si c'est un enseignant avec classe choisie
     if (isTeacher && selectedClass) {
       return query(baseCol, where("academicYear", "==", activeYear), where("classId", "==", selectedClass))
     }
     
-    // Si c'est un enseignant mais qu'il n'a pas encore choisi de classe (via les cartes)
-    if (isTeacher && !selectedClass) return null
+    // Si c'est un directeur
+    if (isDirector) {
+      return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
+    }
 
-    // Pour le directeur, on affiche TOUT directement (Liste globale alphabétique)
-    return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
-  }, [db, userRole, selectedClass, activeYear, isTeacher])
+    return null
+  }, [db, userRole, selectedClass, activeYear, isTeacher, isDirector])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
@@ -61,7 +67,7 @@ export default function StudentsPage() {
     if (!students) return []
     return students.filter((s: any) => 
       `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      s.matricule.toLowerCase().includes(searchTerm.toLowerCase())
+      (s.matricule && s.matricule.toLowerCase().includes(searchTerm.toLowerCase()))
     )
   }, [students, searchTerm])
 
@@ -79,20 +85,24 @@ export default function StudentsPage() {
           )}
         </div>
 
-        {/* VUE ENSEIGNANT : CARTES DE CLASSES (S'affiche uniquement pour l'enseignant au début) */}
+        {/* VUE ENSEIGNANT : CARTES DE CLASSES */}
         {isTeacher && !selectedClass && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-bottom-4">
-            {userClasses.sort().map(classId => (
-              <Card key={classId} onClick={() => setSelectedClass(classId)} className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group border-l-[12px] border-primary">
-                <h3 className="text-4xl md:text-6xl font-black mb-4">{classId}</h3>
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Ouvrir le registre de classe</p>
-              </Card>
-            ))}
+            {userClasses.length > 0 ? (
+              userClasses.sort().map(classId => (
+                <Card key={classId} onClick={() => setSelectedClass(classId)} className="p-8 rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group border-l-[12px] border-primary">
+                  <h3 className="text-4xl md:text-6xl font-black mb-4">{classId}</h3>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Ouvrir le registre de classe</p>
+                </Card>
+              ))
+            ) : (
+              <div className="md:col-span-3 py-20 text-center opacity-30 italic">Aucune classe assignée.</div>
+            )}
           </div>
         )}
 
-        {/* VUE DIRECTEUR (LISTE DIRECTE) OU REGISTRE CLASSE ENSEIGNANT */}
-        {(isDirector || (isTeacher && selectedClass)) && (
+        {/* VUE GESTION (DIRECTEUR OU ENSEIGNANT AVEC CLASSE) */}
+        {isShowingList && (
           <div className="space-y-6 animate-in fade-in">
             <div className="flex items-center gap-4">
               {isTeacher && <Button variant="ghost" onClick={() => setSelectedClass(null)} className="font-black text-primary hover:bg-primary/5 rounded-xl">RETOUR AUX CLASSES</Button>}

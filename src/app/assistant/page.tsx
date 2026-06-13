@@ -16,7 +16,8 @@ import {
   ExternalLink,
   Key,
   Copy,
-  CheckCircle2
+  CheckCircle2,
+  Globe
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
@@ -48,7 +49,7 @@ export default function AssistantPage() {
     
     const initialMsg: Message = {
       role: 'assistant',
-      content: `Bonjour ! Je suis le Cerveau ACADEX. Je suis prêt à analyser vos données. Si vous n'avez pas encore configuré votre clé Gemini (commençant par AIza), je ne pourrai pas traiter vos requêtes complexes. Comment puis-je vous aider aujourd'hui ?`,
+      content: `Bonjour ! Je suis le Cerveau ACADEX. Je suis prêt à analyser vos données scolaires. Note : L'IA nécessite une clé Gemini valide (format AIza...) pour fonctionner.`,
       timestamp: new Date(),
       suggestions: role === "Directeur" 
         ? ["Analyse des moyennes", "Point sur la trésorerie", "Élèves en difficulté"]
@@ -102,25 +103,32 @@ export default function AssistantPage() {
         }
       })
 
-      const aiMessage: Message = {
-        role: 'assistant',
-        content: result.answer,
-        timestamp: new Date(),
-        suggestions: result.suggestions
+      if (result.error) {
+        const isAuthError = result.error.includes("AIza") || result.error.includes("401") || result.error.includes("Clé");
+        const errorMsg: Message = {
+          role: 'error',
+          content: isAuthError 
+            ? "ALERTE CONFIGURATION : Votre clé API est invalide. Gemini exige une clé commençant impérativement par 'AIza'."
+            : `Erreur IA : ${result.error}`,
+          timestamp: new Date(),
+          isConfigError: isAuthError
+        }
+        setMessages(prev => [...prev, errorMsg])
+      } else {
+        const aiMessage: Message = {
+          role: 'assistant',
+          content: result.answer,
+          timestamp: new Date(),
+          suggestions: result.suggestions
+        }
+        setMessages(prev => [...prev, aiMessage])
       }
-      setMessages(prev => [...prev, aiMessage])
     } catch (e: any) {
-      const isAuthError = e.message.includes("401") || e.message.includes("AUTH_INVALID") || e.message.includes("AIza");
-      
-      const errorMsg: Message = {
+      setMessages(prev => [...prev, {
         role: 'error',
-        content: isAuthError 
-          ? "ALERTE CONFIGURATION : Votre clé API est invalide. Gemini exige une clé commençant impérativement par 'AIza'. La clé fournie commençant par 'AQ' est un jeton Firebase et non une clé d'intelligence artificielle."
-          : `Une erreur est survenue : ${e.message}`,
-        timestamp: new Date(),
-        isConfigError: isAuthError
-      }
-      setMessages(prev => [...prev, errorMsg])
+        content: "Une erreur critique de communication avec le serveur est survenue.",
+        timestamp: new Date()
+      }])
     } finally {
       setLoading(false)
     }
@@ -172,27 +180,30 @@ export default function AssistantPage() {
                         <div className="mt-6 p-6 bg-white rounded-[1.5rem] border-2 border-red-200 shadow-inner">
                           <div className="flex items-center gap-3 text-red-800 mb-4">
                             <Key className="size-6" />
-                            <h4 className="font-black text-xs uppercase tracking-tight">Guide : Obtenir une clé valide</h4>
+                            <h4 className="font-black text-xs uppercase tracking-tight">Guide : Obtenir une clé API conforme</h4>
                           </div>
                           <div className="space-y-4 text-[10px] md:text-sm text-red-700 leading-relaxed font-medium">
                             <div className="flex gap-3">
-                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">1</span>
-                              <p>Allez sur <b>aistudio.google.com</b></p>
+                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">A</span>
+                              <p><b>Option Recommandée :</b> Allez sur <b>aistudio.google.com</b>. Cliquez sur "Create API key". Elle commencera par <b>AIza...</b></p>
                             </div>
                             <div className="flex gap-3">
-                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">2</span>
-                              <p>Cliquez sur <b>"Create API key"</b>. Elle commencera par <b>AIza...</b></p>
-                            </div>
-                            <div className="flex gap-3">
-                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">3</span>
-                              <p>Transmettez-moi cette nouvelle clé pour l'activer.</p>
+                              <span className="size-5 bg-red-100 rounded-full flex items-center justify-center font-black shrink-0">B</span>
+                              <p><b>Option Console Cloud :</b> Utilisez le bouton ci-dessous pour créer une clé API (et non un identifiant OAuth) dans Google Cloud.</p>
                             </div>
                           </div>
-                          <Button asChild className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-12 shadow-lg shadow-red-600/20">
-                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
-                              Ouvrir Google AI Studio <ExternalLink className="ml-2 size-4" />
-                            </a>
-                          </Button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                            <Button asChild className="bg-red-600 hover:bg-red-700 text-white font-black rounded-xl h-12 shadow-lg shadow-red-600/20">
+                              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">
+                                <Sparkles className="mr-2 size-4" /> AI Studio (Simple)
+                              </a>
+                            </Button>
+                            <Button asChild variant="outline" className="border-2 border-red-200 text-red-600 font-black rounded-xl h-12">
+                              <a href="https://console.cloud.google.com/projectselector2/apis/credentials" target="_blank" rel="noopener noreferrer">
+                                <Globe className="mr-2 size-4" /> Console Cloud
+                              </a>
+                            </Button>
+                          </div>
                         </div>
                       )}
                     </div>

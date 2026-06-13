@@ -3,7 +3,7 @@
  * @fileOverview Flux Genkit pour la génération de feedbacks académiques personnalisés.
  */
 
-import { ai, googleAI, isAiConfigured } from '@/ai/genkit';
+import { ai, googleAI, isStandardKey } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const GenerateAcademicFeedbackInputSchema = z.object({
@@ -25,13 +25,19 @@ const GenerateAcademicFeedbackOutputSchema = z.object({
   academicFeedback: z.string().describe("Observation pédagogique globale et encourageante."),
   summaryReport: z.string().describe("Synthèse de la performance par bloc de compétences."),
   recommendations: z.array(z.string()).describe("Liste de 3 recommandations concrètes pour progresser."),
+  error: z.string().optional().describe("Erreur éventuelle."),
 });
 
 export type GenerateAcademicFeedbackOutput = z.infer<typeof GenerateAcademicFeedbackOutputSchema>;
 
 export async function generateAcademicFeedback(input: GenerateAcademicFeedbackInput): Promise<GenerateAcademicFeedbackOutput> {
-  if (!isAiConfigured) {
-    throw new Error("MISSING_API_KEY");
+  if (!isStandardKey) {
+    return {
+      academicFeedback: "",
+      summaryReport: "",
+      recommendations: [],
+      error: "Clé API invalide pour l'analyse."
+    };
   }
   return generateAcademicFeedbackFlow(input);
 }
@@ -72,7 +78,12 @@ const generateAcademicFeedbackFlow = ai.defineFlow(
       return output;
     } catch (error: any) {
       console.error("--- ERREUR GEMINI FEEDBACK ---", error.message);
-      throw error;
+      return {
+        academicFeedback: "",
+        summaryReport: "",
+        recommendations: [],
+        error: error.message
+      };
     }
   }
 );
