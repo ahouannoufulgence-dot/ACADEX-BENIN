@@ -1,4 +1,4 @@
-'use server';
+
 /**
  * Configuration IA pour ACADEX - Analyse locale des données scolaires
  * Aucune API externe requise
