@@ -1,89 +1,83 @@
 'use server';
 /**
- * @fileOverview Flux Genkit pour la génération de feedbacks académiques personnalisés.
+ * @fileOverview Génération de feedbacks académiques - Analyse locale sans API externe
  */
 
-import { ai, googleAI, isStandardKey } from '@/ai/genkit';
-import { z } from 'genkit';
+export interface GenerateAcademicFeedbackInput {
+  studentName: string;
+  grades: Array<{
+    subject: string;
+    grade: number;
+    maxGrade: number;
+  }>;
+  evaluationContext?: string;
+  teacherComments?: string;
+}
 
-const GenerateAcademicFeedbackInputSchema = z.object({
-  studentName: z.string().describe("Le nom complet de l'élève."),
-  grades: z.array(
-    z.object({
-      subject: z.string().describe("La matière."),
-      grade: z.number().describe("La moyenne de l'élève."),
-      maxGrade: z.number().describe("La note maximale (souvent 20)."),
-    })
-  ).describe("Liste des moyennes par matière."),
-  evaluationContext: z.string().optional().describe("Contexte de l'évaluation."),
-  teacherComments: z.string().optional().describe("Commentaires éventuels du professeur."),
-});
+export interface GenerateAcademicFeedbackOutput {
+  academicFeedback: string;
+  summaryReport: string;
+  recommendations: string[];
+  error?: string;
+}
 
-export type GenerateAcademicFeedbackInput = z.infer<typeof GenerateAcademicFeedbackInputSchema>;
+export async function generateAcademicFeedback(
+  input: GenerateAcademicFeedbackInput
+): Promise<GenerateAcademicFeedbackOutput> {
+  try {
+    const { studentName, grades, teacherComments } = input;
 
-const GenerateAcademicFeedbackOutputSchema = z.object({
-  academicFeedback: z.string().describe("Observation pédagogique globale et encourageante."),
-  summaryReport: z.string().describe("Synthèse de la performance par bloc de compétences."),
-  recommendations: z.array(z.string()).describe("Liste de 3 recommandations concrètes pour progresser."),
-  error: z.string().optional().describe("Erreur éventuelle."),
-});
+    const moyenne = grades.reduce((sum, g) => sum + (g.grade / g.maxGrade) * 20, 0) / grades.length;
 
-export type GenerateAcademicFeedbackOutput = z.infer<typeof GenerateAcademicFeedbackOutputSchema>;
+    const meilleureMatiere = grades.reduce((a, b) => a.grade > b.grade ? a : b);
+    const faibleMatiere = grades.reduce((a, b) => a.grade < b.grade ? a : b);
 
-export async function generateAcademicFeedback(input: GenerateAcademicFeedbackInput): Promise<GenerateAcademicFeedbackOutput> {
-  if (!isStandardKey) {
+    const appreciation = moyenne >= 16 ? "excellents" :
+      moyenne >= 14 ? "très bons" :
+      moyenne >= 12 ? "bons" :
+      moyenne >= 10 ? "passables" : "insuffisants";
+
+    const academicFeedback = `${studentName} présente des résultats ${appreciation} avec une moyenne générale de ${moyenne.toFixed(2)}/20. ${
+      moyenne >= 12
+        ? `Les efforts fournis sont visibles, notamment en ${meilleureMatiere.subject}. Continuez sur cette lancée !`
+        : `Des efforts supplémentaires sont nécessaires, particulièrement en ${faibleMatiere.subject}.`
+    }${teacherComments ? ` Note du professeur : ${teacherComments}` : ''}`;
+
+    const lignesNotes = grades
+      .map(g => {
+        const sur20 = ((g.grade / g.maxGrade) * 20).toFixed(2);
+        const statut = parseFloat(sur20) >= 10 ? "✅" : "⚠️";
+        return `${statut} ${g.subject} : ${sur20}/20`;
+      })
+      .join('\n');
+
+    const summaryReport = `📊 Bilan de ${studentName} :\n\n${lignesNotes}\n\n📈 Moyenne générale : ${moyenne.toFixed(2)}/20\n💪 Point fort : ${meilleureMatiere.subject}\n📚 À renforcer : ${faibleMatiere.subject}`;
+
+    const recommendations: string[] = [];
+
+    grades
+      .filter(g => (g.grade / g.maxGrade) * 20 < 10)
+      .slice(0, 2)
+      .forEach(g => {
+        recommendations.push(`Intensifier le travail en ${g.subject} avec des exercices réguliers.`);
+      });
+
+    if (moyenne >= 10) {
+      recommendations.push(`Maintenir le bon niveau en ${meilleureMatiere.subject} et viser l'excellence.`);
+    }
+
+    if (recommendations.length < 3) {
+      recommendations.push("Revoir les leçons régulièrement et ne pas attendre les examens pour réviser.");
+    }
+
+    return { academicFeedback, summaryReport, recommendations };
+
+  } catch (error: any) {
     return {
       academicFeedback: "",
       summaryReport: "",
       recommendations: [],
-      error: "Clé API invalide pour l'analyse."
+      error: `Erreur analyse : ${error.message}`,
     };
   }
-  return generateAcademicFeedbackFlow(input);
 }
-
-const academicFeedbackPrompt = ai.definePrompt({
-  name: 'academicFeedbackPrompt',
-  model: googleAI.model('gemini-1.5-flash'),
-  input: { schema: GenerateAcademicFeedbackInputSchema },
-  output: { schema: GenerateAcademicFeedbackOutputSchema },
-  config: {
-    safetySettings: [
-      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-    ]
-  },
-  prompt: `Vous êtes le Conseiller Pédagogique Expert d'ACADEX. Analysez les résultats de {{{studentName}}}.
-
-**RESULTATS :**
-{{#each grades}}
-- {{{subject}}} : {{{grade}}}/{{{maxGrade}}}
-{{/each}}
-
-Produisez une analyse motivante et 3 conseils spécifiques.`,
-});
-
-const generateAcademicFeedbackFlow = ai.defineFlow(
-  {
-    name: 'generateAcademicFeedbackFlow',
-    inputSchema: GenerateAcademicFeedbackInputSchema,
-    outputSchema: GenerateAcademicFeedbackOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { output } = await academicFeedbackPrompt(input);
-      if (!output) throw new Error('Échec génération feedback.');
-      return output;
-    } catch (error: any) {
-      console.error("--- ERREUR GEMINI FEEDBACK ---", error.message);
-      return {
-        academicFeedback: "",
-        summaryReport: "",
-        recommendations: [],
-        error: error.message
-      };
-    }
-  }
-);
