@@ -129,7 +129,8 @@ export default function AssistantPage() {
     } catch (e: any) {
       console.error("AI Error:", e.message);
       
-      const isAuthError = e.message.includes("401") || e.message.includes("authentication") || e.message.includes("credentials");
+      // Détection explicite des erreurs d'authentification (401 ou message de credentials)
+      const isAuthError = e.message.includes("401") || e.message.includes("authentication") || e.message.includes("credentials") || e.message.includes("MISSING_API_KEY");
       
       let errorContent = `Une erreur est survenue lors de l'analyse : "${e.message}".`;
       if (isAuthError) {
