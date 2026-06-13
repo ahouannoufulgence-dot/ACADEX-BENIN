@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import Link from "link"
+import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase/index"
 import { collection, query, where, orderBy } from "firebase/firestore"
@@ -41,7 +41,7 @@ export default function StudentsPage() {
 
   // LOGIQUE DE VUE :
   // Le Directeur voit TOUJOURS la liste complète (isShowingList = true)
-  // L'Enseignant voit les cartes de classes SAUF s'il en a sélectionné une (isShowingList = isDirector || !!selectedClass)
+  // L'Enseignant voit les cartes de classes SAUF s'il en a sélectionné une
   const isShowingList = isDirector || !!selectedClass
 
   const studentsQuery = useMemo(() => {
@@ -50,7 +50,7 @@ export default function StudentsPage() {
     
     // Si c'est un enseignant avec classe choisie
     if (isTeacher && selectedClass) {
-      return query(baseCol, where("academicYear", "==", activeYear), where("classId", "==", selectedClass))
+      return query(baseCol, where("academicYear", "==", activeYear), where("classId", "==", selectedClass), orderBy("lastName", "asc"))
     }
     
     // Si c'est un directeur
@@ -105,10 +105,15 @@ export default function StudentsPage() {
         {isShowingList && (
           <div className="space-y-6 animate-in fade-in">
             <div className="flex items-center gap-4">
-              {isTeacher && <Button variant="ghost" onClick={() => setSelectedClass(null)} className="font-black text-primary hover:bg-primary/5 rounded-xl">RETOUR AUX CLASSES</Button>}
+              {isTeacher && <Button variant="ghost" onClick={() => setSelectedClass(null)} className="font-black text-primary hover:bg-primary/5 rounded-xl"><ChevronLeft className="mr-2" /> RETOUR AUX CLASSES</Button>}
               <div className="relative flex-1 max-w-xl">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                <Input placeholder="Chercher par nom ou matricule..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm font-bold" />
+                <Input 
+                  placeholder={isDirector ? "Recherche globale (Nom, Prénom, Matricule)..." : "Chercher dans cette classe..."} 
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)} 
+                  className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm font-bold" 
+                />
               </div>
             </div>
 
