@@ -153,7 +153,7 @@ export default function DirectorDashboard() {
            {/* Hero Card Optimized for Mobile Reading */}
            <Card className="lg:col-span-8 relative h-[300px] md:h-[450px] rounded-[2rem] md:rounded-[3.5rem] overflow-hidden border-none shadow-2xl group">
              <Image 
-               src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-class/1200/800"}
+               src="/images/bg-dashboard-directeur.jpg"
                alt="Classroom"
                fill
                className="object-cover brightness-75 group-hover:scale-105 transition-transform duration-[8000ms]"
