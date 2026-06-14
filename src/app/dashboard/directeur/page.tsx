@@ -28,6 +28,12 @@ import { collection, doc, onSnapshot, query, where, orderBy, limit } from "fireb
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { LineChart, Line, ResponsiveContainer } from "recharts"
+
+// Données fictives pour les courbes de tendance (sparklines)
+const sparkData = [
+  { v: 10 }, { v: 15 }, { v: 12 }, { v: 18 }, { v: 22 }, { v: 20 }, { v: 25 }
+];
 
 export default function DirectorDashboard() {
   const db = useFirestore()
@@ -129,24 +135,41 @@ export default function DirectorDashboard() {
           </div>
         </Card>
 
-        {/* Stats Grid - 2x2 sur Mobile, 1x4 sur Desktop */}
+        {/* Stats Grid avec Sparklines */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
-            { label: "Effectif", value: stats.totalStudents, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50", loading: loadingStudents },
-            { label: "Profs", value: stats.totalTeachers, icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50", loading: loadingTeachers },
-            { label: "Moyenne", value: stats.avg, icon: GraduationCap, color: "text-primary", bg: "bg-primary/5", loading: loadingGrades },
-            { label: "Recettes", value: `${(stats.revenue / 1000).toFixed(0)}k`, icon: Wallet, color: "text-amber-600", bg: "bg-amber-50" }
+            { label: "Effectif", value: stats.totalStudents, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50", sparkColor: "#10b981", loading: loadingStudents },
+            { label: "Profs", value: stats.totalTeachers, icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50", sparkColor: "#3b82f6", loading: loadingTeachers },
+            { label: "Moyenne", value: stats.avg, icon: GraduationCap, color: "text-primary", bg: "bg-primary/5", sparkColor: "#14532D", loading: loadingGrades },
+            { label: "Recettes", value: `${(stats.revenue / 1000).toFixed(0)}k`, icon: Wallet, color: "text-amber-600", bg: "bg-amber-50", sparkColor: "#f59e0b" }
           ].map((stat, i) => (
-            <Card key={i} className="p-4 md:p-6 rounded-[1.2rem] md:rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between group hover:shadow-xl transition-all h-28 md:h-36">
-               <div className="flex items-center justify-between">
+            <Card key={i} className="p-4 md:p-6 rounded-[1.2rem] md:rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between group hover:shadow-xl transition-all h-32 md:h-44 relative overflow-hidden">
+               <div className="flex items-center justify-between relative z-10">
                   <div className={cn("p-2 rounded-lg shadow-inner", stat.bg)}>
                     <stat.icon className={cn("size-4 md:size-6", stat.color)} />
                   </div>
                   {stat.loading ? <Loader2 className="animate-spin size-3 text-muted-foreground" /> : <ArrowUpRight className="size-3 md:size-4 opacity-20" />}
                </div>
-               <div>
+               
+               <div className="relative z-10 mt-2">
                   <p className="text-[7px] md:text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-0.5">{stat.label}</p>
                   <h3 className="text-lg md:text-2xl font-black text-foreground tabular-nums">{stat.value}</h3>
+               </div>
+
+               {/* Sparkline (Micro-statistique) */}
+               <div className="absolute inset-x-0 bottom-0 h-12 md:h-16 opacity-30 pointer-events-none">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={sparkData}>
+                      <Line 
+                        type="monotone" 
+                        dataKey="v" 
+                        stroke={stat.sparkColor} 
+                        strokeWidth={2} 
+                        dot={false} 
+                        isAnimationActive={true}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                </div>
             </Card>
           ))}
