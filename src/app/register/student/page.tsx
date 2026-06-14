@@ -140,7 +140,7 @@ export default function RegisterStudentPage() {
     <div className="min-h-screen relative flex items-center justify-center p-4 md:p-6 bg-background overflow-hidden">
       <div className="absolute inset-0 z-0">
         <Image 
-          src={regImage?.imageUrl || "https://picsum.photos/seed/green/1920/1080"}
+          src="/images/bg-activation.jpg"
           alt="Registration Background"
           fill
           className="object-cover"

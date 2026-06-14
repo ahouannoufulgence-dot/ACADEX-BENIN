@@ -110,7 +110,7 @@ export default function LoginPage() {
     <div className="min-h-screen relative flex items-center justify-center p-4 overflow-hidden bg-background">
       <div className="fixed inset-0 z-0">
         <Image 
-          src={loginImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
+          src="/images/bg-login.jpg"
           alt="Login Background"
           fill
           className="object-cover"
