@@ -46,6 +46,16 @@ import { Progress } from "@/components/ui/progress"
 
 const COLORS = ['#14532d', '#10b981', '#fbbf24', '#ef4444', '#3b82f6'];
 
+const LEVELS = [
+  { id: "6EME", label: "6EME" },
+  { id: "5EME", label: "5EME" },
+  { id: "4EME", label: "4EME" },
+  { id: "3EME", label: "3EME" },
+  { id: "2NDE", label: "2NDE" },
+  { id: "1ERE", label: "1ERE" },
+  { id: "TLE", label: "TERMINALE" }
+]
+
 export default function StatisticsModule() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("synthèse")
@@ -86,50 +96,95 @@ export default function StatisticsModule() {
     return query(collection(db, "payments"), where("academicYear", "==", activeYear))
   }, [db, activeYear])
 
+  const lifeCol = useMemo(() => {
+    if (!db || !activeYear) return null
+    return query(collection(db, "student_life"), where("academicYear", "==", activeYear))
+  }, [db, activeYear])
+
   const { data: students, loading: loadingStudents } = useCollection(studentsCol)
   const { data: grades, loading: loadingGrades } = useCollection(gradesCol)
   const { data: payments } = useCollection(paymentsCol)
+  const { data: lifeEvents } = useCollection(lifeCol)
 
   const analysis = useMemo(() => {
-    const totalStudents = students?.length || 0
-    const validGrades = grades?.filter(g => !isNaN(Number(g.value))) || []
-    
-    const globalGPA = validGrades.length > 0 
-      ? (validGrades.reduce((acc, g) => acc + Number(g.value), 0) / validGrades.length).toFixed(2)
+    if (!students) return { totalStudents: 0, globalGPA: "0.00", revenue: 0, payRate: 0, promoData: [], genderData: [], cityData: [] }
+
+    // 1. Calcul des moyennes par élève
+    const studentAverages = students.map((s: any) => {
+      const sGrades = grades?.filter(g => g.studentId === s.matricule) || []
+      const sLife = lifeEvents?.filter(e => e.studentId === s.matricule) || []
+
+      // Matières
+      const subjects: Record<string, any> = {}
+      sGrades.forEach(g => {
+        if (!subjects[g.subject]) subjects[g.subject] = { vals: [], coef: Number(g.coefficient) || 1 }
+        subjects[g.subject].vals.push(Number(g.value))
+      })
+
+      let totalWeighted = 0
+      let totalCoef = 0
+
+      Object.values(subjects).forEach((sub: any) => {
+        const avgSub = sub.vals.reduce((a:number, b:number) => a + b, 0) / sub.vals.length
+        totalWeighted += avgSub * sub.coef
+        totalCoef += sub.coef
+      })
+
+      // Conduite
+      let conduct = 20
+      sLife.forEach(e => { if (e.pointsImpact) conduct += Number(e.pointsImpact) })
+      conduct = Math.max(0, Math.min(20, conduct))
+      
+      totalWeighted += conduct * 1
+      totalCoef += 1
+
+      const finalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
+      return { ...s, finalAvg }
+    })
+
+    // 2. Moyenne Globale
+    const validStudents = studentAverages.filter(s => s.finalAvg > 0)
+    const globalGPA = validStudents.length > 0 
+      ? (validStudents.reduce((acc, s) => acc + s.finalAvg, 0) / validStudents.length).toFixed(2)
       : "0.00"
 
-    const promoGrades: Record<string, { total: number, count: number }> = {}
-    validGrades.forEach(g => {
-      const promo = g.classId.match(/^[0-9]+/)?.[0] || g.classId
-      if (!promoGrades[promo]) promoGrades[promo] = { total: 0, count: 0 }
-      promoGrades[promo].total += Number(g.value)
-      promoGrades[promo].count += 1
+    // 3. Moyennes par Promotion
+    const promoMap: Record<string, { total: number, count: number }> = {}
+    studentAverages.forEach(s => {
+      const level = LEVELS.find(l => s.classId?.startsWith(l.id))?.id || "AUTRE"
+      if (!promoMap[level]) promoMap[level] = { total: 0, count: 0 }
+      promoMap[level].total += s.finalAvg
+      promoMap[level].count += 1
     })
-    const promoData = Object.entries(promoGrades).map(([name, d]) => ({
-      name: name.includes('EME') ? name : `${name}EME`,
-      avg: Number((d.total / d.count).toFixed(2))
-    })).sort((a, b) => a.name.localeCompare(b.name))
 
+    const promoData = LEVELS.map(l => ({
+      name: l.label,
+      avg: promoMap[l.id]?.count > 0 ? Number((promoMap[l.id].total / promoMap[l.id].count).toFixed(2)) : 0
+    }))
+
+    // 4. Finances
     const revenue = payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const expected = totalStudents * 150000
+    const expected = students.length * 150000 // Estimation
     const payRate = expected > 0 ? (revenue / expected) * 100 : 0
 
+    // 5. Démographie
     const genderDist: Record<string, number> = { "Masculin": 0, "Féminin": 0 }
     const cityDist: Record<string, number> = {}
-    
-    students?.forEach((s: any) => {
+    students.forEach((s: any) => {
       if (s.gender) genderDist[s.gender] = (genderDist[s.gender] || 0) + 1
       if (s.cityOfBirth) cityDist[s.cityOfBirth] = (cityDist[s.cityOfBirth] || 0) + 1
     })
 
-    const genderData = Object.entries(genderDist).map(([name, value]) => ({ name, value }))
-    const cityData = Object.entries(cityDist)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5)
-
-    return { totalStudents, globalGPA, revenue, payRate, promoData, genderData, cityData }
-  }, [students, grades, payments])
+    return { 
+      totalStudents: students.length, 
+      globalGPA, 
+      revenue, 
+      payRate, 
+      promoData, 
+      genderData: Object.entries(genderDist).map(([name, value]) => ({ name, value })),
+      cityData: Object.entries(cityDist).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 5)
+    }
+  }, [students, grades, payments, lifeEvents])
 
   const handleExportStats = () => {
     const docPdf = new jsPDF()
