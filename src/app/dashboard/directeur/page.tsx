@@ -33,12 +33,15 @@ export default function DirectorDashboard() {
   const db = useFirestore()
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [directorName, setDirectorName] = useState("Directeur")
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
 
   useEffect(() => {
     setMounted(true)
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+    const name = localStorage.getItem('acadex_user_name') || "le Directeur"
     setActiveYear(year)
+    setDirectorName(name)
 
     const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
@@ -79,7 +82,7 @@ export default function DirectorDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-500">
+      <div className="max-w-6xl mx-auto space-y-5 md:space-y-8 animate-in fade-in duration-500">
         
         {/* Header Compact */}
         <div className="flex items-center justify-between gap-4 px-1">
@@ -102,29 +105,31 @@ export default function DirectorDashboard() {
            </div>
         </div>
 
-        {/* Hero Section */}
-        <Card className="relative h-[200px] md:h-[300px] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
+        {/* Hero Section avec Salutation */}
+        <Card className="relative h-[200px] md:h-[280px] rounded-[1.8rem] md:rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
           <Image 
-            src="/images/bg-dashboard-directeur.jpg"
+            src="https://picsum.photos/seed/acadex-director-office/1920/1080"
             alt="School Class"
             fill
             className="object-cover brightness-75 group-hover:scale-105 transition-transform duration-[8000ms]"
             priority
+            data-ai-hint="school class green"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
           <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-end">
-            <div className="space-y-2">
+            <div className="space-y-1 md:space-y-2">
               <Badge className="bg-emerald-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-[10px] w-fit">
                 <Activity className="mr-1.5 size-2.5 animate-pulse" /> SYSTÈME LIVE
               </Badge>
               <h2 className="text-2xl md:text-5xl font-black text-white tracking-tight">
-                Pilotez l'<span className="text-emerald-400 italic">Excellence</span>
+                Bonjour, <span className="text-emerald-400 italic">M. {directorName.split(' ')[0]}</span>
               </h2>
+              <p className="text-white/70 text-[10px] md:text-lg font-medium">Pilotez votre établissement avec excellence.</p>
             </div>
           </div>
         </Card>
 
-        {/* Stats Grid */}
+        {/* Stats Grid - 2x2 sur Mobile, 1x4 sur Desktop */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
             { label: "Effectif", value: stats.totalStudents, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50", loading: loadingStudents },
@@ -177,7 +182,7 @@ export default function DirectorDashboard() {
                           </div>
                        </div>
                        <Badge className="bg-white border-2 border-muted text-[7px] md:text-[9px] font-black h-5 md:h-6 px-2 rounded-full shrink-0">
-                          {new Date(log.createdAt?.seconds * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          {log.createdAt ? new Date(log.createdAt?.seconds * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : "--:--"}
                        </Badge>
                     </div>
                  ))}
