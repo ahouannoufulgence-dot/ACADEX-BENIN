@@ -147,7 +147,7 @@ export default function RegisterStudentPage() {
           priority
           data-ai-hint={regImage?.imageHint || "green nature"}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-700/90 via-primary/80 to-emerald-400/60" />
+        <div className="absolute inset-0 bg-black/50" />
       </div>
 
       <div className="relative z-10 w-full max-w-2xl space-y-6 md:space-y-8 animate-in fade-in duration-700">
