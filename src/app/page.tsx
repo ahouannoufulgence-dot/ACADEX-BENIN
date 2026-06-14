@@ -77,6 +77,10 @@ export default function Home() {
         <div className="grid md:grid-cols-3 gap-4 md:gap-6">
           {roles.map((role) => (
             <Card key={role.title} className="border-none shadow-2xl rounded-[2rem] md:rounded-[2.5rem] bg-white/95 backdrop-blur-xl group hover:shadow-primary/20 transition-all duration-500 overflow-hidden relative">
+              <div className="relative h-32 w-full overflow-hidden">
+                <Image src={role.image} alt={role.title} fill className="object-cover" />
+                <div className="absolute inset-0 bg-black/30" />
+              </div>
               <div className={`h-1.5 md:h-2 w-full ${role.color}`} />
               <CardContent className="p-6 md:p-8 flex flex-col items-center text-center space-y-4 md:space-y-6">
                 <div className={`size-12 md:size-16 ${role.color} text-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform`}>
