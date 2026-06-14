@@ -18,7 +18,8 @@ export default function Home() {
       icon: UserCog,
       href: "/register/director",
       color: "bg-primary",
-      buttonText: "Espace Directeur"
+      buttonText: "Espace Directeur",
+      image: "/images/bg-directeur.jpg"
     },
     {
       title: "Enseignant",
@@ -26,7 +27,8 @@ export default function Home() {
       icon: UserCircle2,
       href: "/register/teacher",
       color: "bg-foreground",
-      buttonText: "Espace Enseignant"
+      buttonText: "Espace Enseignant",
+      image: "/images/bg-enseignant.jpg"
     },
     {
       title: "Élève / Parent",
@@ -34,7 +36,8 @@ export default function Home() {
       icon: GraduationCap,
       href: "/register/student",
       color: "bg-emerald-600",
-      buttonText: "Espace Élève"
+      buttonText: "Espace Élève",
+      image: "/images/bg-eleve.jpg"
     }
   ];
 
