@@ -1,7 +1,8 @@
 'use server';
 /**
  * @fileOverview Le Cerveau ACADEX - Propulsé par Groq Llama 3.3
- * Analyse directe et profonde des données scolaires avec humanisation des prompts.
+ * Analyse directe et profonde des données scolaires avec une posture professorale Premium.
+ * Pas d'emojis, pas de listes, texte pur et fluide.
  */
 
 import { callGroq } from '../genkit';
@@ -26,37 +27,38 @@ export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
   
   if (userRole === 'Élève') {
     const grades = Object.entries(contextData?.moyennes || {})
-      .map(([s, v]) => `en ${s} il a ${v}/20`)
+      .map(([s, v]) => `en ${s} il a obtenu ${v} sur 20`)
       .join(', ');
     const absences = (contextData?.historiqueVieScolaire || []).length;
-    dataNarrative = `Tu parles à l'élève ${contextData?.nom || 'l\'élève'}. Voici ses résultats réels ce trimestre : ${grades || 'aucune note saisie'}. Sa moyenne générale calculée est de ${contextData?.moyenneGenerale || '0.00'}/20. Il a ${absences} incidents enregistrés dans son carnet de vie scolaire.`;
+    dataNarrative = `Tu parles à l'élève nommé ${contextData?.nom || 'l\'élève'}. Voici ses résultats académiques certifiés pour ce trimestre : ${grades || 'aucune note n\'est encore scellée'}. Sa moyenne générale consolidée s'élève à ${contextData?.moyenneGenerale || '0.00'} sur 20. Concernant sa vie scolaire, nous avons enregistré ${absences} incidents ou événements dans son carnet.`;
   } else if (userRole === 'Directeur') {
     const promos = Object.entries(contextData?.moyennesParPromotion || {})
-      .map(([p, v]) => `${p} (${v}/20)`)
+      .map(([p, v]) => `la promotion ${p} affiche une moyenne de ${v} sur 20`)
       .join(', ');
-    dataNarrative = `L'établissement compte actuellement ${contextData?.effectifTotal || 0} élèves. Les moyennes actuelles par promotion sont les suivantes : ${promos || 'non encore calculées'}. Le total des recettes de scolarité s'élève à ${contextData?.totalRecettes || 0} FCFA. Le taux de réussite global estimé pour l'école est de ${contextData?.tauxReussiteGlobalEstimation || '0%'}.`;
+    dataNarrative = `Monsieur le Directeur, l'établissement compte actuellement un effectif de ${contextData?.effectifTotal || 0} élèves actifs. L'analyse des performances par promotion révèle que ${promos || 'les moyennes ne sont pas encore consolidées'}. Sur le plan financier, le total des recettes de scolarité perçues s'élève à ${contextData?.totalRecettes || 0} FCFA. Enfin, le taux de réussite global estimé pour l'école est de ${contextData?.tauxReussiteGlobalEstimation || '0%'}.`;
   } else if (userRole === 'Enseignant') {
     const classAvgs = (contextData?.moyenneParClasse || [])
-      .map((c: any) => `${c.classe} (${c.moyenne}/20)`)
+      .map((c: any) => `la classe ${c.classe} possède une moyenne de ${c.moyenne} sur 20`)
       .join(', ');
-    dataNarrative = `Tu es le professeur de ${contextData?.matiere || 'votre discipline'}. Tu as la charge des classes ${contextData?.mesClasses?.join(', ') || 'aucune'}. Tu as déjà saisi ${contextData?.nombreNotesSaisies || 0} notes ce trimestre. Les moyennes actuelles de tes classes sont : ${classAvgs || 'pas encore de moyenne'}.`;
+    dataNarrative = `Monsieur le professeur de ${contextData?.matiere || 'votre discipline'}, vous avez la responsabilité pédagogique des classes suivantes : ${contextData?.mesClasses?.join(', ') || 'aucune classe assignée'}. À ce jour, vous avez scellé ${contextData?.nombreNotesSaisies || 0} notes dans le registre numérique. Les performances actuelles de vos groupes sont les suivantes : ${classAvgs || 'aucune moyenne n\'est encore calculable'}.`;
   }
 
-  const systemPrompt = `Tu es le Cerveau ACADEX, l'intelligence centrale de cet établissement scolaire. 
-  Ton tempérament est celui d'un professeur de collège extrêmement bienveillant, sage et précis.
+  const systemPrompt = `Tu es le Cerveau ACADEX, l'intelligence supérieure de cet établissement scolaire d'élite. 
+  Ton tempérament est celui d'un doyen d'université ou d'un professeur de collège extrêmement sage, bienveillant et d'une grande rigueur intellectuelle.
   
-  CONSIGNES DE RÉDACTION (STRICTES) :
-  - Tu parles DIRECTEMENT à l'utilisateur (${userRole}).
-  - Utilise uniquement des paragraphes de texte fluide et naturel.
-  - INTERDICTION STRICTE d'utiliser des emojis.
-  - INTERDICTION STRICTE de faire des listes à puces ou des énumérations.
-  - INTERDICTION STRICTE d'utiliser des formules mathématiques complexes ou des notations JSON.
-  - Ne donne pas de réponses trop longues, sois concis et inspirant.
+  CONSIGNES DE RÉDACTION STRICTES ET NON NÉGOCIABLES :
+  - Tu t'adresses DIRECTEMENT à l'utilisateur (${userRole}).
+  - Ton discours doit être constitué uniquement de paragraphes de texte fluide, élégant et naturel.
+  - INTERDICTION ABSOLUE d'utiliser le moindre emoji.
+  - INTERDICTION ABSOLUE de faire des listes à puces, des énumérations ou des tirets.
+  - INTERDICTION ABSOLUE d'utiliser des formules mathématiques complexes ou des notations techniques JSON.
+  - Ton ton doit inspirer confiance, autorité et bienveillance.
+  - Ne donne pas de réponses excessivement longues, sois concis mais d'une grande profondeur pédagogique.
   
   CONTEXTE RÉEL DE L'ÉTABLISSEMENT :
   ${dataNarrative}
   
-  RÉPONDS À LA QUESTION EN UTILISANT EXCLUSIVEMENT LES DONNÉES CI-DESSUS POUR JUSTIFIER TES PROPOS. SI TU N'AS PAS DE DONNÉES, EXPLIQUE-LE AVEC BIENVEILLANCE.`;
+  RÉPONDS À LA QUESTION EN UTILISANT EXCLUSIVEMENT LES DONNÉES CI-DESSUS POUR ÉTAYER TON ANALYSE. SI LES DONNÉES SONT MANQUANTES, EXPLIQUE-LE AVEC UNE GRANDE COURTOISIE.`;
 
   const response = await callGroq([
     { role: "system", content: systemPrompt },
@@ -66,9 +68,9 @@ export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
   return {
     answer: response,
     suggestions: userRole === 'Directeur' 
-      ? ["Bilan de la trésorerie", "Classe la plus performante", "Taux de réussite global"]
+      ? ["Audit de la trésorerie", "Classe la plus performante", "Analyse du taux de réussite"]
       : userRole === 'Enseignant'
-      ? ["Analyse mes classes", "Conseils pédagogiques", "Élèves en difficulté"]
-      : ["Comment m'améliorer ?", "Mon point fort", "Bilan de mes absences"]
+      ? ["Performance de mes classes", "Conseils pour les élèves", "Bilans des évaluations"]
+      : ["Comment progresser ?", "Analyse de mes points forts", "Point sur mon assiduité"]
   };
 }
