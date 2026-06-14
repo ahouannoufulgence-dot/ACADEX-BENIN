@@ -50,7 +50,6 @@ export default function AssistantPage() {
 
     try {
       const userId = localStorage.getItem('acadex_user_id') || ""
-      console.log("USER ID:", userId)
       const userRole = localStorage.getItem('acadex_user_role') || "Élève"
       const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
@@ -75,9 +74,14 @@ export default function AssistantPage() {
           averages[sub] = Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2))
         })
 
+        const totalAvg = Object.values(averages).length > 0 
+          ? (Object.values(averages).reduce((a, b) => a + b, 0) / Object.values(averages).length).toFixed(2)
+          : "0.00";
+
         contextData = {
           nom: localStorage.getItem('acadex_user_name'),
           moyennes: averages,
+          moyenneGenerale: totalAvg,
           historiqueVieScolaire: lifeSnap.docs.map(d => ({ motif: d.data().motif, type: d.data().category, impact: d.data().pointsImpact }))
         }
       } else if (userRole === 'Directeur') {
@@ -110,7 +114,7 @@ export default function AssistantPage() {
           effectifTotal: students.length,
           moyennesParPromotion: promoAvgs,
           totalRecettes: payments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0),
-          tauxReussiteGlobalEstimation: (grades.filter(g => Number(g.value) >= 10).length / grades.length * 100).toFixed(1) + "%"
+          tauxReussiteGlobalEstimation: (grades.filter(g => Number(g.value) >= 10).length / Math.max(1, grades.length) * 100).toFixed(1) + "%"
         }
       } else if (userRole === 'Enseignant') {
         // RÉCUPÉRATION DONNÉES ENSEIGNANT
@@ -129,9 +133,6 @@ export default function AssistantPage() {
           })
         }
       }
-
-      console.log("USER ID:", userId)
-      console.log("CONTEXT DATA:", JSON.stringify(contextData))
       
       const res = await askAcadexBrain({
         question: userMsg,
