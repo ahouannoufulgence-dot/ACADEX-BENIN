@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -19,6 +18,7 @@ import {
   User
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import Image from "next/image"
 import { useFirestore, useCollection } from "@/firebase"
@@ -84,7 +84,7 @@ export default function DirectorDashboard() {
     const validValues = (grades || []).map((g: any) => parseFloat(g.value)).filter(v => !isNaN(v) && v >= 0)
     const avg = validValues.length > 0 
       ? (validValues.reduce((acc, v) => acc + v, 0) / validValues.length).toFixed(2)
-      : "14.00" // Valeur par défaut maquette
+      : "14.00"
 
     return { totalStudents, totalTeachers, idsCount, revenue, avg }
   }, [students, teachers, unusedIds, payments, grades])
@@ -112,12 +112,12 @@ export default function DirectorDashboard() {
               <ChevronRight className="size-3 text-muted-foreground rotate-90" />
            </div>
            <Avatar className="size-12 border-2 border-primary/20 shadow-sm">
-              <div className="bg-primary h-full w-full flex items-center justify-center text-white font-black text-lg">L</div>
+              <AvatarFallback className="bg-primary h-full w-full flex items-center justify-center text-white font-black text-lg">L</AvatarFallback>
            </Avatar>
         </div>
 
         {/* Hero Card Magistral */}
-        <Card className="relative h-[400px] rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
+        <Card className="relative h-[300px] md:h-[400px] rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
           <Image 
             src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-class/1200/800"}
             alt="Classroom"
@@ -136,14 +136,14 @@ export default function DirectorDashboard() {
             </div>
 
             <div className="space-y-6">
-              <h1 className="text-5xl md:text-6xl font-black text-white tracking-tight leading-[1.1]">
-                Bonjour <span className="text-emerald-400 italic">M. le Directeur</span>
+              <h1 className="text-3xl md:text-6xl font-black text-white tracking-tight leading-[1.1]">
+                Bonjour <br className="md:hidden" /> <span className="text-emerald-400 italic">M. le Directeur</span>
               </h1>
               <div className="flex items-center gap-3">
                 <div className="bg-[#14532D]/90 backdrop-blur-md px-6 py-2.5 rounded-2xl text-white text-[10px] font-black uppercase tracking-[0.2em] border border-white/5">
                   ACADEX
                 </div>
-                <div className="bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-2xl text-foreground text-[10px] font-black uppercase tracking-tight flex items-center gap-2">
+                <div className="hidden sm:flex bg-white/90 backdrop-blur-md px-6 py-2.5 rounded-2xl text-foreground text-[10px] font-black uppercase tracking-tight items-center gap-2">
                   <Calendar className="size-3.5 text-primary" /> {todayStr}
                 </div>
               </div>
@@ -172,10 +172,12 @@ export default function DirectorDashboard() {
               <div className="relative z-10">
                 <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-1">{stat.label}</p>
                 <div className="flex items-end justify-between">
-                   <h3 className="text-3xl font-black text-foreground tabular-nums">
+                   <h3 className="text-xl md:text-3xl font-black text-foreground tabular-nums">
                      {stat.loading ? <Loader2 className="animate-spin size-6" /> : stat.value}
                    </h3>
-                   <Sparkline color={stat.sparkColor} />
+                   <div className="hidden sm:block">
+                    <Sparkline color={stat.sparkColor} />
+                   </div>
                 </div>
               </div>
             </Card>
