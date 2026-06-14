@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -103,7 +102,7 @@ export default function DirectorDashboard() {
            </div>
         </div>
 
-        {/* Hero Section - Plus compacte */}
+        {/* Hero Section */}
         <Card className="relative h-[200px] md:h-[300px] rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
           <Image 
             src="/images/bg-dashboard-directeur.jpg"
@@ -125,7 +124,7 @@ export default function DirectorDashboard() {
           </div>
         </Card>
 
-        {/* Stats Grid - 2x2 on mobile, 4x1 on desktop */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
             { label: "Effectif", value: stats.totalStudents, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50", loading: loadingStudents },
