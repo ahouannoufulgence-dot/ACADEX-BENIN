@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Layers, 
@@ -11,23 +11,16 @@ import {
   Award, 
   Zap, 
   BookOpen, 
-  ClipboardList, 
-  Search, 
-  Download, 
   TrendingUp, 
-  TrendingDown, 
   Sparkles, 
-  User, 
-  Star, 
-  Info, 
-  ArrowRight,
   ChevronLeft,
   Loader2,
   CheckCircle2,
   ShieldCheck,
   GraduationCap,
   Clock,
-  FileText
+  FileText,
+  AlertTriangle
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
@@ -35,11 +28,6 @@ import { collection, query, where, doc, onSnapshot } from "firebase/firestore"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-import { Input } from "@/components/ui/input"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { askAcadexBrain } from "@/ai/flows/acadex-brain"
-import { toast } from "@/hooks/use-toast"
 import Link from "next/link"
 
 const levels = [
@@ -57,9 +45,6 @@ export default function PromotionsPage() {
   const [activeYear, setActiveYear] = useState("")
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
-  const [selectedSubject, setSelectedSubject] = useState<string>("Mathématiques")
-  const [analyzing, setAnalyzing] = useState(false)
-  const [aiReport, setAiReport] = useState<string | null>(null)
 
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
@@ -68,32 +53,16 @@ export default function PromotionsPage() {
 
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
+    return query(collection(db, "students"), where("academic_year", "==", activeYear), where("status", "==", "Actif"))
   }, [db, activeYear])
 
   const gradesQuery = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
+    return query(collection(db, "grades"), where("academic_year", "==", activeYear))
   }, [db, activeYear])
 
-  const lifeQuery = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(
-      collection(db, "student_life"), 
-      where("academicYear", "==", activeYear),
-      where("category", "in", ["presence", "discipline", "conduite"])
-    )
-  }, [db, activeYear])
-
-  const coefsQuery = useMemo(() => {
-    if (!db) return null
-    return collection(db, "subject_configs")
-  }, [db])
-
-  const { data: students } = useCollection(studentsQuery)
-  const { data: grades } = useCollection(gradesQuery)
-  const { data: lifeEvents } = useCollection(lifeQuery)
-  const { data: coefs } = useCollection(coefsQuery)
+  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
+  const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
 
   const academicData = useMemo(() => {
     const defaultData = { levelsMap: {}, classStats: {}, studentsProcessed: [] }
@@ -103,59 +72,39 @@ export default function PromotionsPage() {
     const classStats: any = {}
     
     levels.forEach(l => {
-      levelsMap[l.id] = { students: [], classes: new Set(), totalAvg: 0, count: 0 }
+      levelsMap[l.id] = { students: [], classes: new Set(), totalAvg: 0, count: 0, isProvisional: true }
     })
 
     const studentsProcessed = students.map((student: any) => {
       const studentGrades = grades.filter((g: any) => g.studentId === student.matricule)
-      const studentLife = lifeEvents?.filter((e: any) => e.studentId === student.matricule) || []
-      
-      let conduct = 20
-      studentLife.forEach((e: any) => { if (e.pointsImpact) conduct += Number(e.pointsImpact) })
-      conduct = Math.max(0, Math.min(20, conduct))
-
       const subjects: Record<string, any> = {}
+      
       studentGrades.forEach((g: any) => {
         if (!subjects[g.subject]) {
-          const configId = `${student.classId}_${g.subject}`.replace(/\s/g, '_')
-          const config = coefs?.find(c => c.id === configId)
-          subjects[g.subject] = { vals: [], coef: config?.coef || Number(g.coefficient) || 1, details: {} }
+          subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
         }
-        subjects[g.subject].details[g.type] = Number(g.value)
+        if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+        if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
       })
 
-      let totalWeighted = 0
-      let totalCoef = 0
+      let totalWeighted = 0, totalCoef = 0, gradesCount = 0
       
-      Object.entries(subjects).forEach(([name, s]: [string, any]) => {
-        const d = s.details
-        const interros = [d.int1, d.int2, d.int3].filter(v => v !== undefined)
-        const avgInt = interros.length > 0 ? interros.reduce((a:number, b:number) => a+b, 0) / interros.length : null
-        
-        const pillars = []
-        if (avgInt !== null) pillars.push(avgInt)
-        if (d.dev1 !== undefined) pillars.push(d.dev1)
-        if (d.dev2 !== undefined) pillars.push(d.dev2)
+      Object.values(subjects).forEach((s: any) => {
+        const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number, b:number) => a+b, 0) / s.ints.length : null
+        const blocks = []
+        if (avgInt !== null) blocks.push(avgInt)
+        s.devs.forEach((d: number) => blocks.push(d))
 
-        const avg = pillars.length > 0 ? (pillars.reduce((a:number, b:number) => a+b, 0) / pillars.length) : 0
-        s.avg = avg
-        s.isProvisional = pillars.length < 3
-        
-        totalWeighted += avg * s.coef
-        totalCoef += s.coef
+        if (blocks.length > 0) {
+          const avg = blocks.reduce((a, b) => a + b, 0) / blocks.length
+          totalWeighted += avg * s.coef
+          totalCoef += s.coef
+          gradesCount += (s.ints.length + s.devs.length)
+        }
       })
-
-      totalWeighted += conduct * 1
-      totalCoef += 1
 
       const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
-
-      return {
-        ...student,
-        conduct,
-        subjects,
-        generalAvg: Number(generalAvg.toFixed(2))
-      }
+      return { ...student, generalAvg: Number(generalAvg.toFixed(2)), gradesCount }
     })
 
     const classGroups: Record<string, any[]> = {}
@@ -169,17 +118,21 @@ export default function PromotionsPage() {
       classGroups[cid].forEach((s, idx) => { s.rank = idx + 1 })
       
       const avgs = classGroups[cid].map(s => s.generalAvg)
+      const totalGrades = classGroups[cid].reduce((acc, s) => acc + s.gradesCount, 0)
+      const expectedGrades = classGroups[cid].length * 50 // Estimation 10 sujets * 5 notes
+
       classStats[cid] = {
         avg: avgs.length > 0 ? Number((avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(2)) : 0,
         count: avgs.length,
-        max: avgs.length > 0 ? Math.max(...avgs) : 0,
-        min: avgs.length > 0 ? Math.min(...avgs) : 0,
+        max: avgs.length > 0 ? Math.max(...avgs).toFixed(2) : "0.00",
+        min: avgs.length > 0 ? Math.min(...avgs).toFixed(2) : "0.00",
+        completion: Math.min(100, Math.round((totalGrades / expectedGrades) * 100)),
         successRate: avgs.length > 0 ? (avgs.filter(v => v >= 10).length / avgs.length * 100).toFixed(0) : "0"
       }
     })
 
     studentsProcessed.forEach(s => {
-      const levelId = levels.find(l => s.classId?.startsWith(l.id))?.id
+      const levelId = levels.find(l => s.classId?.toUpperCase().includes(l.id))?.id
       if (levelId && levelsMap[levelId]) {
         levelsMap[levelId].students.push(s)
         levelsMap[levelId].classes.add(s.classId)
@@ -189,7 +142,7 @@ export default function PromotionsPage() {
     })
 
     return { levelsMap, classStats, studentsProcessed }
-  }, [students, grades, lifeEvents, coefs])
+  }, [students, grades])
 
   const currentClassStudents = useMemo(() => {
     if (!academicData.studentsProcessed || !selectedClass) return []
@@ -198,25 +151,27 @@ export default function PromotionsPage() {
       .sort((a: any, b: any) => (a.lastName || "").localeCompare(b.lastName || ""))
   }, [academicData, selectedClass])
 
-  const goBackToLevels = () => { setSelectedLevel(null); setSelectedClass(null); setAiReport(null); }
-  const goBackToClasses = () => { setSelectedClass(null); setAiReport(null); }
-
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
           <div className="space-y-1.5">
-            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">
-              Centre <span className="text-primary italic">Promotions</span>
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">
+                Centre <span className="text-primary italic">Promotions</span>
+              </h1>
+              {selectedClass && academicData.classStats[selectedClass]?.completion < 95 && (
+                <Badge className="bg-amber-500 text-white animate-pulse hidden md:flex">PROVISOIRE</Badge>
+              )}
+            </div>
             <div className="flex items-center gap-3 text-muted-foreground font-bold text-[9px] md:text-sm">
               <Clock className="size-3.5 md:size-4 text-amber-500" />
-              <span>Analyse Progressive • Année {activeYear}</span>
+              <span>Analyse ACADEX Haute Fidélité • {activeYear}</span>
             </div>
           </div>
           {selectedLevel && (
-            <Button variant="outline" onClick={goBackToLevels} className="rounded-xl md:rounded-2xl border-2 font-black h-11 md:h-14 px-5 md:px-8 text-[10px] md:text-sm shadow-sm hover:bg-primary hover:text-white transition-all mobile-touch-target">
+            <Button variant="outline" onClick={() => { setSelectedLevel(null); setSelectedClass(null); }} className="rounded-xl md:rounded-2xl border-2 font-black h-11 md:h-14 px-5 md:px-8 text-[10px] md:text-sm shadow-sm hover:bg-primary hover:text-white transition-all">
               <ChevronLeft className="mr-2 size-4" /> Retour Promotions
             </Button>
           )}
@@ -244,7 +199,7 @@ export default function PromotionsPage() {
                   </div>
                   <div className="space-y-1 relative z-10">
                     <h3 className="text-xl md:text-3xl font-black text-foreground uppercase tracking-tight">{level.label}</h3>
-                    <p className="text-[10px] md:text-sm font-black text-primary/60 uppercase tracking-widest">MOY PROV : {levelAvg}/20</p>
+                    <p className="text-[10px] md:text-sm font-black text-primary/60 uppercase tracking-widest">MOY : {levelAvg}/20</p>
                   </div>
                 </Card>
               )
@@ -269,9 +224,8 @@ export default function PromotionsPage() {
                          <span>Moyenne Classe</span>
                          <span className="text-primary font-black">{academicData.classStats[cid]?.avg}/20</span>
                       </div>
-                      <div className="flex justify-between items-center text-[10px] md:text-xs font-bold uppercase text-muted-foreground">
-                         <span>Taux Réussite</span>
-                         <span className="text-emerald-600 font-black">{academicData.classStats[cid]?.successRate}%</span>
+                      <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                         <div className="bg-primary h-full transition-all" style={{ width: `${academicData.classStats[cid]?.completion}%` }} />
                       </div>
                    </div>
                 </Card>
@@ -284,10 +238,10 @@ export default function PromotionsPage() {
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
-                 { label: "Moyenne Prov.", val: (academicData.classStats[selectedClass]?.avg || "0.00") + "/20", icon: TrendingUp, color: "text-primary" },
-                 { label: "Major", val: (academicData.classStats[selectedClass]?.max || "0.00") + "/20", icon: Star, color: "text-amber-500" },
-                 { label: "Réussite Prov.", val: (academicData.classStats[selectedClass]?.successRate || "0") + "%", icon: CheckCircle2, color: "text-emerald-600" },
-                 { label: "Année", val: activeYear, icon: Clock, color: "text-muted-foreground" },
+                 { label: "Moyenne", val: (academicData.classStats[selectedClass]?.avg || "0.00") + "/20", icon: TrendingUp, color: "text-primary" },
+                 { label: "Major", val: academicData.classStats[selectedClass]?.max + "/20", icon: Star, color: "text-amber-500" },
+                 { label: "Audit Saisie", val: academicData.classStats[selectedClass]?.completion + "%", icon: Clock, color: "text-blue-600" },
+                 { label: "Réussite", val: academicData.classStats[selectedClass]?.successRate + "%", icon: CheckCircle2, color: "text-emerald-600" },
                ].map((s, i) => (
                  <Card key={i} className="min-w-[130px] md:min-w-0 p-5 md:p-7 rounded-[1.8rem] border-none shadow-sm bg-white flex flex-col justify-between shrink-0 lg:shrink">
                     <div className={cn("p-2 rounded-xl bg-muted w-fit mb-4", s.color)}><s.icon className="size-4 md:size-6" /></div>
@@ -301,17 +255,20 @@ export default function PromotionsPage() {
 
             <Card className="border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden">
                <div className="p-8 md:p-12 border-b bg-muted/5 flex items-center justify-between">
-                  <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Registre {selectedClass}</h3>
-                  <Badge variant="outline" className="font-black border-primary/20 text-primary">SCELLEMENT PROGRESSIF</Badge>
+                  <div className="space-y-1">
+                    <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Registre {selectedClass}</h3>
+                    <p className="text-[8px] md:text-xs font-black text-muted-foreground uppercase tracking-widest">Classement par mérite scolaire</p>
+                  </div>
+                  <Badge variant="outline" className="font-black border-primary/20 text-primary">ALGORITHME ACADEX</Badge>
                </div>
                <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-muted/30 text-[9px] font-black uppercase text-muted-foreground border-b border-muted/30">
                       <tr>
-                        <th className="px-8 py-6 text-left">Élève</th>
-                        <th className="px-6 py-6 text-center">Rang</th>
-                        <th className="px-6 py-6 text-center">Moy Prov.</th>
-                        <th className="px-8 py-6 text-right">Bulletin</th>
+                        <th className="px-8 py-6 text-left">Rang & Élève</th>
+                        <th className="px-6 py-6 text-center">Matricule</th>
+                        <th className="px-6 py-6 text-center">Moyenne Générale</th>
+                        <th className="px-8 py-6 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/20">
@@ -319,14 +276,17 @@ export default function PromotionsPage() {
                         return (
                           <tr key={s.id} className="hover:bg-muted/5 transition-all group">
                             <td className="px-8 py-6">
-                               <p className="font-black text-lg text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
-                               <p className="text-[9px] font-bold text-muted-foreground uppercase">{s.matricule}</p>
+                               <div className="flex items-center gap-4">
+                                  <div className={cn("size-9 md:size-11 rounded-xl items-center justify-center font-black shadow-sm flex shrink-0", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}</div>
+                                  <div>
+                                     <p className="font-black text-base md:text-xl text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
+                                     <Badge variant="outline" className="text-[6px] md:text-[8px] font-black uppercase mt-1 h-4">ID: {s.matricule}</Badge>
+                                  </div>
+                               </div>
                             </td>
+                            <td className="px-6 py-6 text-center font-mono text-[10px] text-muted-foreground/60">{s.matricule}</td>
                             <td className="px-6 py-6 text-center">
-                               <div className={cn("inline-flex size-10 rounded-xl items-center justify-center font-black shadow-sm", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}e</div>
-                            </td>
-                            <td className="px-6 py-6 text-center">
-                               <span className="font-black text-lg text-foreground tabular-nums">{s.generalAvg.toFixed(2)}</span>
+                               <span className={cn("font-black text-sm md:text-2xl tabular-nums", s.generalAvg >= 10 ? "text-primary" : "text-red-600")}>{s.generalAvg.toFixed(2)}</span>
                             </td>
                             <td className="px-8 py-6 text-right">
                                <Button variant="ghost" size="icon" asChild className="size-11 rounded-xl text-primary hover:bg-primary/5 active:scale-95 transition-all">

@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -11,14 +12,14 @@ import {
   UserCheck,
   ShieldCheck,
   Wallet,
-  Scale,
   TrendingUp,
-  ArrowUpRight,
   BarChart3,
   Loader2,
-  MapPin,
-  VenetianMask,
-  Sparkles
+  Sparkles,
+  Zap,
+  Clock,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react"
 import {
   CartesianGrid,
@@ -26,10 +27,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
   AreaChart,
   Area
 } from "recharts"
@@ -37,13 +34,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where } from "firebase/firestore"
 import { useMemo, useState, useEffect } from "react"
-import { jsPDF } from "jspdf"
-import autoTable from "jspdf-autotable"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
-
-const COLORS = ['#14532d', '#10b981', '#fbbf24', '#ef4444', '#3b82f6'];
 
 const LEVELS = [
   { id: "6EME", label: "6EME" },
@@ -59,31 +52,26 @@ export default function StatisticsModule() {
   const db = useFirestore()
   const [activeTab, setActiveTab] = useState("synthèse")
   const [activeYear, setActiveYear] = useState("2026-2027")
-  const [isMobile, setIsMobile] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
   const studentsCol = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
+    return query(collection(db, "students"), where("academic_year", "==", activeYear), where("status", "==", "Actif"))
   }, [db, activeYear])
 
   const gradesCol = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
+    return query(collection(db, "grades"), where("academic_year", "==", activeYear))
   }, [db, activeYear])
 
   const paymentsCol = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "payments"), where("academicYear", "==", activeYear))
+    return query(collection(db, "payments"), where("academic_year", "==", activeYear))
   }, [db, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsCol)
@@ -91,22 +79,59 @@ export default function StatisticsModule() {
   const { data: payments } = useCollection(paymentsCol)
 
   const analysis = useMemo(() => {
-    if (!students || !grades) return { totalStudents: 0, globalGPA: "0.00", revenue: 0, payRate: 0, promoData: [], genderData: [], cityData: [] }
+    if (!students || !grades) return { 
+      totalStudents: 0, globalGPA: "0.00", revenue: 0, payRate: 0, promoData: [], 
+      isProvisional: true, completionRate: 0, advancedClasses: [], lateClasses: [] 
+    }
 
+    const classStats: Record<string, { totalGrades: number, expectedGrades: number, sumGPA: number, count: number }> = {}
+    
+    // Traitement des moyennes par élève avec la logique ACADEX
     const studentAverages = students.map((s: any) => {
       const sGrades = grades.filter(g => g.studentId === s.matricule)
       const subjects: Record<string, any> = {}
+      
       sGrades.forEach(g => {
-        if (!subjects[g.subject]) subjects[g.subject] = { vals: [], coef: Number(g.coefficient) || 2 }
-        subjects[g.subject].vals.push(Number(g.value))
+        if (!subjects[g.subject]) {
+          subjects[g.subject] = { 
+            ints: [], 
+            devs: [], 
+            coef: Number(g.coefficient) || 2 
+          }
+        }
+        if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+        if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
       })
+
       let totalWeighted = 0, totalCoef = 0
       Object.values(subjects).forEach((sub: any) => {
-        const avg = sub.vals.reduce((a:number, b:number) => a + b, 0) / sub.vals.length
-        totalWeighted += avg * sub.coef
-        totalCoef += sub.coef
+        // Logique ACADEX : (Avg(Ints) + Sum(Devs)) / (1 + Count(Devs))
+        let subAvg = 0
+        const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length : null
+        
+        const blocks = []
+        if (avgInt !== null) blocks.push(avgInt)
+        sub.devs.forEach((d: number) => blocks.push(d))
+        
+        if (blocks.length > 0) {
+          subAvg = blocks.reduce((a, b) => a + b, 0) / blocks.length
+          totalWeighted += subAvg * sub.coef
+          totalCoef += sub.coef
+        }
       })
-      return totalCoef > 0 ? totalWeighted / totalCoef : 0
+
+      const gpa = totalCoef > 0 ? totalWeighted / totalCoef : 0
+      
+      // Accumulation pour les classes
+      if (!classStats[s.classId]) {
+        classStats[s.classId] = { totalGrades: 0, expectedGrades: 0, sumGPA: 0, count: 0 }
+      }
+      classStats[s.classId].sumGPA += gpa
+      classStats[s.classId].count++
+      classStats[s.classId].totalGrades += sGrades.length
+      classStats[s.classId].expectedGrades += 5 * 10 // Estimation : 5 notes par sujet, 10 sujets moyenne
+
+      return gpa
     })
 
     const globalGPA = studentAverages.length > 0 
@@ -126,20 +151,27 @@ export default function StatisticsModule() {
       avg: promoMap[l.id]?.count > 0 ? Number((promoMap[l.id].total / promoMap[l.id].count).toFixed(2)) : 0
     }))
 
-    const revenue = payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const expected = students.length * 150000
-    const payRate = expected > 0 ? (revenue / expected) * 100 : 0
+    // Audit de saisie
+    const classesList = Object.entries(classStats).map(([id, s]) => ({
+      id,
+      completion: Math.min(100, Math.round((s.totalGrades / s.expectedGrades) * 100)),
+      avg: (s.sumGPA / s.count).toFixed(2)
+    }))
 
-    const genderDist: Record<string, number> = { "Masculin": 0, "Féminin": 0 }
-    students.forEach((s: any) => { if (s.gender) genderDist[s.gender] = (genderDist[s.gender] || 0) + 1 })
+    const advancedClasses = [...classesList].sort((a, b) => b.completion - a.completion).slice(0, 3)
+    const lateClasses = [...classesList].sort((a, b) => a.completion - b.completion).slice(0, 3)
+    const overallCompletion = classesList.length > 0 ? classesList.reduce((a, b) => a + b.completion, 0) / classesList.length : 0
 
     return { 
       totalStudents: students.length, 
       globalGPA, 
-      revenue, 
-      payRate, 
-      promoData, 
-      genderData: Object.entries(genderDist).map(([name, value]) => ({ name, value }))
+      revenue: payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0,
+      payRate: (students.length > 0 ? (payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0) / (students.length * 150000) * 100 : 0),
+      promoData,
+      isProvisional: overallCompletion < 95,
+      completionRate: Math.round(overallCompletion),
+      advancedClasses,
+      lateClasses
     }
   }, [students, grades, payments])
 
@@ -153,14 +185,21 @@ export default function StatisticsModule() {
              <BarChart3 className="size-32 md:size-64" />
           </div>
           <div className="space-y-1.5 relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[8px] md:text-xs font-black uppercase tracking-widest">
-              <Activity className="size-2.5" /> Pilotage Stratégique
+            <div className="flex items-center gap-2">
+              <Badge className="bg-primary/10 text-primary border-none font-black px-3 py-1 rounded-full text-[8px] md:text-xs">
+                <Activity className="size-2.5 mr-1.5" /> PILOTAGE STRATÉGIQUE
+              </Badge>
+              {analysis.isProvisional && (
+                <Badge className="bg-amber-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-xs animate-pulse">
+                  <AlertTriangle className="size-2.5 mr-1.5" /> DONNÉES PROVISOIRES
+                </Badge>
+              )}
             </div>
             <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
-              Tableau de <span className="text-primary italic">Bord</span>
+              Analyse <span className="text-primary italic">Globale</span>
             </h1>
             <div className="flex items-center gap-2 text-muted-foreground font-bold text-[8px] md:text-sm uppercase tracking-widest">
-              <ShieldCheck className="size-3 md:size-4 text-emerald-500" /> Audit • {activeYear}
+              <ShieldCheck className="size-3 md:size-4 text-emerald-500" /> Audit Certifié • {activeYear}
             </div>
           </div>
           <Button className="w-full md:w-auto bg-primary hover:bg-primary/90 h-11 md:h-16 px-6 md:px-12 rounded-xl md:rounded-2xl font-black text-[10px] md:text-lg shadow-xl active:scale-95 transition-all">
@@ -173,7 +212,7 @@ export default function StatisticsModule() {
             {[
               { id: "synthèse", label: "Synthèse", icon: Activity },
               { id: "académique", label: "Notes", icon: GraduationCap },
-              { id: "démographie", label: "Effectifs", icon: Users },
+              { id: "audit", label: "Audit Saisie", icon: Clock },
               { id: "finance", label: "Finances", icon: Wallet },
             ].map(t => (
               <TabsTrigger key={t.id} value={t.id} className="rounded-lg md:rounded-[2rem] font-black px-4 md:px-10 text-[8px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex items-center gap-1.5 md:gap-3 shrink-0">
@@ -186,7 +225,7 @@ export default function StatisticsModule() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
               {[
                 { label: "Moyenne École", value: analysis.globalGPA, suffix: "/20", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", loading: loadingGrades },
-                { label: "Présence Globale", value: "94.2", suffix: "%", icon: UserCheck, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Saisie Notes", value: analysis.completionRate, suffix: "%", icon: Clock, color: "text-blue-600", bg: "bg-blue-50" },
                 { label: "Recouvrement", value: analysis.payRate.toFixed(1), suffix: "%", icon: Wallet, color: "text-amber-600", bg: "bg-amber-50" },
                 { label: "Effectif", value: analysis.totalStudents, suffix: " Élèves", icon: Users, color: "text-purple-600", bg: "bg-purple-50", loading: loadingStudents },
               ].map((kpi, i) => (
@@ -210,7 +249,7 @@ export default function StatisticsModule() {
             <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
               <Card className="lg:col-span-8 border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-14">
                  <h3 className="text-base md:text-3xl font-black text-foreground tracking-tight mb-8 md:mb-14 flex items-center gap-3">
-                    <TrendingUp className="text-primary size-4 md:size-7" /> Moyennes par Promotion
+                    <TrendingUp className="text-primary size-4 md:size-7" /> Performance par Promotion
                  </h3>
                  <div className="h-[240px] md:h-[450px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -238,9 +277,9 @@ export default function StatisticsModule() {
                       <Sparkles className="size-5 md:size-8 text-primary animate-pulse" />
                     </div>
                     <div className="space-y-4">
-                      <h3 className="text-xl md:text-2xl font-black tracking-tight leading-tight uppercase">Brain <span className="text-primary italic">Analytique</span></h3>
+                      <h3 className="text-xl md:text-2xl font-black tracking-tight leading-tight uppercase">Cerveau <span className="text-primary italic">ACADEX</span></h3>
                       <p className="text-white/60 text-[10px] md:text-sm font-medium leading-relaxed italic border-l-3 border-primary pl-4">
-                        "Analyse : Les classes de 3ème progressent. Le taux de recouvrement financier est stabilisé à {analysis.payRate.toFixed(0)}%."
+                        "L'analyse des registres montre une progression stable. {analysis.completionRate}% des notes sont déjà scellées, permettant une vision de pilotage fiable."
                       </p>
                     </div>
                   </div>
@@ -248,6 +287,54 @@ export default function StatisticsModule() {
                 </Card>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="audit" className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-4">
+             <div className="grid lg:grid-cols-2 gap-6 md:gap-10">
+                <Card className="p-6 md:p-14 rounded-[2rem] md:rounded-[3.5rem] bg-white border-none shadow-sm">
+                   <div className="flex items-center gap-4 mb-8">
+                      <div className="size-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shadow-sm"><CheckCircle2 className="size-6" /></div>
+                      <h3 className="text-lg md:text-2xl font-black uppercase">Classes Avancées</h3>
+                   </div>
+                   <div className="space-y-4">
+                      {analysis.advancedClasses.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-emerald-100 transition-all">
+                           <div className="flex items-center gap-4">
+                              <span className="font-black text-xl text-primary">{c.id}</span>
+                              <Badge className="bg-emerald-100 text-emerald-700 border-none font-black">{c.avg}/20</Badge>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Remplissage</p>
+                              <Progress value={c.completion} className="h-2 w-32 md:w-40" />
+                              <span className="text-xs font-black text-primary mt-1 inline-block">{c.completion}%</span>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                </Card>
+
+                <Card className="p-6 md:p-14 rounded-[2rem] md:rounded-[3.5rem] bg-white border-none shadow-sm">
+                   <div className="flex items-center gap-4 mb-8">
+                      <div className="size-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center shadow-sm"><AlertTriangle className="size-6" /></div>
+                      <h3 className="text-lg md:text-2xl font-black uppercase">Classes en Retard</h3>
+                   </div>
+                   <div className="space-y-4">
+                      {analysis.lateClasses.map((c, i) => (
+                        <div key={i} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-red-100 transition-all">
+                           <div className="flex items-center gap-4">
+                              <span className="font-black text-xl text-foreground">{c.id}</span>
+                              <Badge variant="outline" className="font-black border-muted-foreground/20">{c.avg}/20</Badge>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Remplissage</p>
+                              <Progress value={c.completion} className="h-2 w-32 md:w-40" />
+                              <span className="text-xs font-black text-red-600 mt-1 inline-block">{c.completion}%</span>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                </Card>
+             </div>
           </TabsContent>
         </Tabs>
       </div>

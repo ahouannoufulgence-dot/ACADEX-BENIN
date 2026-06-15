@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -29,6 +30,7 @@ import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { LineChart, Line, ResponsiveContainer } from "recharts"
+import { Progress } from "@/components/ui/progress"
 
 const sparkData = [
   { v: 10 }, { v: 15 }, { v: 12 }, { v: 18 }, { v: 22 }, { v: 20 }, { v: 25 }
@@ -57,11 +59,11 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  const studentsQuery = useMemo(() => query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
+  const studentsQuery = useMemo(() => query(collection(db, "students"), where("academic_year", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
-  const paymentsQuery = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
-  const gradesQuery = useMemo(() => query(collection(db, "grades"), where("academicYear", "==", activeYear)), [db, activeYear])
+  const paymentsQuery = useMemo(() => query(collection(db, "payments"), where("academic_year", "==", activeYear)), [db, activeYear])
+  const gradesQuery = useMemo(() => query(collection(db, "grades"), where("academic_year", "==", activeYear)), [db, activeYear])
   const auditQuery = useMemo(() => query(collection(db, "student_life"), orderBy("createdAt", "desc"), limit(5)), [db])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
@@ -76,10 +78,38 @@ export default function DirectorDashboard() {
     const totalTeachers = teachers?.length || 0
     const idsCount = unusedIds?.length || 0
     const revenue = (payments || []).reduce((acc, p: any) => acc + (parseFloat(p.amountPaid) || 0), 0)
-    const validGrades = (grades || []).map((g: any) => parseFloat(g.value)).filter(v => !isNaN(v) && v >= 0)
-    const avg = validGrades.length > 0 ? (validGrades.reduce((acc, v) => acc + v, 0) / validGrades.length).toFixed(2) : "14.20"
+    
+    // Calcul de la moyenne école avec logique ACADEX
+    let globalSum = 0, gpaCount = 0, totalGradesEntered = grades?.length || 0
+    
+    if (students && grades) {
+      students.forEach((s: any) => {
+        const sGrades = grades.filter(g => g.studentId === s.matricule)
+        const subjects: Record<string, any> = {}
+        sGrades.forEach(g => {
+          if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
+          if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+          if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+        })
+        let totalW = 0, totalC = 0
+        Object.values(subjects).forEach((sub: any) => {
+          const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length : null
+          const blocks = []
+          if (avgInt !== null) blocks.push(avgInt)
+          sub.devs.forEach((d: number) => blocks.push(d))
+          if (blocks.length > 0) {
+            totalW += (blocks.reduce((a, b) => a + b, 0) / blocks.length) * sub.coef
+            totalC += sub.coef
+          }
+        })
+        if (totalC > 0) { globalSum += (totalW / totalC); gpaCount++ }
+      })
+    }
 
-    return { totalStudents, totalTeachers, idsCount, revenue, avg }
+    const avg = gpaCount > 0 ? (globalSum / gpaCount).toFixed(2) : "14.20"
+    const completionRate = Math.min(100, Math.round((totalGradesEntered / (Math.max(1, totalStudents) * 50)) * 100))
+
+    return { totalStudents, totalTeachers, idsCount, revenue, avg, completionRate }
   }, [students, teachers, unusedIds, payments, grades])
 
   if (!mounted) return null
@@ -121,9 +151,16 @@ export default function DirectorDashboard() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
           <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-end">
             <div className="space-y-1 md:space-y-2">
-              <Badge className="bg-emerald-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-xs w-fit">
-                <Activity className="mr-1.5 size-2.5 animate-pulse" /> SYSTÈME LIVE
-              </Badge>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className="bg-emerald-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-xs w-fit">
+                  <Activity className="mr-1.5 size-2.5 animate-pulse" /> SYSTÈME LIVE
+                </Badge>
+                {stats.completionRate < 95 && (
+                  <Badge className="bg-amber-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-xs">
+                    SAISIE : {stats.completionRate}%
+                  </Badge>
+                )}
+              </div>
               <h2 className="text-2xl md:text-5xl font-black text-white tracking-tight leading-tight">
                 Bonjour, <br className="md:hidden" /> <span className="text-emerald-400 italic">M. {directorName.split(' ')[0]}</span>
               </h2>
@@ -172,13 +209,17 @@ export default function DirectorDashboard() {
 
         <div className="grid lg:grid-cols-12 gap-6 md:gap-8">
            <Card className="lg:col-span-8 p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border-none shadow-sm bg-white">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <h3 className="text-base md:text-xl font-black uppercase tracking-tight flex items-center gap-2">
-                  <Clock className="text-primary size-4 md:size-5" /> Audit d'Activité
+                  <Clock className="text-primary size-4 md:size-5" /> Audit d'Activité & Saisie
                 </h3>
-                <Button variant="ghost" asChild className="text-primary font-black text-[9px] md:text-xs">
-                  <Link href="/statistiques">Voir Tout <ChevronRight className="ml-1 size-3" /></Link>
-                </Button>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                   <div className="flex-1 md:w-48">
+                      <p className="text-[8px] font-black uppercase text-muted-foreground mb-1">Remplissage global</p>
+                      <Progress value={stats.completionRate} className="h-2" />
+                   </div>
+                   <Badge className="bg-primary/5 text-primary border-none font-black text-[9px]">{stats.completionRate}%</Badge>
+                </div>
               </div>
               <div className="space-y-2">
                  {recentAudit?.length === 0 ? (
@@ -229,10 +270,10 @@ export default function DirectorDashboard() {
                        <div className="size-10 bg-primary/20 rounded-xl flex items-center justify-center shadow-inner">
                           <Sparkles className="size-5 text-primary animate-pulse" />
                        </div>
-                       <h3 className="text-sm md:text-lg font-black uppercase tracking-tight">Brain <span className="text-primary italic">Intelligence</span></h3>
+                       <h3 className="text-sm md:text-lg font-black uppercase tracking-tight">Cerveau <span className="text-primary italic">ACADEX</span></h3>
                     </div>
                     <p className="text-white/60 text-[9px] md:text-xs font-medium italic border-l-2 border-primary pl-3 leading-relaxed">
-                       "Analyse scellée : La performance globale est stable pour ce trimestre."
+                       "L'analyse des registres montre un taux de saisie de {stats.completionRate}%. La vision stratégique est déjà fiable pour le pilotage financier."
                     </p>
                  </div>
                  <Button asChild className="w-full bg-primary hover:bg-primary/90 text-white h-10 md:h-12 rounded-xl font-black text-[9px] md:text-xs shadow-xl active:scale-95 transition-all relative z-10">
