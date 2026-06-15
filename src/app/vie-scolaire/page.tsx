@@ -44,6 +44,7 @@ export default function StudentLifePage() {
   const db = useFirestore()
   const [userRole, setUserRole] = useState("")
   const [userId, setUserId] = useState("")
+  const [userClasses, setUserClasses] = useState<string[]>([])
   const [activeYear, setActiveYear] = useState("")
   const [activeTab, setActiveTab] = useState("presence")
   const [searchTerm, setSearchTerm] = useState("")
@@ -56,9 +57,11 @@ export default function StudentLifePage() {
   const [bonusForm, setBonusForm] = useState({ points: 1, motif: "" })
 
   useEffect(() => {
-    setUserRole(localStorage.getItem('acadex_user_role') || "Élève")
+    const role = localStorage.getItem('acadex_user_role') || "Élève"
+    setUserRole(role)
     setUserId(localStorage.getItem('acadex_user_id') || "")
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
+    setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
 
     const unsubConfig = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) setSchoolConfig(snap.data())
@@ -68,17 +71,37 @@ export default function StudentLifePage() {
 
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear || userRole === "Élève") return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
-  }, [db, activeYear, userRole])
+    const baseCol = collection(db, "students")
+    
+    // Restriction aux classes assignées si c'est un enseignant
+    if (userRole === "Enseignant") {
+      if (userClasses.length === 0) return null
+      return query(
+        baseCol, 
+        where("academicYear", "==", activeYear), 
+        where("classId", "in", userClasses),
+        orderBy("lastName", "asc")
+      )
+    }
+
+    // Le directeur voit tout
+    return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
+  }, [db, activeYear, userRole, userClasses])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
 
   const filteredStudents = useMemo(() => {
     if (!students) return []
-    return students.filter((s: any) => 
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      s.matricule.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    return students
+      .filter((s: any) => 
+        `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        s.matricule.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a: any, b: any) => {
+        const nameA = `${a.lastName} ${a.firstName}`.toLowerCase()
+        const nameB = `${b.lastName} ${b.firstName}`.toLowerCase()
+        return nameA.localeCompare(nameB)
+      })
   }, [students, searchTerm])
 
   const currentTargetId = userRole === "Élève" ? userId : selectedStudent?.matricule
@@ -193,6 +216,8 @@ export default function StudentLifePage() {
                         <Loader2 className="animate-spin text-primary size-7" />
                         <p className="text-[8px] font-black text-muted-foreground uppercase">Chargement...</p>
                       </div>
+                    ) : filteredStudents.length === 0 ? (
+                      <div className="py-10 text-center opacity-40 text-[10px] font-black uppercase tracking-widest">Aucun élève autorisé</div>
                     ) : filteredStudents.map((s: any) => (
                       <button
                         key={s.id}
@@ -207,9 +232,12 @@ export default function StudentLifePage() {
                             {s.lastName[0]}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="text-left min-w-0">
+                        <div className="text-left min-w-0 flex-1">
                           <p className="font-black text-xs md:text-base truncate uppercase tracking-tight">{s.lastName} {s.firstName}</p>
-                          <p className={cn("text-[7px] md:text-[10px] font-bold uppercase", selectedStudent?.id === s.id ? "text-white/60" : "text-muted-foreground")}>{s.matricule}</p>
+                          <div className="flex items-center justify-between mt-0.5">
+                            <span className={cn("text-[7px] md:text-[9px] font-black uppercase", selectedStudent?.id === s.id ? "text-white/60" : "text-primary/60")}>{s.classId}</span>
+                            <span className={cn("text-[7px] md:text-[8px] font-bold uppercase", selectedStudent?.id === s.id ? "text-white/40" : "text-muted-foreground/40")}>{s.matricule}</span>
+                          </div>
                         </div>
                       </button>
                     ))}
@@ -223,7 +251,10 @@ export default function StudentLifePage() {
             {(!selectedStudent && isStaff) ? (
               <Card className="p-16 md:p-32 text-center rounded-[2.2rem] md:rounded-[4rem] border-4 border-dashed border-muted/50 bg-white/50 flex flex-col items-center justify-center h-full space-y-6">
                 <div className="size-16 md:size-28 bg-muted rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center opacity-30 shadow-inner"><ClipboardList className="size-8 md:size-14 text-muted-foreground" /></div>
-                <h3 className="text-xl md:text-4xl font-black tracking-tight text-foreground/40 uppercase">Espace de Pilotage</h3>
+                <div className="space-y-2">
+                  <h3 className="text-xl md:text-4xl font-black tracking-tight text-foreground/40 uppercase">Espace de Pilotage</h3>
+                  <p className="text-[10px] md:text-base font-bold text-muted-foreground/40 uppercase tracking-widest">Sélectionnez un élève pour sceller son journal</p>
+                </div>
               </Card>
             ) : (
               <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
