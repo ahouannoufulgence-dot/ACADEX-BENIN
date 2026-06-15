@@ -30,7 +30,6 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { LineChart, Line, ResponsiveContainer } from "recharts"
 
-// Données fictives pour les courbes de tendance (sparklines)
 const sparkData = [
   { v: 10 }, { v: 15 }, { v: 12 }, { v: 18 }, { v: 22 }, { v: 20 }, { v: 25 }
 ];
@@ -90,7 +89,6 @@ export default function DirectorDashboard() {
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-5 md:space-y-8 animate-in fade-in duration-500">
         
-        {/* Header Compact */}
         <div className="flex items-center justify-between gap-4 px-1">
            <div className="space-y-0.5">
               <h1 className="text-xl md:text-3xl font-black tracking-tight uppercase truncate">
@@ -106,12 +104,11 @@ export default function DirectorDashboard() {
                  <span className="font-black text-[10px] md:text-sm text-foreground">{activeYear}</span>
               </div>
               <Avatar className="size-10 md:size-12 border-2 border-primary/10 shadow-sm">
-                 <AvatarFallback className="bg-primary text-white font-black text-xs md:text-base">D</AvatarFallback>
+                 <AvatarFallback className="bg-primary text-white font-black text-xs md:text-base uppercase">{directorName[0]}</AvatarFallback>
               </Avatar>
            </div>
         </div>
 
-        {/* Hero Section avec Salutation */}
         <Card className="relative h-[200px] md:h-[280px] rounded-[1.8rem] md:rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
           <Image 
             src="/images/bg-dashboard-directeur.jpg"
@@ -124,18 +121,17 @@ export default function DirectorDashboard() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
           <div className="absolute inset-0 p-6 md:p-10 flex flex-col justify-end">
             <div className="space-y-1 md:space-y-2">
-              <Badge className="bg-emerald-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-[10px] w-fit">
+              <Badge className="bg-emerald-500 text-white border-none font-black px-3 py-1 rounded-full text-[8px] md:text-xs w-fit">
                 <Activity className="mr-1.5 size-2.5 animate-pulse" /> SYSTÈME LIVE
               </Badge>
-              <h2 className="text-2xl md:text-5xl font-black text-white tracking-tight">
-                Bonjour, <span className="text-emerald-400 italic">M. {directorName.split(' ')[0]}</span>
+              <h2 className="text-2xl md:text-5xl font-black text-white tracking-tight leading-tight">
+                Bonjour, <br className="md:hidden" /> <span className="text-emerald-400 italic">M. {directorName.split(' ')[0]}</span>
               </h2>
               <p className="text-white/70 text-[10px] md:text-lg font-medium">Pilotez votre établissement avec excellence.</p>
             </div>
           </div>
         </Card>
 
-        {/* Stats Grid avec Sparklines */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[
             { label: "Effectif", value: stats.totalStudents, icon: Users, color: "text-emerald-600", bg: "bg-emerald-50", sparkColor: "#10b981", loading: loadingStudents },
@@ -156,7 +152,6 @@ export default function DirectorDashboard() {
                   <h3 className="text-lg md:text-2xl font-black text-foreground tabular-nums">{stat.value}</h3>
                </div>
 
-               {/* Sparkline (Micro-statistique) */}
                <div className="absolute inset-x-0 bottom-0 h-12 md:h-16 opacity-30 pointer-events-none">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={sparkData}>
@@ -175,9 +170,7 @@ export default function DirectorDashboard() {
           ))}
         </div>
 
-        {/* Bottom Section */}
         <div className="grid lg:grid-cols-12 gap-6 md:gap-8">
-           {/* Recent Activity */}
            <Card className="lg:col-span-8 p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border-none shadow-sm bg-white">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-base md:text-xl font-black uppercase tracking-tight flex items-center gap-2">
@@ -212,7 +205,6 @@ export default function DirectorDashboard() {
               </div>
            </Card>
 
-           {/* Side Panels */}
            <div className="lg:col-span-4 space-y-6">
               {stats.idsCount > 0 && (
                 <Link href="/eleves/identifiants" className="block group">
@@ -239,8 +231,8 @@ export default function DirectorDashboard() {
                        </div>
                        <h3 className="text-sm md:text-lg font-black uppercase tracking-tight">Brain <span className="text-primary italic">Intelligence</span></h3>
                     </div>
-                    <p className="text-white/60 text-[9px] md:text-xs font-medium italic border-l-2 border-primary pl-3">
-                       "Analyse scellée : La performance globale est stable."
+                    <p className="text-white/60 text-[9px] md:text-xs font-medium italic border-l-2 border-primary pl-3 leading-relaxed">
+                       "Analyse scellée : La performance globale est stable pour ce trimestre."
                     </p>
                  </div>
                  <Button asChild className="w-full bg-primary hover:bg-primary/90 text-white h-10 md:h-12 rounded-xl font-black text-[9px] md:text-xs shadow-xl active:scale-95 transition-all relative z-10">
@@ -250,7 +242,6 @@ export default function DirectorDashboard() {
               </Card>
            </div>
         </div>
-
       </div>
     </DashboardLayout>
   )

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -195,7 +194,7 @@ export default function GradesPage() {
       })
 
       await batch.commit()
-      toast({ title: "Registre scellé", description: `Les notes et le coefficient de ${selectedClass} sont à jour.` })
+      toast({ title: "Registre scellé", description: `Les notes de ${selectedClass} sont à jour.` })
       setCompletionStats(prev => ({ ...prev, [selectedEvalType]: true }))
     } catch (e) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'grades', operation: 'write' }))
@@ -212,74 +211,74 @@ export default function GradesPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1.5">
-            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
               Saisie <span className="text-primary italic">Progressive</span>
             </h1>
-            <div className="flex items-center gap-3 text-muted-foreground font-bold text-[9px] md:text-sm">
-              <Clock className="size-3.5 text-amber-500" />
-              <span>Mode Trimestriel • Moyenne Provisoire Activée</span>
+            <div className="flex items-center gap-2 text-muted-foreground font-bold text-[8px] md:text-sm">
+              <Clock className="size-3 md:size-4 text-amber-500" />
+              <span className="uppercase tracking-widest">Mode Trimestriel • {activeYear}</span>
             </div>
           </div>
           <Button 
             onClick={handleSaveGrades} 
             disabled={saving || !selectedClass || (students?.length || 0) === 0} 
-            className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-13 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
+            className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-12 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
           >
             {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} 
             {saving ? "Scellage..." : "Sceller Évaluation"}
           </Button>
         </div>
 
-        <Card className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[10px] md:border-l-[15px] border-primary relative overflow-hidden">
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10 relative z-10">
-              <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière & Coefficient</label>
-                 <div className="flex items-center gap-4 bg-muted/20 p-3 md:p-4 rounded-2xl">
-                    <div className="size-10 md:size-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0"><Calculator className="size-5 md:size-6" /></div>
+        <Card className="p-4 md:p-10 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[6px] md:border-l-[15px] border-primary">
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+              <div className="space-y-1.5">
+                 <label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Matière & Coef</label>
+                 <div className="flex items-center gap-3 bg-muted/20 p-2 md:p-3 rounded-xl">
+                    <div className="size-8 md:size-10 bg-white rounded-lg flex items-center justify-center text-primary shadow-sm shrink-0"><Calculator className="size-4 md:size-5" /></div>
                     <div className="flex-1 min-w-0">
-                       <p className="font-black text-xs md:text-sm uppercase text-foreground truncate">{userSubject || "Non défini"}</p>
-                       <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[9px] font-black text-primary uppercase">COEF:</span>
+                       <p className="font-black text-[9px] md:text-xs uppercase text-foreground truncate">{userSubject || "N/A"}</p>
+                       <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[7px] font-black text-primary">COEF:</span>
                           <Input 
                             type="number" 
                             value={classCoefficient} 
                             onChange={(e) => setClassCoefficient(e.target.value)}
-                            className="h-7 w-12 bg-white border-primary/20 text-center font-black text-xs rounded-md p-0"
+                            className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0"
                           />
                        </div>
                     </div>
                  </div>
               </div>
 
-              <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Classe</label>
+              <div className="space-y-1.5">
+                 <label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Classe</label>
                  <Select onValueChange={setSelectedClass} value={selectedClass}>
-                    <SelectTrigger className="h-14 md:h-18 rounded-2xl border-2 font-black text-sm md:text-xl"><SelectValue placeholder="Choisir Classe" /></SelectTrigger>
-                    <SelectContent className="rounded-2xl border-2 p-1">
-                      {classesToShow.map(c => <SelectItem key={c} value={c} className="font-bold p-3 rounded-xl">{c}</SelectItem>)}
+                    <SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue placeholder="Choisir" /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 p-1">
+                      {classesToShow.map(c => <SelectItem key={c} value={c} className="font-bold p-2.5 rounded-lg text-xs">{c}</SelectItem>)}
                     </SelectContent>
                  </Select>
               </div>
 
-              <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Trimestre</label>
+              <div className="space-y-1.5">
+                 <label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Trimestre</label>
                  <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
-                    <SelectTrigger className="h-14 md:h-18 rounded-2xl border-2 font-black text-sm md:text-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-2xl border-2 p-1">
-                      {trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-3 rounded-xl">{t.label}</SelectItem>)}
+                    <SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 p-1">
+                      {trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}
                     </SelectContent>
                  </Select>
               </div>
 
-              <div className="space-y-2">
-                 <label className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Évaluation à sceller</label>
+              <div className="space-y-1.5">
+                 <label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Évaluation</label>
                  <Select value={selectedEvalType} onValueChange={setSelectedEvalType}>
-                    <SelectTrigger className="h-14 md:h-18 rounded-2xl border-2 font-black text-sm md:text-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-2xl border-2 p-1">
+                    <SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 p-1">
                       {evalTypes.map(t => (
-                        <SelectItem key={t.id} value={t.id} className="font-bold p-3 rounded-xl flex items-center justify-between">
+                        <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs flex items-center justify-between">
                           {t.label} {completionStats[t.id] && "✓"}
                         </SelectItem>
                       ))}
@@ -289,91 +288,83 @@ export default function GradesPage() {
            </div>
         </Card>
 
-        {selectedClass && (
-          <div className="grid gap-6">
-            <div className="flex flex-wrap gap-2 md:gap-4 p-4 bg-white rounded-3xl shadow-sm border border-muted/50">
+        {selectedClass ? (
+          <div className="space-y-6">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
                {evalTypes.map(t => (
                  <div key={t.id} className={cn(
-                   "flex-1 min-w-[100px] p-3 rounded-xl border-2 flex flex-col items-center justify-center gap-1 transition-all",
+                   "min-w-[100px] p-2.5 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all shrink-0",
                    completionStats[t.id] ? "bg-emerald-50 border-emerald-100" : "bg-muted/10 border-transparent opacity-40",
                    selectedEvalType === t.id && "border-primary ring-2 ring-primary/10 opacity-100 scale-105"
                  )}>
-                    <span className="text-[7px] md:text-[9px] font-black uppercase">{t.label}</span>
-                    {completionStats[t.id] ? <CheckCircle2 className="size-3 text-emerald-600" /> : <Clock className="size-3 text-muted-foreground" />}
+                    <span className="text-[7px] font-black uppercase truncate">{t.label}</span>
+                    {completionStats[t.id] ? <CheckCircle2 className="size-2.5 text-emerald-600" /> : <Clock className="size-2.5 text-muted-foreground" />}
                  </div>
                ))}
             </div>
 
-            <Card className="border-none shadow-sm bg-white rounded-[2.2rem] md:rounded-[3.5rem] overflow-hidden min-h-[500px]">
-              <div className="p-6 md:p-12 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden min-h-[400px]">
+              <div className="p-5 md:p-12 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 md:gap-6">
-                   <div className="size-10 md:size-14 bg-primary/10 rounded-xl md:rounded-2xl flex items-center justify-center text-primary shadow-sm">
-                      <User className="size-5 md:size-7" />
+                   <div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0">
+                      <User className="size-5" />
                    </div>
-                   <div>
-                     <h3 className="text-lg md:text-2xl font-black text-foreground uppercase tracking-tight">Registre {selectedClass}</h3>
-                     <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-1">Saisie de : {evalTypes.find(e => e.id === selectedEvalType)?.label}</p>
+                   <div className="min-w-0">
+                     <h3 className="text-base md:text-2xl font-black text-foreground uppercase tracking-tight truncate">Registre {selectedClass}</h3>
+                     <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{evalTypes.find(e => e.id === selectedEvalType)?.label}</p>
                    </div>
                 </div>
-                {loadingExisting && <div className="flex items-center gap-2 text-[9px] md:text-[11px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 md:size-4 animate-spin" /> Synchronisation...</div>}
+                {loadingExisting && <div className="flex items-center gap-2 text-[9px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}
               </div>
               
-              <CardContent className="p-0 overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/20 text-[10px] font-black uppercase text-muted-foreground border-b border-muted/30">
+              <div className="overflow-x-auto no-scrollbar">
+                <table className="w-full text-left border-separate border-spacing-0">
+                  <thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b">
                     <tr>
-                      <th className="px-8 py-8 text-left tracking-widest">Nom</th>
-                      <th className="px-8 py-8 text-left tracking-widest">Prénom</th>
-                      <th className="px-8 py-8 text-center tracking-widest">Note / 20</th>
-                      <th className="px-8 py-8 text-right bg-primary text-white tracking-widest">Moyenne Provisoire</th>
+                      <th className="px-5 py-4 md:px-8 md:py-8 tracking-widest">Élève</th>
+                      <th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th>
+                      <th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Moyenne Prov.</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-muted/20">
-                    {students?.map((student: any) => {
-                      return (
-                        <tr key={student.id} className="hover:bg-muted/5 transition-all group">
-                          <td className="px-8 py-8">
-                             <div className="flex flex-col">
-                                <span className="font-black text-foreground tabular-nums text-[10px] opacity-40">{student.matricule}</span>
-                                <p className="font-black text-lg text-foreground uppercase leading-none">{student.lastName}</p>
-                             </div>
-                          </td>
-                          <td className="px-8 py-8">
-                             <p className="font-bold text-lg text-foreground leading-none">{student.firstName}</p>
-                          </td>
-                          <td className="px-8 py-8 text-center">
-                            <Input 
-                              type="number" 
-                              step="0.25" 
-                              placeholder="--.--"
-                              value={gradesData[student.matricule] || ""} 
-                              onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
-                              className="w-32 h-14 mx-auto rounded-2xl text-center text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-[#F8FAFC] group-hover:bg-white transition-all" 
-                            />
-                          </td>
-                          <td className="px-8 py-8 text-right">
-                             <Badge className="h-12 w-32 justify-center rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xl font-black">
-                                {Number(gradesData[student.matricule] || 0).toFixed(1)}
-                             </Badge>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                  <tbody className="divide-y divide-muted/10">
+                    {students?.map((student: any) => (
+                      <tr key={student.id} className="hover:bg-muted/5 transition-all group">
+                        <td className="px-5 py-4 md:px-8 md:py-8">
+                           <div className="min-w-0">
+                              <p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p>
+                              <span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span>
+                           </div>
+                        </td>
+                        <td className="px-5 py-4 md:px-8 md:py-8 text-center">
+                          <Input 
+                            type="number" 
+                            step="0.25" 
+                            placeholder="--.--"
+                            value={gradesData[student.matricule] || ""} 
+                            onChange={(e) => handleGradeChange(student.matricule, e.target.value)} 
+                            className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all" 
+                          />
+                        </td>
+                        <td className="px-5 py-4 md:px-8 md:py-8 text-right">
+                           <Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">
+                              {Number(gradesData[student.matricule] || 0).toFixed(1)}
+                           </Badge>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-              </CardContent>
+              </div>
             </Card>
           </div>
-        )}
-
-        {!selectedClass && (
-           <Card className="p-20 md:p-40 text-center border-4 border-dashed rounded-[3rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-8">
-              <div className="size-24 md:size-32 bg-muted rounded-[2rem] md:rounded-[2.5rem] flex items-center justify-center shadow-inner">
-                <RefreshCw className="size-10 md:size-16 text-muted-foreground" />
+        ) : (
+           <Card className="p-16 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-6">
+              <div className="size-16 md:size-32 bg-muted rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center shadow-inner">
+                <RefreshCw className="size-8 md:size-16 text-muted-foreground" />
               </div>
-              <div className="space-y-2">
-                <h3 className="text-2xl md:text-4xl font-black uppercase">Sélectionner une classe</h3>
-                <p className="text-sm md:text-xl font-medium max-w-sm mx-auto">Veuillez choisir une division pour charger le registre progressif.</p>
+              <div className="space-y-1">
+                <h3 className="text-xl md:text-4xl font-black uppercase tracking-tight">Prêt pour la saisie ?</h3>
+                <p className="text-[10px] md:text-xl font-bold uppercase tracking-widest text-muted-foreground">Sélectionnez une classe autorisée</p>
               </div>
            </Card>
         )}
