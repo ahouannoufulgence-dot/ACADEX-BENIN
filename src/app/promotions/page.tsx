@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, onSnapshot } from "firebase/firestore"
+import { collection, query, where, doc, onSnapshot, orderBy } from "firebase/firestore"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -53,12 +53,12 @@ export default function PromotionsPage() {
 
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "students"), where("academic_year", "==", activeYear), where("status", "==", "Actif"))
+    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
   }, [db, activeYear])
 
   const gradesQuery = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academic_year", "==", activeYear))
+    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
   }, [db, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
@@ -66,7 +66,7 @@ export default function PromotionsPage() {
 
   const academicData = useMemo(() => {
     const defaultData = { levelsMap: {}, classStats: {}, studentsProcessed: [] }
-    if (!students || !grades) return defaultData
+    if (!students) return defaultData
 
     const levelsMap: any = {}
     const classStats: any = {}
@@ -76,7 +76,7 @@ export default function PromotionsPage() {
     })
 
     const studentsProcessed = students.map((student: any) => {
-      const studentGrades = grades.filter((g: any) => g.studentId === student.matricule)
+      const studentGrades = grades?.filter((g: any) => g.studentId === student.matricule) || []
       const subjects: Record<string, any> = {}
       
       studentGrades.forEach((g: any) => {
@@ -177,7 +177,20 @@ export default function PromotionsPage() {
           )}
         </div>
 
-        {!selectedLevel && (
+        {loadingStudents ? (
+          <div className="flex flex-col items-center justify-center py-40 gap-4 opacity-20">
+            <Loader2 className="animate-spin text-primary size-10 md:size-12" />
+            <p className="font-black text-[10px] uppercase tracking-widest">Calcul des promotions...</p>
+          </div>
+        ) : !students || students.length === 0 ? (
+          <Card className="p-16 md:p-32 text-center rounded-[2.2rem] md:rounded-[4rem] border-4 border-dashed border-muted/50 bg-white/50 flex flex-col items-center justify-center h-full space-y-6">
+            <div className="size-16 md:size-28 bg-muted rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center opacity-30 shadow-inner"><Users className="size-8 md:size-14 text-muted-foreground" /></div>
+            <div className="space-y-2">
+              <h3 className="text-xl md:text-4xl font-black tracking-tight text-foreground/40 uppercase">Aucun élève actif</h3>
+              <p className="text-[10px] md:text-base font-bold text-muted-foreground/40 uppercase tracking-widest">Inscrivez des élèves pour voir les promotions s'initialiser.</p>
+            </div>
+          </Card>
+        ) : !selectedLevel ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {levels.map((level) => {
               const data = academicData.levelsMap[level.id]
@@ -205,7 +218,7 @@ export default function PromotionsPage() {
               )
             })}
           </div>
-        )}
+        ) : null}
 
         {selectedLevel && !selectedClass && (
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in slide-in-from-right-4">
@@ -234,7 +247,7 @@ export default function PromotionsPage() {
         )}
 
         {selectedClass && (
-          <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4">
+          <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },

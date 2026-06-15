@@ -61,17 +61,17 @@ export default function StatisticsModule() {
 
   const studentsCol = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "students"), where("academic_year", "==", activeYear), where("status", "==", "Actif"))
+    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
   }, [db, activeYear])
 
   const gradesCol = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academic_year", "==", activeYear))
+    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
   }, [db, activeYear])
 
   const paymentsCol = useMemo(() => {
     if (!db || !activeYear) return null
-    return query(collection(db, "payments"), where("academic_year", "==", activeYear))
+    return query(collection(db, "payments"), where("academicYear", "==", activeYear))
   }, [db, activeYear])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsCol)
@@ -86,7 +86,6 @@ export default function StatisticsModule() {
 
     const classStats: Record<string, { totalGrades: number, expectedGrades: number, sumGPA: number, count: number }> = {}
     
-    // Traitement des moyennes par élève avec la logique ACADEX
     const studentAverages = students.map((s: any) => {
       const sGrades = grades.filter(g => g.studentId === s.matricule)
       const subjects: Record<string, any> = {}
@@ -105,7 +104,6 @@ export default function StatisticsModule() {
 
       let totalWeighted = 0, totalCoef = 0
       Object.values(subjects).forEach((sub: any) => {
-        // Logique ACADEX : (Avg(Ints) + Sum(Devs)) / (1 + Count(Devs))
         let subAvg = 0
         const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length : null
         
@@ -122,14 +120,13 @@ export default function StatisticsModule() {
 
       const gpa = totalCoef > 0 ? totalWeighted / totalCoef : 0
       
-      // Accumulation pour les classes
       if (!classStats[s.classId]) {
         classStats[s.classId] = { totalGrades: 0, expectedGrades: 0, sumGPA: 0, count: 0 }
       }
       classStats[s.classId].sumGPA += gpa
       classStats[s.classId].count++
       classStats[s.classId].totalGrades += sGrades.length
-      classStats[s.classId].expectedGrades += 5 * 10 // Estimation : 5 notes par sujet, 10 sujets moyenne
+      classStats[s.classId].expectedGrades += 5 * 10 
 
       return gpa
     })
@@ -151,7 +148,6 @@ export default function StatisticsModule() {
       avg: promoMap[l.id]?.count > 0 ? Number((promoMap[l.id].total / promoMap[l.id].count).toFixed(2)) : 0
     }))
 
-    // Audit de saisie
     const classesList = Object.entries(classStats).map(([id, s]) => ({
       id,
       completion: Math.min(100, Math.round((s.totalGrades / s.expectedGrades) * 100)),
@@ -232,7 +228,7 @@ export default function StatisticsModule() {
                 <Card key={i} className="p-4 md:p-9 rounded-[1.5rem] md:rounded-[3rem] border-none shadow-sm bg-white group hover:shadow-xl transition-all relative overflow-hidden h-28 md:h-48 flex flex-col justify-between">
                   <div className={cn("absolute -top-4 -right-4 size-14 md:size-24 rounded-full opacity-[0.04]", kpi.bg)} />
                   <div className="flex items-center justify-between relative z-10">
-                    <div className={cn("p-2 md:p-3.5 rounded-xl md:rounded-2xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm", kpi.bg, kpi.color)}>
+                    <div className={cn("p-2 md:p-3.5 rounded-xl md:rounded-2xl shadow-sm transition-all group-hover:bg-primary group-hover:text-white shadow-sm", kpi.bg, kpi.color)}>
                       <kpi.icon className="size-3.5 md:size-5" />
                     </div>
                   </div>

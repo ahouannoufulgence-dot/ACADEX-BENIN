@@ -59,17 +59,17 @@ export default function DirectorDashboard() {
     return () => unsub()
   }, [db])
 
-  const studentsQuery = useMemo(() => query(collection(db, "students"), where("academic_year", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
+  const studentsQuery = useMemo(() => query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
   const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
   const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
-  const paymentsQuery = useMemo(() => query(collection(db, "payments"), where("academic_year", "==", activeYear)), [db, activeYear])
-  const gradesQuery = useMemo(() => query(collection(db, "grades"), where("academic_year", "==", activeYear)), [db, activeYear])
+  const paymentsQuery = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
+  const gradesQuery = useMemo(() => query(collection(db, "grades"), where("academicYear", "==", activeYear)), [db, activeYear])
   const auditQuery = useMemo(() => query(collection(db, "student_life"), orderBy("createdAt", "desc"), limit(5)), [db])
 
   const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
   const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
   const { data: unusedIds } = useCollection(regIdsQuery)
-  const { data: payments } = useCollection(paymentsQuery)
+  const { data: payments } = useCollection(paymentsCol)
   const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
   const { data: recentAudit } = useCollection(auditQuery)
 
@@ -79,7 +79,6 @@ export default function DirectorDashboard() {
     const idsCount = unusedIds?.length || 0
     const revenue = (payments || []).reduce((acc, p: any) => acc + (parseFloat(p.amountPaid) || 0), 0)
     
-    // Calcul de la moyenne école avec logique ACADEX
     let globalSum = 0, gpaCount = 0, totalGradesEntered = grades?.length || 0
     
     if (students && grades) {
