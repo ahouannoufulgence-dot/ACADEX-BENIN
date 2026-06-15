@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -107,30 +106,48 @@ export default function StatisticsModule() {
   const { data: lifeEvents } = useCollection(lifeCol)
 
   const analysis = useMemo(() => {
-    if (!students) return { totalStudents: 0, globalGPA: "0.00", revenue: 0, payRate: 0, promoData: [], genderData: [], cityData: [] }
+    if (!students || !grades) return { totalStudents: 0, globalGPA: "0.00", revenue: 0, payRate: 0, promoData: [], genderData: [], cityData: [] }
 
-    // 1. Calcul des moyennes par élève
+    // 1. Calcul des moyennes par élève selon la logique officielle
     const studentAverages = students.map((s: any) => {
-      const sGrades = grades?.filter(g => g.studentId === s.matricule) || []
+      const sGrades = grades.filter(g => g.studentId === s.matricule)
       const sLife = lifeEvents?.filter(e => e.studentId === s.matricule) || []
 
-      // Matières
+      // Matières : calcul strict Avg(Ints) + Dev1 + Dev2
       const subjects: Record<string, any> = {}
       sGrades.forEach(g => {
-        if (!subjects[g.subject]) subjects[g.subject] = { vals: [], coef: Number(g.coefficient) || 1 }
-        subjects[g.subject].vals.push(Number(g.value))
+        if (!subjects[g.subject]) {
+          subjects[g.subject] = { 
+            ints: [] as number[], 
+            dev1: null as number | null, 
+            dev2: null as number | null, 
+            coef: Number(g.coefficient) || 2 
+          }
+        }
+        if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+        if (g.type === 'dev1') subjects[g.subject].dev1 = Number(g.value)
+        if (g.type === 'dev2') subjects[g.subject].dev2 = Number(g.value)
       })
 
       let totalWeighted = 0
       let totalCoef = 0
 
       Object.values(subjects).forEach((sub: any) => {
-        const avgSub = sub.vals.reduce((a:number, b:number) => a + b, 0) / sub.vals.length
-        totalWeighted += avgSub * sub.coef
-        totalCoef += sub.coef
+        const pillars = []
+        if (sub.ints.length > 0) {
+          pillars.push(sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length)
+        }
+        if (sub.dev1 !== null) pillars.push(sub.dev1)
+        if (sub.dev2 !== null) pillars.push(sub.dev2)
+        
+        if (pillars.length > 0) {
+          const avgSub = pillars.reduce((a, b) => a + b, 0) / pillars.length
+          totalWeighted += avgSub * sub.coef
+          totalCoef += sub.coef
+        }
       })
 
-      // Conduite
+      // Conduite : Base 20 + impacts
       let conduct = 20
       sLife.forEach(e => { if (e.pointsImpact) conduct += Number(e.pointsImpact) })
       conduct = Math.max(0, Math.min(20, conduct))
@@ -142,16 +159,16 @@ export default function StatisticsModule() {
       return { ...s, finalAvg }
     })
 
-    // 2. Moyenne Globale
+    // 2. Moyenne Globale École
     const validStudents = studentAverages.filter(s => s.finalAvg > 0)
     const globalGPA = validStudents.length > 0 
       ? (validStudents.reduce((acc, s) => acc + s.finalAvg, 0) / validStudents.length).toFixed(2)
       : "0.00"
 
-    // 3. Moyennes par Promotion
+    // 3. Moyennes par Promotion (6EME, 5EME, etc.)
     const promoMap: Record<string, { total: number, count: number }> = {}
     studentAverages.forEach(s => {
-      const level = LEVELS.find(l => s.classId?.startsWith(l.id))?.id || "AUTRE"
+      const level = LEVELS.find(l => s.classId?.toUpperCase().includes(l.id))?.id || "AUTRE"
       if (!promoMap[level]) promoMap[level] = { total: 0, count: 0 }
       promoMap[level].total += s.finalAvg
       promoMap[level].count += 1
@@ -164,7 +181,7 @@ export default function StatisticsModule() {
 
     // 4. Finances
     const revenue = payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0
-    const expected = students.length * 150000 // Estimation
+    const expected = students.length * 150000 // Base estimée
     const payRate = expected > 0 ? (revenue / expected) * 100 : 0
 
     // 5. Démographie

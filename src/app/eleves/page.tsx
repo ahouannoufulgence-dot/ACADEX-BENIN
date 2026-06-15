@@ -9,6 +9,7 @@ import {
   Loader2,
   Users,
   ChevronRight,
+  ChevronLeft,
   ShieldCheck,
   TrendingUp,
   Plus
@@ -162,4 +163,3 @@ export default function StudentsPage() {
       </div>
     </DashboardLayout>
   )
-}
