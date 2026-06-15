@@ -27,7 +27,8 @@ import {
   Filter,
   ArrowUpRight,
   TrendingDown,
-  Download
+  Download,
+  Layers
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -44,6 +45,7 @@ import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, get
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
 
 const trimestres = [
   { id: "T1", label: "1er Trimestre" },
@@ -109,7 +111,6 @@ export default function GradesPage() {
 
   const isDirector = userRole === "Directeur"
 
-  // Queries for Director View
   const allStudentsQuery = useMemo(() => {
     if (!db || !isDirector || !activeYear) return null
     return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
@@ -123,7 +124,6 @@ export default function GradesPage() {
   const { data: allStudents } = useCollection(allStudentsQuery)
   const { data: allGrades } = useCollection(allGradesQuery)
 
-  // Calculations for Classes Cards (Director)
   const classCardsData = useMemo(() => {
     if (!isDirector || !allStudents) return []
     
@@ -136,13 +136,11 @@ export default function GradesPage() {
       const classStudents = allStudents.filter((s: any) => s.classId === classId)
       const classGrades = allGrades?.filter((g: any) => g.classId === classId) || []
       
-      // Basic stats per class
       const distinctSubjects = new Set(classGrades.map((g: any) => g.subject)).size
       const totalGrades = classGrades.length
-      const expectedGrades = classStudents.length * 5 * 10 // Estimation
+      const expectedGrades = classStudents.length * 5 * 10 
       const completion = Math.min(100, Math.round((totalGrades / Math.max(1, expectedGrades)) * 100))
 
-      // Average calculation per student in class
       const studentAvgs = classStudents.map((s: any) => {
         const sGrades = classGrades.filter((g: any) => g.studentId === s.matricule)
         const subjects: Record<string, any> = {}
@@ -179,7 +177,6 @@ export default function GradesPage() {
     })
   }, [allStudents, allGrades, isDirector, selectedPromotion])
 
-  // Calculations for Detailed Register (Director)
   const registerData = useMemo(() => {
     if (!selectedClass || !allStudents) return { students: [], stats: null }
     
@@ -199,7 +196,6 @@ export default function GradesPage() {
         data.coef = g.coefficient || 2
       })
 
-      // ACADEX Logic
       const interros = [data.i1, data.i2, data.i3].filter(v => v !== null)
       const avgInt = interros.length > 0 ? interros.reduce((a,b) => a+b, 0) / interros.length : null
       
@@ -230,7 +226,6 @@ export default function GradesPage() {
     }
   }, [selectedClass, selectedMatiere, selectedTrimestre, allStudents, allGrades])
 
-  // Teacher View Logic
   useEffect(() => {
     const fetchData = async () => {
       if (!selectedClass || !userSubject || !mounted || isDirector) return
@@ -356,7 +351,6 @@ export default function GradesPage() {
   if (!mounted) return null
   const classesToShow = isDirector ? OFFICIAL_CLASSES : userClasses
 
-  // RENDERING DIRECTOR VIEW
   if (isDirector && !selectedClass) {
     return (
       <DashboardLayout>
@@ -549,7 +543,6 @@ export default function GradesPage() {
     )
   }
 
-  // RENDERING TEACHER VIEW
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
@@ -663,7 +656,7 @@ export default function GradesPage() {
                 <table className="w-full text-left border-separate border-spacing-0">
                   <thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b">
                     <tr>
-                      <th className="px-5 py-4 md:px-8 md:py-8 tracking-widest">Élève</th>
+                      <th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th>
                       <th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th>
                       <th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th>
                     </tr>
@@ -671,7 +664,7 @@ export default function GradesPage() {
                   <tbody className="divide-y divide-muted/10">
                     {teacherStudents?.map((student: any) => (
                       <tr key={student.id} className="hover:bg-muted/5 transition-all group">
-                        <td className="px-5 py-4 md:px-8 md:py-8">
+                        <td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]">
                            <div className="min-w-0">
                               <p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p>
                               <span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span>
