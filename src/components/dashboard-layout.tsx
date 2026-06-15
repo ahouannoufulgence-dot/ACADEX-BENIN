@@ -106,6 +106,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [availableYears, setAvailableYears] = useState<string[]>(["2026-2027"])
   const [activeYear, setActiveYear] = useState("2026-2027")
 
+  const isMessaging = pathname === '/messagerie'
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
   const showBackground = useMemo(() => {
@@ -242,45 +243,47 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </Sidebar>
 
         <SidebarInset className="flex flex-col flex-1 min-w-0 bg-transparent">
-          <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/85 backdrop-blur-xl px-4 md:px-7 border-b border-border/40 shadow-sm">
-            <div className="flex items-center gap-3 md:gap-5">
-              <SidebarTrigger className="text-primary hover:bg-primary/5 size-9 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
-              
-              <div className="flex flex-col ml-1">
-                <h2 className="text-xs md:text-lg font-black text-foreground truncate max-w-[110px] md:max-w-none uppercase tracking-tight">
-                  {userName}
-                </h2>
-                <div className="flex items-center gap-1">
-                  <Badge variant="outline" className="text-[7px] md:text-[9px] font-black border-primary/20 text-primary px-1.5 h-3.5 md:h-5 uppercase tracking-tighter">{userId}</Badge>
+          {!isMessaging && (
+            <header className="sticky top-0 z-30 flex h-14 md:h-20 items-center justify-between bg-white/85 backdrop-blur-xl px-4 md:px-7 border-b border-border/40 shadow-sm">
+              <div className="flex items-center gap-3 md:gap-5">
+                <SidebarTrigger className="text-primary hover:bg-primary/5 size-9 md:size-11 rounded-xl border-2 border-primary/10 transition-all mobile-touch-target" />
+                
+                <div className="flex flex-col ml-1">
+                  <h2 className="text-xs md:text-lg font-black text-foreground truncate max-w-[110px] md:max-w-none uppercase tracking-tight">
+                    {userName}
+                  </h2>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-[7px] md:text-[9px] font-black border-primary/20 text-primary px-1.5 h-3.5 md:h-5 uppercase tracking-tighter">{userId}</Badge>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2 md:gap-5">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="h-8 md:h-12 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-5 transition-all text-[9px] md:text-sm mobile-touch-target shadow-sm">
-                    <Calendar className="size-3 md:size-4 text-primary" />
-                    <span>{activeYear}</span>
-                    <ChevronDown className="size-2 md:size-3 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 rounded-2xl border-2 p-1.5 shadow-2xl">
-                  {availableYears.map((year) => (
-                    <DropdownMenuItem key={year} onClick={() => handleYearChange(year)} className={cn("p-3 rounded-xl font-bold cursor-pointer text-xs md:text-sm", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}>
-                      {year}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              
-              <Avatar className="size-8 md:size-11 border-2 border-primary/10 shadow-sm mobile-touch-target">
-                <AvatarFallback className="bg-primary text-white font-black text-[10px] md:text-base uppercase">{userName[0]}</AvatarFallback>
-              </Avatar>
-            </div>
-          </header>
+              <div className="flex items-center gap-2 md:gap-5">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-8 md:h-12 rounded-xl border-2 border-primary/10 bg-white hover:bg-primary/5 font-black flex items-center gap-2 px-3 md:px-5 transition-all text-[9px] md:text-sm mobile-touch-target shadow-sm">
+                      <Calendar className="size-3 md:size-4 text-primary" />
+                      <span>{activeYear}</span>
+                      <ChevronDown className="size-2 md:size-3 text-muted-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48 rounded-2xl border-2 p-1.5 shadow-2xl">
+                    {availableYears.map((year) => (
+                      <DropdownMenuItem key={year} onClick={() => handleYearChange(year)} className={cn("p-3 rounded-xl font-bold cursor-pointer text-xs md:text-sm", activeYear === year ? "bg-primary text-white" : "hover:bg-muted")}>
+                        {year}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                
+                <Avatar className="size-8 md:size-11 border-2 border-primary/10 shadow-sm mobile-touch-target">
+                  <AvatarFallback className="bg-primary text-white font-black text-[10px] md:text-base uppercase">{userName[0]}</AvatarFallback>
+                </Avatar>
+              </div>
+            </header>
+          )}
           <main className="flex-1 overflow-y-auto bg-transparent relative">
-            <div className="relative z-10 safe-area-bottom p-4 md:p-10">
+            <div className={cn("relative z-10 safe-area-bottom", !isMessaging ? "p-4 md:p-10" : "p-0")}>
               {children}
             </div>
           </main>

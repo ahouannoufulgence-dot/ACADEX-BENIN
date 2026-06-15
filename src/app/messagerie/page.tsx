@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -31,7 +32,9 @@ import {
   PhoneOff,
   MicOff,
   VideoOff,
-  Maximize2
+  Maximize2,
+  Trash2,
+  AlertTriangle
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
@@ -49,7 +52,8 @@ import {
   getDocs, 
   setDoc,
   increment,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -59,6 +63,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -75,7 +85,6 @@ export default function MessagingPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [contacts, setContacts] = useState<any[]>([])
   const [loadingContacts, setLoadingContacts] = useState(false)
-  const [activeTab, setActiveTab] = useState("all")
   const [isTyping, setIsTyping] = useState(false)
   const [otherPersonTyping, setOtherPersonTyping] = useState(false)
 
@@ -195,6 +204,16 @@ export default function MessagingPage() {
     }
   }
 
+  const handleDeleteMessage = async (msgId: string) => {
+    if (!selectedChat || !db) return
+    try {
+      await deleteDoc(doc(db, "conversations", selectedChat.id, "messages", msgId))
+      toast({ title: "Message retiré" })
+    } catch (e) {
+      toast({ title: "Action impossible", variant: "destructive" })
+    }
+  }
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -203,7 +222,7 @@ export default function MessagingPage() {
     reader.onload = async (event) => {
       const base64 = event.target?.result as string
       await handleSendMessage(undefined, base64, 'image')
-      toast({ title: "Photo envoyée" })
+      toast({ title: "Photo scellée envoyée" })
     }
     reader.readAsDataURL(file)
   }
@@ -212,11 +231,7 @@ export default function MessagingPage() {
     setCallType(type)
     setIsCalling(true)
     setCallStatus('connecting')
-    
-    // Simuler une connexion après 3 secondes
-    setTimeout(() => {
-      setCallStatus('active')
-    }, 3000)
+    setTimeout(() => setCallStatus('active'), 3000)
   }
 
   const endCall = () => {
@@ -289,242 +304,277 @@ export default function MessagingPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="h-[calc(100svh-9.5rem)] md:h-[calc(100vh-9.5rem)] flex gap-0 md:gap-4 animate-in fade-in duration-500 overflow-hidden -m-4 md:m-0">
-        
-        {/* Sidebar - Discussions */}
-        <Card className={cn(
-          "flex flex-col overflow-hidden border-none shadow-none md:shadow-sm bg-white md:rounded-[2rem] w-full md:w-[360px] lg:w-[420px] shrink-0",
-          selectedChat ? "hidden md:flex" : "flex"
-        )}>
-          <div className="p-4 md:p-6 pb-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black tracking-tight">Messages</h2>
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button size="icon" onClick={fetchContacts} className="size-10 rounded-full bg-primary text-white shadow-lg"><Plus className="size-6" /></Button>
-                </DialogTrigger>
-                <DialogContent className="rounded-[2.2rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
-                  <div className="p-6 bg-primary text-white flex items-center justify-between">
-                    <DialogTitle className="text-xl md:text-2xl font-black uppercase">Nouveau Chat</DialogTitle>
+    <div className="h-svh md:h-screen flex bg-[#F8FAFC] overflow-hidden">
+      {/* Sidebar - Discussions */}
+      <Card className={cn(
+        "flex flex-col overflow-hidden border-none shadow-none md:shadow-2xl bg-white md:rounded-none w-full md:w-[320px] lg:w-[400px] shrink-0 z-10",
+        selectedChat ? "hidden md:flex" : "flex"
+      )}>
+        <div className="p-5 md:p-8 pb-4">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-black tracking-tight uppercase">Messages</h2>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="icon" onClick={fetchContacts} className="size-11 rounded-full bg-primary text-white shadow-xl hover:scale-105 active:scale-95 transition-all"><Plus className="size-7" /></Button>
+              </DialogTrigger>
+              <DialogContent className="rounded-[2.2rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
+                <div className="p-6 bg-primary text-white flex items-center justify-between">
+                  <DialogTitle className="text-xl md:text-2xl font-black uppercase">Nouveau Chat</DialogTitle>
+                </div>
+                <div className="p-4 bg-white border-b">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                    <Input placeholder="Rechercher..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="rounded-full bg-muted/30 border-none pl-10 h-11" />
                   </div>
-                  <div className="p-4 bg-white border-b">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                      <Input placeholder="Rechercher..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="rounded-full bg-muted/30 border-none pl-10 h-11" />
+                </div>
+                <ScrollArea className="h-[450px] p-2 bg-[#F8FAFC]">
+                  {loadingContacts ? <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary size-8" /></div> : 
+                    contacts.map(c => (
+                      <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white hover:shadow-md transition-all text-left mb-2 group">
+                        <Avatar className="size-12 border-2 border-white shadow-sm"><AvatarFallback className="bg-primary/5 text-primary font-black text-sm">{c.name?.[0]}</AvatarFallback></Avatar>
+                        <div className="min-w-0">
+                          <p className="font-black text-sm truncate uppercase">{c.name}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">{c.role} • {c.sub}</p>
+                        </div>
+                      </button>
+                  ))}
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="relative mb-6">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input placeholder="Rechercher une discussion..." className="pl-11 h-12 bg-muted/30 border-none rounded-2xl font-bold" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-3 space-y-1 no-scrollbar pb-10">
+          {loadingConvs ? <div className="flex justify-center p-10"><Loader2 className="size-8 animate-spin text-primary opacity-20" /></div> : 
+            filteredConversations.map(chat => {
+              const otherId = chat.participants.find((p: string) => p !== currentUserId)
+              const name = chat.participantNames?.[otherId] || "Utilisateur"
+              const unread = chat.unreadCount?.[currentUserId] || 0
+              return (
+                <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={cn(
+                  "flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all mx-1",
+                  selectedChat?.id === chat.id ? "bg-primary/5 shadow-inner" : "hover:bg-muted/30"
+                )}>
+                  <div className="relative">
+                    <Avatar className="size-14 border-2 border-white shadow-sm">
+                      <AvatarFallback className="font-black text-lg bg-primary/10 text-primary uppercase">{name?.[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute bottom-0 right-0 size-4 bg-emerald-500 border-2 border-white rounded-full" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <h4 className={cn("truncate text-sm font-black uppercase tracking-tight", unread > 0 ? "text-foreground" : "text-foreground/70")}>{name}</h4>
+                      <span className="text-[10px] font-bold text-muted-foreground">{formatTime(chat.lastMessageTime)}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={cn("text-xs truncate max-w-[85%]", unread > 0 ? "font-black text-foreground" : "font-medium text-muted-foreground/60")}>
+                        {chat.lastMessage}
+                      </p>
+                      {unread > 0 && <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 min-w-[1.4rem] h-5 justify-center rounded-full shadow-lg">{unread}</Badge>}
                     </div>
                   </div>
-                  <ScrollArea className="h-[450px] p-2 bg-[#F8FAFC]">
-                    {loadingContacts ? <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary size-8" /></div> : 
-                      contacts.map(c => (
-                        <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white hover:shadow-md transition-all text-left mb-2 group">
-                          <Avatar className="size-12 border-2 border-white shadow-sm"><AvatarFallback className="bg-primary/5 text-primary font-black text-sm">{c.name?.[0]}</AvatarFallback></Avatar>
-                          <div className="min-w-0">
-                            <p className="font-black text-sm truncate uppercase">{c.name}</p>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{c.role} • {c.sub}</p>
-                          </div>
-                        </button>
-                    ))}
-                  </ScrollArea>
-                </DialogContent>
-              </Dialog>
+                </div>
+              )
+          })}
+        </div>
+      </Card>
+
+      {/* Chat Area */}
+      <Card className={cn(
+        "flex-1 border-none shadow-none bg-white flex-col overflow-hidden relative transition-all duration-500",
+        !selectedChat ? "hidden md:flex bg-[#F8FAFC]/50" : "flex fixed inset-0 z-50 md:relative"
+      )}>
+        {!selectedChat ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white/40 backdrop-blur-3xl">
+            <div className="size-32 bg-primary/5 rounded-full flex items-center justify-center mb-8 animate-in zoom-in duration-700">
+              <MessageCircle className="size-16 text-primary opacity-10" />
             </div>
-            <div className="relative mb-4">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input placeholder="Rechercher..." className="pl-11 h-11 bg-muted/40 border-none rounded-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-            </div>
+            <h3 className="text-4xl font-black uppercase tracking-tighter text-foreground/20">Messagerie Acadex</h3>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.4em] mt-4 opacity-30">Espace de communication scellé</p>
           </div>
-          <div className="flex-1 overflow-y-auto px-2 space-y-0.5 no-scrollbar pb-10">
-            {loadingConvs ? <div className="flex justify-center p-10"><Loader2 className="size-8 animate-spin text-primary opacity-20" /></div> : 
-              filteredConversations.map(chat => {
-                const otherId = chat.participants.find((p: string) => p !== currentUserId)
-                const name = chat.participantNames?.[otherId] || "Utilisateur"
-                const unread = chat.unreadCount?.[currentUserId] || 0
+        ) : (
+          <>
+            {/* Header Messenger Style */}
+            <div className="h-16 md:h-20 px-4 md:px-10 border-b flex items-center justify-between bg-white/90 backdrop-blur-xl sticky top-0 z-20">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" className="md:hidden rounded-full text-primary" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-8" /></Button>
+                <div className="relative">
+                  <Avatar className="size-10 md:size-12 border-2 border-primary/5">
+                    <AvatarFallback className="font-black text-sm bg-primary/5 text-primary uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="absolute bottom-0 right-0 size-3 bg-emerald-500 border-2 border-white rounded-full" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-sm md:text-xl font-black uppercase truncate tracking-tight">{selectedChat.otherName}</h3>
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
+                    Actif maintenant
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 md:gap-4">
+                <Button onClick={() => startCall('voice')} variant="ghost" size="icon" className="size-10 md:size-12 rounded-xl text-primary hover:bg-primary/5 transition-all"><Phone className="size-6" /></Button>
+                <Button onClick={() => startCall('video')} variant="ghost" size="icon" className="size-10 md:size-12 rounded-xl text-primary hover:bg-primary/5 transition-all"><Video className="size-6" /></Button>
+                <Button variant="ghost" size="icon" className="size-10 md:size-12 rounded-xl text-primary hover:bg-primary/5"><Info className="size-6" /></Button>
+              </div>
+            </div>
+
+            {/* Messages Zone */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-8 no-scrollbar bg-[#F8FAFC]/30 scroll-smooth">
+              {messages?.map((msg: any, i: number) => {
+                const isMe = msg.senderId === currentUserId
                 return (
-                  <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={cn(
-                    "flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all mx-1 mb-1",
-                    selectedChat?.id === chat.id ? "bg-primary/5 md:bg-muted/30" : "hover:bg-muted/20"
-                  )}>
-                    <Avatar className="size-14 border-2 border-white">
-                      <AvatarFallback className="font-black text-base bg-primary/10 text-primary uppercase">{name?.[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-center mb-0.5">
-                        <h4 className={cn("truncate text-sm font-black uppercase tracking-tight", unread > 0 ? "text-foreground" : "text-foreground/70")}>{name}</h4>
-                        <span className="text-[10px] font-bold text-muted-foreground">{formatTime(chat.lastMessageTime)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <p className={cn("text-xs truncate max-w-[85%]", unread > 0 ? "font-black text-foreground" : "font-medium text-muted-foreground/60")}>
-                          {chat.lastMessage}
-                        </p>
-                        {unread > 0 && <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 min-w-[1.4rem] h-5 justify-center rounded-full">{unread}</Badge>}
-                      </div>
+                  <div key={msg.id || i} className={cn("flex items-end gap-2 group animate-in slide-in-from-bottom-2 duration-300", isMe ? "flex-row-reverse" : "flex-row")}>
+                    <div className={cn("max-w-[85%] md:max-w-[70%] flex flex-col relative", isMe ? "items-end" : "items-start")}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <div className={cn(
+                            "px-4 py-3 rounded-[1.4rem] md:rounded-[1.8rem] text-[15px] md:text-lg font-medium leading-relaxed shadow-sm cursor-pointer transition-all active:scale-95",
+                            isMe ? "bg-primary text-white rounded-br-sm" : "bg-white text-foreground border border-muted/30 rounded-bl-sm"
+                          )}>
+                            {msg.type === 'image' ? (
+                              <img src={msg.text} alt="Shared" className="rounded-xl max-w-full max-h-[400px] object-cover" />
+                            ) : msg.text === '👍' ? (
+                              <ThumbsUp className="size-12 md:size-16 fill-primary text-primary" />
+                            ) : (
+                              msg.text
+                            )}
+                          </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align={isMe ? "end" : "start"} className="rounded-2xl border-2 p-1 shadow-2xl">
+                          {isMe && (
+                            <DropdownMenuItem onClick={() => handleDeleteMessage(msg.id)} className="flex items-center gap-3 font-bold p-3 rounded-xl text-destructive focus:text-destructive cursor-pointer">
+                               <Trash2 className="size-4" /> Retirer le message
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem className="flex items-center gap-3 font-bold p-3 rounded-xl cursor-pointer">
+                             <Check className="size-4" /> Réagir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      
+                      {i === (messages.length - 1) && isMe && (
+                        <div className="mt-1 flex items-center gap-1 opacity-40">
+                           <CheckCheck className="size-3 text-primary" />
+                           <span className="text-[8px] font-black uppercase tracking-widest">Remis</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
-            })}
-          </div>
-        </Card>
-
-        {/* Chat Area */}
-        <Card className={cn(
-          "flex-1 border-none shadow-none md:shadow-sm bg-white md:rounded-[2rem] flex-col overflow-hidden relative transition-all",
-          !selectedChat ? "hidden md:flex" : "flex fixed inset-0 z-50 md:relative"
-        )}>
-          {!selectedChat ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-              <div className="size-32 bg-primary/5 rounded-full flex items-center justify-center mb-8 animate-in zoom-in duration-700">
-                <MessageCircle className="size-16 text-primary opacity-20" />
-              </div>
-              <h3 className="text-3xl font-black uppercase tracking-tighter">Votre Espace Chat</h3>
-              <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em] mt-3 opacity-40">Sélectionnez une discussion scellée</p>
-            </div>
-          ) : (
-            <>
-              {/* Header */}
-              <div className="h-16 md:h-20 px-4 md:px-8 border-b flex items-center justify-between bg-white/95 backdrop-blur-md sticky top-0 z-20 shadow-sm">
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="icon" className="md:hidden rounded-full" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-6" /></Button>
-                  <Avatar className="size-10 md:size-12 border-2 border-muted/10">
-                    <AvatarFallback className="font-black text-sm bg-primary/5 text-primary uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0">
-                    <h3 className="text-sm md:text-lg font-black uppercase truncate tracking-tight">{selectedChat.otherName}</h3>
-                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
-                      <div className="size-1.5 bg-emerald-500 rounded-full animate-pulse" /> Actif
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 md:gap-4">
-                  <Button onClick={() => startCall('voice')} variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5"><Phone className="size-5" /></Button>
-                  <Button onClick={() => startCall('video')} variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5"><Video className="size-5" /></Button>
-                  <Button variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5"><Info className="size-5" /></Button>
-                </div>
-              </div>
-
-              {/* Messages Zone */}
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 no-scrollbar bg-[#F8FAFC]/30 scroll-smooth">
-                {messages?.map((msg: any, i: number) => {
-                  const isMe = msg.senderId === currentUserId
-                  return (
-                    <div key={msg.id || i} className={cn("flex items-end gap-2 group animate-in slide-in-from-bottom-2 duration-300", isMe ? "flex-row-reverse" : "flex-row")}>
-                      <div className={cn("max-w-[80%] md:max-w-[70%] flex flex-col", isMe ? "items-end" : "items-start")}>
-                        <div className={cn(
-                          "px-4 py-3 rounded-2xl text-[14px] md:text-base font-medium leading-relaxed shadow-sm",
-                          isMe ? "bg-primary text-white rounded-br-sm" : "bg-white text-foreground border border-muted/50 rounded-bl-sm"
-                        )}>
-                          {msg.type === 'image' ? (
-                            <img src={msg.text} alt="Shared" className="rounded-xl max-w-full max-h-[300px] object-cover cursor-pointer hover:scale-[1.02] transition-transform" />
-                          ) : msg.text === '👍' ? (
-                            <ThumbsUp className="size-10 md:size-14 fill-primary text-primary" />
-                          ) : (
-                            msg.text
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-                {otherPersonTyping && (
-                  <div className="flex items-center gap-2 animate-pulse">
-                    <div className="bg-white border px-4 py-2 rounded-2xl flex gap-1 shadow-sm">
-                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce" />
-                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:0.2s]" />
-                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:0.4s]" />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Input Zone */}
-              <div className="p-4 md:p-8 bg-white border-t border-muted/10">
-                <div className="flex items-end gap-2 md:gap-4 max-w-5xl mx-auto">
-                  <div className="flex items-center gap-1.5 mb-1 hidden sm:flex">
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5"><Plus className="size-5" /></Button>
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5" onClick={() => fileInputRef.current?.click()}><ImageIcon className="size-5" /></Button>
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5"><Mic className="size-5" /></Button>
-                  </div>
-                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-                  
-                  <div className="flex-1 relative flex items-center">
-                    <form onSubmit={handleSendMessage} className="w-full relative">
-                      <textarea 
-                        rows={1}
-                        placeholder="Ecrivez..." 
-                        className="w-full bg-muted/40 border-none rounded-3xl py-3.5 pl-5 pr-14 focus:ring-2 focus:ring-primary/10 focus:outline-none resize-none font-medium text-sm md:text-lg max-h-32 transition-all shadow-inner"
-                        value={messageText} 
-                        onChange={(e) => {
-                          setMessageText(e.target.value)
-                          handleTyping()
-                        }}
-                      />
-                      <Button variant="ghost" size="icon" className="absolute right-2 bottom-2 rounded-full text-primary h-10 w-10"><Smile className="size-6" /></Button>
-                    </form>
-                  </div>
-
-                  <div className="mb-1.5">
-                    {messageText.trim() ? (
-                      <Button onClick={() => handleSendMessage()} className="bg-primary text-white size-11 md:size-14 rounded-full shadow-xl shadow-primary/20 transition-all">
-                        <Send className="size-6" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="icon" onClick={() => handleSendMessage(undefined, "👍", "like")} className="rounded-full text-primary hover:bg-primary/5 size-11 md:size-14 flex-shrink-0 transition-transform active:scale-125">
-                        <ThumbsUp className="size-7 md:size-9 fill-primary text-primary" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Call Overlay */}
-              {isCalling && (
-                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-2xl flex flex-col items-center justify-between p-10 text-white animate-in zoom-in duration-300">
-                  <div className="w-full flex justify-end">
-                     <Button variant="ghost" size="icon" className="text-white/40 hover:text-white" onClick={endCall}><Maximize2 className="size-6" /></Button>
-                  </div>
-                  
-                  <div className="flex flex-col items-center gap-8">
-                     <div className="relative">
-                        <div className={cn("absolute inset-0 bg-primary/20 rounded-full animate-ping", callStatus === 'connecting' ? 'block' : 'hidden')} />
-                        <Avatar className="size-32 md:size-48 border-4 border-white/20 shadow-2xl">
-                          <AvatarFallback className="bg-primary text-white text-5xl md:text-7xl font-black uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
-                        </Avatar>
-                     </div>
-                     <div className="text-center space-y-2">
-                        <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">{selectedChat.otherName}</h2>
-                        <p className="text-primary font-black uppercase tracking-[0.3em] text-sm animate-pulse">
-                          {callStatus === 'connecting' ? 'Appel en cours...' : 'Conversation active'}
-                        </p>
-                     </div>
-                  </div>
-
-                  {callType === 'video' && callStatus === 'active' && (
-                    <div className="absolute inset-0 z-0 overflow-hidden opacity-50">
-                       <img src="https://picsum.photos/seed/call-placeholder/1920/1080" className="w-full h-full object-cover" alt="Video Call" />
-                    </div>
-                  )}
-
-                  <div className="relative z-10 w-full max-w-md flex justify-center items-center gap-6 md:gap-10">
-                     <Button variant="outline" size="icon" className="size-14 md:size-20 rounded-full border-white/20 bg-white/10 backdrop-blur-md text-white hover:bg-white/20">
-                        <MicOff className="size-6 md:size-8" />
-                     </Button>
-                     <Button onClick={endCall} className="size-20 md:size-28 rounded-full bg-red-600 hover:bg-red-700 shadow-2xl shadow-red-600/40 group active:scale-95 transition-all">
-                        <PhoneOff className="size-10 md:size-14 fill-white group-hover:rotate-12 transition-transform" />
-                     </Button>
-                     <Button variant="outline" size="icon" className="size-14 md:size-20 rounded-full border-white/20 bg-white/10 backdrop-blur-md text-white hover:bg-white/20">
-                        <VideoOff className="size-6 md:size-8" />
-                     </Button>
-                  </div>
-
-                  <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-white/20 flex items-center gap-4">
-                     <ShieldCheck className="size-4" /> Crypteur de flux Acadex scellé
+              })}
+              {otherPersonTyping && (
+                <div className="flex items-center gap-2 animate-pulse">
+                  <div className="bg-white border px-5 py-3 rounded-full flex gap-1.5 shadow-sm">
+                     <div className="size-2 bg-primary/40 rounded-full animate-bounce" />
+                     <div className="size-2 bg-primary/40 rounded-full animate-bounce [animation-delay:0.2s]" />
+                     <div className="size-2 bg-primary/40 rounded-full animate-bounce [animation-delay:0.4s]" />
                   </div>
                 </div>
               )}
-            </>
-          )}
-        </Card>
-      </div>
-    </DashboardLayout>
+            </div>
+
+            {/* Interaction Bar */}
+            <div className="p-4 md:p-10 bg-white/95 backdrop-blur-xl border-t border-muted/10">
+              <div className="flex items-end gap-3 md:gap-5 max-w-6xl mx-auto">
+                <div className="flex items-center gap-1 mb-1 hidden sm:flex">
+                   <Button onClick={() => fileInputRef.current?.click()} variant="ghost" size="icon" className="size-11 rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><ImageIcon className="size-7" /></Button>
+                   <Button variant="ghost" size="icon" className="size-11 rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><Camera className="size-7" /></Button>
+                   <Button variant="ghost" size="icon" className="size-11 rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><Mic className="size-7" /></Button>
+                </div>
+                <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+                
+                <div className="flex-1 relative flex items-center min-h-[44px]">
+                  <form onSubmit={handleSendMessage} className="w-full relative">
+                    <textarea 
+                      rows={1}
+                      placeholder="Aa" 
+                      className="w-full bg-muted/40 border-none rounded-[2rem] py-3.5 pl-6 pr-14 focus:ring-4 focus:ring-primary/5 focus:outline-none resize-none font-medium text-base md:text-xl max-h-40 transition-all shadow-inner placeholder:text-muted-foreground/40"
+                      value={messageText} 
+                      onChange={(e) => {
+                        setMessageText(e.target.value)
+                        handleTyping()
+                      }}
+                    />
+                    <Button type="button" variant="ghost" size="icon" className="absolute right-3 bottom-1.5 rounded-full text-primary h-11 w-11 hover:bg-transparent"><Smile className="size-8" /></Button>
+                  </form>
+                </div>
+
+                <div className="mb-1">
+                  {messageText.trim() ? (
+                    <Button onClick={() => handleSendMessage()} className="bg-primary text-white size-12 md:size-14 rounded-full shadow-2xl shadow-primary/30 transition-all hover:scale-105 active:scale-90">
+                      <Send className="size-7" />
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="icon" onClick={() => handleSendMessage(undefined, "👍", "like")} className="rounded-full text-primary hover:bg-primary/5 size-12 md:size-14 flex-shrink-0 transition-transform active:scale-150">
+                      <ThumbsUp className="size-8 md:size-10 fill-primary text-primary" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex justify-center mt-4 opacity-10">
+                 <ShieldCheck className="size-3 mr-2" /> <span className="text-[8px] font-black uppercase tracking-widest">Connexion scellée Acadex V1</span>
+              </div>
+            </div>
+
+            {/* Call Overlay Immersion */}
+            {isCalling && (
+              <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-between p-10 text-white animate-in zoom-in duration-500">
+                <div className="w-full flex justify-between items-center px-4">
+                   <div className="flex items-center gap-3">
+                      <ShieldCheck className="size-5 text-primary animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Cryptage scellé</span>
+                   </div>
+                   <Button variant="ghost" size="icon" className="text-white/40 hover:text-white" onClick={endCall}><Maximize2 className="size-6" /></Button>
+                </div>
+                
+                <div className="flex flex-col items-center gap-10">
+                   <div className="relative">
+                      <div className={cn("absolute inset-[-20px] bg-primary/20 rounded-full animate-ping", callStatus === 'connecting' ? 'block' : 'hidden')} />
+                      <Avatar className="size-32 md:size-56 border-4 border-white/10 shadow-[0_0_80px_rgba(20,83,45,0.3)]">
+                        <AvatarFallback className="bg-primary text-white text-5xl md:text-8xl font-black uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
+                      </Avatar>
+                   </div>
+                   <div className="text-center space-y-4">
+                      <h2 className="text-4xl md:text-7xl font-black uppercase tracking-tighter drop-shadow-2xl">{selectedChat.otherName}</h2>
+                      <div className="flex items-center justify-center gap-3">
+                         <div className={cn("size-2 rounded-full", callStatus === 'connecting' ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500')} />
+                         <p className="text-primary font-black uppercase tracking-[0.5em] text-xs">
+                          {callStatus === 'connecting' ? 'Initialisation flux...' : 'Communication active'}
+                         </p>
+                      </div>
+                   </div>
+                </div>
+
+                {callType === 'video' && callStatus === 'active' && (
+                  <div className="absolute inset-0 z-0 overflow-hidden opacity-40">
+                     <img src="https://picsum.photos/seed/call-visual/1920/1080" className="w-full h-full object-cover scale-110" alt="Video Call" />
+                  </div>
+                )}
+
+                <div className="relative z-10 w-full max-w-xl flex justify-center items-center gap-6 md:gap-14 bg-white/5 backdrop-blur-md p-8 rounded-[3rem] border border-white/10">
+                   <Button variant="outline" size="icon" className="size-16 md:size-24 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 transition-all">
+                      <MicOff className="size-8 md:size-10" />
+                   </Button>
+                   <Button onClick={endCall} className="size-24 md:size-32 rounded-full bg-red-600 hover:bg-red-700 shadow-[0_0_50px_rgba(220,38,38,0.5)] group active:scale-90 transition-all">
+                      <PhoneOff className="size-10 md:size-14 fill-white group-hover:rotate-12 transition-transform" />
+                   </Button>
+                   <Button variant="outline" size="icon" className="size-16 md:size-24 rounded-full border-white/20 bg-white/5 text-white hover:bg-white/10 transition-all">
+                      <VideoOff className="size-8 md:size-10" />
+                   </Button>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 opacity-20">
+                   <Zap className="size-5 text-amber-500" />
+                   <p className="text-[10px] font-black uppercase tracking-[0.6em]">ACADEX LIVE NETWORK</p>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+    </div>
   )
 }
