@@ -197,14 +197,14 @@ export default function GradesPage() {
       })
 
       const interros = [data.i1, data.i2, data.i3].filter(v => v !== null)
-      const avgInt = interros.length > 0 ? interros.reduce((a,b) => a+b, 0) / interros.length : null
+      const avgInt = interros.length > 0 ? interros.reduce((a:number,b:number) => a+b, 0) / interros.length : null
       
       const blocks = []
       if (avgInt !== null) blocks.push(avgInt)
       if (data.d1 !== null) blocks.push(data.d1)
       if (data.d2 !== null) blocks.push(data.d2)
 
-      const subjectAvg = blocks.length > 0 ? blocks.reduce((a,b) => a+b, 0) / blocks.length : 0
+      const subjectAvg = blocks.length > 0 ? blocks.reduce((a:number,b:number) => a+b, 0) / blocks.length : 0
       data.subjectAvg = subjectAvg
       data.weightedAvg = subjectAvg * data.coef
       data.isProvisional = blocks.length < 3
@@ -213,7 +213,7 @@ export default function GradesPage() {
     }).sort((a, b) => a.lastName.localeCompare(b.lastName))
 
     const validAvgs = processedStudents.map(s => s.subjectAvg).filter(v => v > 0)
-    const classAvg = validAvgs.length > 0 ? (validAvgs.reduce((a,b) => a+b, 0) / validAvgs.length).toFixed(2) : "0.00"
+    const classAvg = validAvgs.length > 0 ? (validAvgs.reduce((a:number,b:number) => a+b, 0) / validAvgs.length).toFixed(2) : "0.00"
     const successCount = validAvgs.filter(v => v >= 10).length
     const failCount = validAvgs.length - successCount
     const successRate = validAvgs.length > 0 ? Math.round((successCount / validAvgs.length) * 100) : 0
