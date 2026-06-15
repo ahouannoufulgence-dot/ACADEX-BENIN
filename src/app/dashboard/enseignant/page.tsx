@@ -75,7 +75,7 @@ export default function TeacherDashboard() {
       {/* Immersive Background Image */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Image 
-          src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
+          src="/images/bg-dashboard-enseignant.jpg"
           alt="ACADEX Background"
           fill
           className="object-cover opacity-15"
@@ -90,7 +90,7 @@ export default function TeacherDashboard() {
         {/* Hero Banner */}
         <div className="relative min-h-[250px] md:min-h-[350px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-green-uniforms/1920/1080"}
+            src="/images/bg-dashboard-enseignant.jpg"
             alt="Teacher Cockpit"
             fill
             className="object-cover brightness-[0.7] group-hover:scale-105 transition-transform duration-[3000ms]"

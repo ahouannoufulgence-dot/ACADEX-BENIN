@@ -93,7 +93,7 @@ export default function StudentDashboard() {
         
         <div className="relative min-h-[220px] md:min-h-[380px] rounded-[2rem] md:rounded-[3.5rem] overflow-hidden shadow-xl group">
           <Image 
-            src={heroImage?.imageUrl || "https://picsum.photos/seed/acadex-students-happy/1920/1080"}
+            src="/images/bg-dashboard-eleve.jpg"
             alt="Student Cockpit"
             fill
             className="object-cover brightness-[0.7] group-hover:scale-105 transition-transform duration-[3000ms]"
