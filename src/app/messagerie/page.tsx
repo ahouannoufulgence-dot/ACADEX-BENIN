@@ -26,7 +26,12 @@ import {
   Info,
   Camera,
   Check,
-  User
+  User,
+  X,
+  PhoneOff,
+  MicOff,
+  VideoOff,
+  Maximize2
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
@@ -73,9 +78,15 @@ export default function MessagingPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [isTyping, setIsTyping] = useState(false)
   const [otherPersonTyping, setOtherPersonTyping] = useState(false)
-  
+
+  // Call System State
+  const [isCalling, setIsCalling] = useState(false)
+  const [callType, setCallType] = useState<'video' | 'voice' | null>(null)
+  const [callStatus, setCallStatus] = useState<'connecting' | 'active' | 'ended'>('connecting')
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<any>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setCurrentUserId(localStorage.getItem('acadex_user_id') || "")
@@ -84,7 +95,7 @@ export default function MessagingPage() {
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
-  // Liste des conversations en temps réel
+  // Conversations query
   const conversationsQuery = useMemo(() => {
     if (!db || !currentUserId) return null
     return query(
@@ -96,7 +107,7 @@ export default function MessagingPage() {
 
   const { data: conversations, loading: loadingConvs } = useCollection(conversationsQuery)
 
-  // Messages de la conversation sélectionnée
+  // Messages query
   const messagesQuery = useMemo(() => {
     if (!db || !selectedChat) return null
     return query(
@@ -108,7 +119,7 @@ export default function MessagingPage() {
 
   const { data: messages } = useCollection(messagesQuery)
 
-  // Écouter si l'autre personne écrit
+  // Typing indicator sync
   useEffect(() => {
     if (!db || !selectedChat || !currentUserId) return
     const otherId = selectedChat.participants.find((p: string) => p !== currentUserId)
@@ -121,7 +132,7 @@ export default function MessagingPage() {
     return () => unsub()
   }, [db, selectedChat, currentUserId])
 
-  // Scroll automatique et lecture des messages
+  // Scroll and read receipts
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -137,21 +148,14 @@ export default function MessagingPage() {
 
   const handleTyping = async () => {
     if (!selectedChat || !db || !currentUserId) return
-    
     if (!isTyping) {
       setIsTyping(true)
-      await updateDoc(doc(db, "conversations", selectedChat.id), {
-        [`typing.${currentUserId}`]: true
-      })
+      await updateDoc(doc(db, "conversations", selectedChat.id), { [`typing.${currentUserId}`]: true })
     }
-
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-    
     typingTimeoutRef.current = setTimeout(async () => {
       setIsTyping(false)
-      await updateDoc(doc(db, "conversations", selectedChat.id), {
-        [`typing.${currentUserId}`]: false
-      })
+      await updateDoc(doc(db, "conversations", selectedChat.id), { [`typing.${currentUserId}`]: false })
     }, 2000)
   }
 
@@ -176,7 +180,7 @@ export default function MessagingPage() {
       })
       
       const updates: any = { 
-        lastMessage: type === 'image' ? '📷 Photo' : msgContent, 
+        lastMessage: type === 'image' ? '📷 Photo' : (type === 'like' ? '👍 Like' : msgContent), 
         lastMessageTime: serverTimestamp(),
         [`typing.${currentUserId}`]: false
       }
@@ -189,6 +193,38 @@ export default function MessagingPage() {
     } catch (e) {
       toast({ title: "Erreur d'envoi", variant: "destructive" })
     }
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = async (event) => {
+      const base64 = event.target?.result as string
+      await handleSendMessage(undefined, base64, 'image')
+      toast({ title: "Photo envoyée" })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const startCall = (type: 'video' | 'voice') => {
+    setCallType(type)
+    setIsCalling(true)
+    setCallStatus('connecting')
+    
+    // Simuler une connexion après 3 secondes
+    setTimeout(() => {
+      setCallStatus('active')
+    }, 3000)
+  }
+
+  const endCall = () => {
+    setCallStatus('ended')
+    setTimeout(() => {
+      setIsCalling(false)
+      setCallType(null)
+    }, 1000)
   }
 
   const fetchContacts = async () => {
@@ -235,14 +271,12 @@ export default function MessagingPage() {
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return []
-    let list = conversations
-    if (activeTab === "unread") list = conversations.filter(c => (c.unreadCount?.[currentUserId] || 0) > 0)
-    return list.filter(c => {
+    return conversations.filter(c => {
       const otherId = c.participants.find((p: string) => p !== currentUserId)
       const name = c.participantNames?.[otherId] || "Utilisateur"
       return name.toLowerCase().includes(searchTerm.toLowerCase())
     })
-  }, [conversations, searchTerm, activeTab, currentUserId])
+  }, [conversations, searchTerm, currentUserId])
 
   const formatTime = (timestamp: any) => {
     if (!timestamp) return ""
@@ -258,49 +292,46 @@ export default function MessagingPage() {
     <DashboardLayout>
       <div className="h-[calc(100svh-9.5rem)] md:h-[calc(100vh-9.5rem)] flex gap-0 md:gap-4 animate-in fade-in duration-500 overflow-hidden -m-4 md:m-0">
         
-        {/* Sidebar - Liste des discussions */}
+        {/* Sidebar - Discussions */}
         <Card className={cn(
-          "flex flex-col overflow-hidden border-none shadow-none md:shadow-sm bg-white md:rounded-[2rem] w-full md:w-[360px] lg:w-[420px] transition-all shrink-0",
+          "flex flex-col overflow-hidden border-none shadow-none md:shadow-sm bg-white md:rounded-[2rem] w-full md:w-[360px] lg:w-[420px] shrink-0",
           selectedChat ? "hidden md:flex" : "flex"
         )}>
           <div className="p-4 md:p-6 pb-2">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-black tracking-tight">Messages</h2>
-              <div className="flex gap-2">
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="icon" onClick={fetchContacts} className="size-10 rounded-full bg-primary text-white shadow-lg active:scale-90 transition-all"><Plus className="size-6" /></Button>
-                  </DialogTrigger>
-                  <DialogContent className="rounded-[2.2rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
-                    <div className="p-6 bg-primary text-white flex items-center justify-between">
-                      <DialogTitle className="text-xl md:text-2xl font-black uppercase">Nouveau Chat</DialogTitle>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="icon" onClick={fetchContacts} className="size-10 rounded-full bg-primary text-white shadow-lg"><Plus className="size-6" /></Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-[2.2rem] w-[95%] max-w-lg p-0 overflow-hidden border-none shadow-2xl">
+                  <div className="p-6 bg-primary text-white flex items-center justify-between">
+                    <DialogTitle className="text-xl md:text-2xl font-black uppercase">Nouveau Chat</DialogTitle>
+                  </div>
+                  <div className="p-4 bg-white border-b">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                      <Input placeholder="Rechercher..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="rounded-full bg-muted/30 border-none pl-10 h-11" />
                     </div>
-                    <div className="p-4 bg-white border-b">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input placeholder="Rechercher par nom ou rôle..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="rounded-full bg-muted/30 border-none pl-10 h-11" />
-                      </div>
-                    </div>
-                    <ScrollArea className="h-[450px] p-2 bg-[#F8FAFC]">
-                      {loadingContacts ? <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary size-8" /></div> : 
-                        contacts.map(c => (
-                          <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white hover:shadow-md transition-all text-left mb-2 group">
-                            <Avatar className="size-12 border-2 border-white shadow-sm group-hover:border-primary/20"><AvatarFallback className="bg-primary/5 text-primary font-black text-sm">{c.name?.[0]}</AvatarFallback></Avatar>
-                            <div className="min-w-0">
-                              <p className="font-black text-sm truncate uppercase">{c.name}</p>
-                              <p className="text-[10px] font-bold text-muted-foreground uppercase">{c.role} • {c.sub}</p>
-                            </div>
-                            <ChevronRight className="ml-auto size-4 text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                          </button>
-                      ))}
-                    </ScrollArea>
-                  </DialogContent>
-                </Dialog>
-              </div>
+                  </div>
+                  <ScrollArea className="h-[450px] p-2 bg-[#F8FAFC]">
+                    {loadingContacts ? <div className="flex justify-center p-10"><Loader2 className="animate-spin text-primary size-8" /></div> : 
+                      contacts.map(c => (
+                        <button key={c.id} onClick={() => startConversation(c)} className="w-full flex items-center gap-3 p-4 rounded-2xl hover:bg-white hover:shadow-md transition-all text-left mb-2 group">
+                          <Avatar className="size-12 border-2 border-white shadow-sm"><AvatarFallback className="bg-primary/5 text-primary font-black text-sm">{c.name?.[0]}</AvatarFallback></Avatar>
+                          <div className="min-w-0">
+                            <p className="font-black text-sm truncate uppercase">{c.name}</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{c.role} • {c.sub}</p>
+                          </div>
+                        </button>
+                    ))}
+                  </ScrollArea>
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="relative mb-4">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-              <Input placeholder="Rechercher dans Messenger..." className="pl-11 h-11 bg-muted/40 border-none rounded-full font-medium text-sm focus-visible:ring-primary/20" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Input placeholder="Rechercher..." className="pl-11 h-11 bg-muted/40 border-none rounded-full" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-2 space-y-0.5 no-scrollbar pb-10">
@@ -309,32 +340,24 @@ export default function MessagingPage() {
                 const otherId = chat.participants.find((p: string) => p !== currentUserId)
                 const name = chat.participantNames?.[otherId] || "Utilisateur"
                 const unread = chat.unreadCount?.[currentUserId] || 0
-                const isOtherTyping = chat.typing?.[otherId] || false
                 return (
                   <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={cn(
                     "flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all mx-1 mb-1",
                     selectedChat?.id === chat.id ? "bg-primary/5 md:bg-muted/30" : "hover:bg-muted/20"
                   )}>
-                    <div className="relative">
-                      <Avatar className="size-14 border-2 border-white shadow-sm">
-                        <AvatarFallback className="font-black text-base bg-primary/10 text-primary uppercase">{name?.[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="absolute bottom-0.5 right-0.5 size-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
-                    </div>
+                    <Avatar className="size-14 border-2 border-white">
+                      <AvatarFallback className="font-black text-base bg-primary/10 text-primary uppercase">{name?.[0]}</AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-center mb-0.5">
                         <h4 className={cn("truncate text-sm font-black uppercase tracking-tight", unread > 0 ? "text-foreground" : "text-foreground/70")}>{name}</h4>
-                        <span className="text-[10px] font-bold text-muted-foreground shrink-0">{formatTime(chat.lastMessageTime)}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground">{formatTime(chat.lastMessageTime)}</span>
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        {isOtherTyping ? (
-                          <p className="text-xs font-black text-primary animate-pulse italic">écrit...</p>
-                        ) : (
-                          <p className={cn("text-xs truncate max-w-[85%]", unread > 0 ? "font-black text-foreground" : "font-medium text-muted-foreground/60")}>
-                            {chat.lastMessage}
-                          </p>
-                        )}
-                        {unread > 0 && <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 min-w-[1.4rem] h-5 justify-center rounded-full shadow-lg">{unread}</Badge>}
+                        <p className={cn("text-xs truncate max-w-[85%]", unread > 0 ? "font-black text-foreground" : "font-medium text-muted-foreground/60")}>
+                          {chat.lastMessage}
+                        </p>
+                        {unread > 0 && <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 min-w-[1.4rem] h-5 justify-center rounded-full">{unread}</Badge>}
                       </div>
                     </div>
                   </div>
@@ -343,7 +366,7 @@ export default function MessagingPage() {
           </div>
         </Card>
 
-        {/* Zone de Chat - Le cockpit de conversation */}
+        {/* Chat Area */}
         <Card className={cn(
           "flex-1 border-none shadow-none md:shadow-sm bg-white md:rounded-[2rem] flex-col overflow-hidden relative transition-all",
           !selectedChat ? "hidden md:flex" : "flex fixed inset-0 z-50 md:relative"
@@ -354,145 +377,94 @@ export default function MessagingPage() {
                 <MessageCircle className="size-16 text-primary opacity-20" />
               </div>
               <h3 className="text-3xl font-black uppercase tracking-tighter">Votre Espace Chat</h3>
-              <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em] mt-3 max-w-xs mx-auto opacity-40">Sélectionnez une discussion scellée pour démarrer</p>
+              <p className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em] mt-3 opacity-40">Sélectionnez une discussion scellée</p>
             </div>
           ) : (
             <>
-              {/* Header du Chat */}
+              {/* Header */}
               <div className="h-16 md:h-20 px-4 md:px-8 border-b flex items-center justify-between bg-white/95 backdrop-blur-md sticky top-0 z-20 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="icon" className="md:hidden rounded-full hover:bg-muted" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-6" /></Button>
-                  <div className="relative group cursor-pointer">
-                    <Avatar className="size-10 md:size-12 border-2 border-muted/10 shadow-sm transition-transform group-hover:scale-105">
-                      <AvatarFallback className="font-black text-sm bg-primary/5 text-primary uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute bottom-0 right-0 size-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
-                  </div>
+                  <Button variant="ghost" size="icon" className="md:hidden rounded-full" onClick={() => setSelectedChat(null)}><ChevronLeft className="size-6" /></Button>
+                  <Avatar className="size-10 md:size-12 border-2 border-muted/10">
+                    <AvatarFallback className="font-black text-sm bg-primary/5 text-primary uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
+                  </Avatar>
                   <div className="min-w-0">
                     <h3 className="text-sm md:text-lg font-black uppercase truncate tracking-tight">{selectedChat.otherName}</h3>
-                    <div className="flex items-center gap-1.5">
-                      {otherPersonTyping ? (
-                        <span className="text-[10px] font-black text-primary animate-pulse uppercase italic tracking-tighter">en train d'écrire...</span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
-                          <div className="size-1.5 bg-emerald-500 rounded-full animate-ping" /> Actif
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-1.5">
+                      <div className="size-1.5 bg-emerald-500 rounded-full animate-pulse" /> Actif
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 md:gap-4">
-                  <Button variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5 hidden sm:flex"><Phone className="size-5" /></Button>
-                  <Button variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5 hidden sm:flex"><Video className="size-5" /></Button>
+                  <Button onClick={() => startCall('voice')} variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5"><Phone className="size-5" /></Button>
+                  <Button onClick={() => startCall('video')} variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5"><Video className="size-5" /></Button>
                   <Button variant="ghost" size="icon" className="rounded-xl text-primary hover:bg-primary/5"><Info className="size-5" /></Button>
                 </div>
               </div>
 
-              {/* Zone des Messages */}
+              {/* Messages Zone */}
               <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 no-scrollbar bg-[#F8FAFC]/30 scroll-smooth">
-                {/* Information de sécurité scellée */}
-                <div className="flex justify-center mb-10">
-                   <div className="bg-white/90 backdrop-blur-sm border border-muted/50 px-6 py-2.5 rounded-full flex items-center gap-3 shadow-md">
-                      <ShieldCheck className="size-3.5 text-emerald-500" />
-                      <span className="text-[9px] font-black uppercase text-muted-foreground tracking-[0.25em]">Canal crypté Acadex V1</span>
-                   </div>
-                </div>
-
                 {messages?.map((msg: any, i: number) => {
                   const isMe = msg.senderId === currentUserId
-                  const showAvatar = !isMe && (i === 0 || messages[i-1]?.senderId !== msg.senderId)
-                  const isLast = i === messages.length - 1
-                  
                   return (
-                    <div key={msg.id || i} className={cn(
-                      "flex items-end gap-2 group animate-in slide-in-from-bottom-2 duration-300", 
-                      isMe ? "flex-row-reverse" : "flex-row"
-                    )}>
-                      {!isMe && (
-                        <div className="w-8 shrink-0">
-                          {showAvatar && (
-                            <Avatar className="size-8 border shadow-sm">
-                              <AvatarFallback className="text-[10px] font-black uppercase bg-primary/10 text-primary">{selectedChat.otherName?.[0]}</AvatarFallback>
-                            </Avatar>
-                          )}
-                        </div>
-                      )}
-                      
+                    <div key={msg.id || i} className={cn("flex items-end gap-2 group animate-in slide-in-from-bottom-2 duration-300", isMe ? "flex-row-reverse" : "flex-row")}>
                       <div className={cn("max-w-[80%] md:max-w-[70%] flex flex-col", isMe ? "items-end" : "items-start")}>
                         <div className={cn(
-                          "px-4 py-3 rounded-2xl text-[14px] md:text-base font-medium leading-relaxed shadow-sm transition-all hover:brightness-95 cursor-default",
-                          isMe 
-                            ? "bg-primary text-white rounded-br-sm" 
-                            : "bg-white text-foreground border border-muted/50 rounded-bl-sm"
+                          "px-4 py-3 rounded-2xl text-[14px] md:text-base font-medium leading-relaxed shadow-sm",
+                          isMe ? "bg-primary text-white rounded-br-sm" : "bg-white text-foreground border border-muted/50 rounded-bl-sm"
                         )}>
-                          {msg.text === '👍' ? (
-                            <ThumbsUp className="size-8 md:size-12 fill-primary text-primary" />
+                          {msg.type === 'image' ? (
+                            <img src={msg.text} alt="Shared" className="rounded-xl max-w-full max-h-[300px] object-cover cursor-pointer hover:scale-[1.02] transition-transform" />
+                          ) : msg.text === '👍' ? (
+                            <ThumbsUp className="size-10 md:size-14 fill-primary text-primary" />
                           ) : (
                             msg.text
                           )}
                         </div>
-                        {isMe && isLast && (
-                          <div className="mt-1 flex items-center gap-1.5 opacity-40">
-                             <CheckCheck className={cn("size-3.5", msg.seen ? "text-emerald-500" : "text-muted-foreground")} />
-                             <span className="text-[8px] font-black uppercase tracking-widest">{msg.seen ? 'Vu' : 'Remis'}</span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )
                 })}
-
                 {otherPersonTyping && (
-                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2">
-                    <Avatar className="size-7 border">
-                      <AvatarFallback className="text-[8px] font-black uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="bg-white border px-4 py-2.5 rounded-2xl flex gap-1 items-center shadow-sm">
-                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <div className="flex items-center gap-2 animate-pulse">
+                    <div className="bg-white border px-4 py-2 rounded-2xl flex gap-1 shadow-sm">
                        <div className="size-1.5 bg-primary/40 rounded-full animate-bounce" />
+                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:0.2s]" />
+                       <div className="size-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:0.4s]" />
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Barre d'Action (Input Messenger) */}
-              <div className="p-4 md:p-8 bg-white border-t border-muted/10 shadow-2xl">
+              {/* Input Zone */}
+              <div className="p-4 md:p-8 bg-white border-t border-muted/10">
                 <div className="flex items-end gap-2 md:gap-4 max-w-5xl mx-auto">
                   <div className="flex items-center gap-1.5 mb-1 hidden sm:flex">
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><Plus className="size-5" /></Button>
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><Camera className="size-5" /></Button>
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><ImageIcon className="size-5" /></Button>
-                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5 transition-transform active:scale-90"><Mic className="size-5" /></Button>
+                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5"><Plus className="size-5" /></Button>
+                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5" onClick={() => fileInputRef.current?.click()}><ImageIcon className="size-5" /></Button>
+                     <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-primary/5"><Mic className="size-5" /></Button>
                   </div>
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
                   
                   <div className="flex-1 relative flex items-center">
                     <form onSubmit={handleSendMessage} className="w-full relative">
                       <textarea 
                         rows={1}
-                        placeholder="Ecrivez votre message scellé..." 
+                        placeholder="Ecrivez..." 
                         className="w-full bg-muted/40 border-none rounded-3xl py-3.5 pl-5 pr-14 focus:ring-2 focus:ring-primary/10 focus:outline-none resize-none font-medium text-sm md:text-lg max-h-32 transition-all shadow-inner"
                         value={messageText} 
                         onChange={(e) => {
                           setMessageText(e.target.value)
                           handleTyping()
                         }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            handleSendMessage()
-                          }
-                        }}
                       />
-                      <div className="absolute right-2 bottom-2 flex items-center">
-                        <Button variant="ghost" size="icon" className="rounded-full text-primary hover:bg-transparent h-10 w-10"><Smile className="size-6" /></Button>
-                      </div>
+                      <Button variant="ghost" size="icon" className="absolute right-2 bottom-2 rounded-full text-primary h-10 w-10"><Smile className="size-6" /></Button>
                     </form>
                   </div>
 
                   <div className="mb-1.5">
                     {messageText.trim() ? (
-                      <Button onClick={() => handleSendMessage()} className="bg-primary text-white size-11 md:size-14 rounded-full shadow-xl shadow-primary/20 hover:scale-105 active:scale-90 transition-all flex-shrink-0">
+                      <Button onClick={() => handleSendMessage()} className="bg-primary text-white size-11 md:size-14 rounded-full shadow-xl shadow-primary/20 transition-all">
                         <Send className="size-6" />
                       </Button>
                     ) : (
@@ -503,6 +475,52 @@ export default function MessagingPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Call Overlay */}
+              {isCalling && (
+                <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-2xl flex flex-col items-center justify-between p-10 text-white animate-in zoom-in duration-300">
+                  <div className="w-full flex justify-end">
+                     <Button variant="ghost" size="icon" className="text-white/40 hover:text-white" onClick={endCall}><Maximize2 className="size-6" /></Button>
+                  </div>
+                  
+                  <div className="flex flex-col items-center gap-8">
+                     <div className="relative">
+                        <div className={cn("absolute inset-0 bg-primary/20 rounded-full animate-ping", callStatus === 'connecting' ? 'block' : 'hidden')} />
+                        <Avatar className="size-32 md:size-48 border-4 border-white/20 shadow-2xl">
+                          <AvatarFallback className="bg-primary text-white text-5xl md:text-7xl font-black uppercase">{selectedChat.otherName?.[0]}</AvatarFallback>
+                        </Avatar>
+                     </div>
+                     <div className="text-center space-y-2">
+                        <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight">{selectedChat.otherName}</h2>
+                        <p className="text-primary font-black uppercase tracking-[0.3em] text-sm animate-pulse">
+                          {callStatus === 'connecting' ? 'Appel en cours...' : 'Conversation active'}
+                        </p>
+                     </div>
+                  </div>
+
+                  {callType === 'video' && callStatus === 'active' && (
+                    <div className="absolute inset-0 z-0 overflow-hidden opacity-50">
+                       <img src="https://picsum.photos/seed/call-placeholder/1920/1080" className="w-full h-full object-cover" alt="Video Call" />
+                    </div>
+                  )}
+
+                  <div className="relative z-10 w-full max-w-md flex justify-center items-center gap-6 md:gap-10">
+                     <Button variant="outline" size="icon" className="size-14 md:size-20 rounded-full border-white/20 bg-white/10 backdrop-blur-md text-white hover:bg-white/20">
+                        <MicOff className="size-6 md:size-8" />
+                     </Button>
+                     <Button onClick={endCall} className="size-20 md:size-28 rounded-full bg-red-600 hover:bg-red-700 shadow-2xl shadow-red-600/40 group active:scale-95 transition-all">
+                        <PhoneOff className="size-10 md:size-14 fill-white group-hover:rotate-12 transition-transform" />
+                     </Button>
+                     <Button variant="outline" size="icon" className="size-14 md:size-20 rounded-full border-white/20 bg-white/10 backdrop-blur-md text-white hover:bg-white/20">
+                        <VideoOff className="size-6 md:size-8" />
+                     </Button>
+                  </div>
+
+                  <div className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-white/20 flex items-center gap-4">
+                     <ShieldCheck className="size-4" /> Crypteur de flux Acadex scellé
+                  </div>
+                </div>
+              )}
             </>
           )}
         </Card>
