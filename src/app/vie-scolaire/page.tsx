@@ -69,11 +69,12 @@ export default function StudentLifePage() {
     return () => unsubConfig()
   }, [db])
 
+  // REQUÊTE FILTRÉE ET CLASSÉE (A-Z)
   const studentsQuery = useMemo(() => {
     if (!db || !activeYear || userRole === "Élève") return null
     const baseCol = collection(db, "students")
     
-    // Restriction aux classes assignées si c'est un enseignant
+    // Restriction aux classes assignées si c'est un enseignant + TRI A-Z
     if (userRole === "Enseignant") {
       if (userClasses.length === 0) return null
       return query(
@@ -84,7 +85,7 @@ export default function StudentLifePage() {
       )
     }
 
-    // Le directeur voit tout
+    // Le directeur voit tout + TRI A-Z
     return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
   }, [db, activeYear, userRole, userClasses])
 
