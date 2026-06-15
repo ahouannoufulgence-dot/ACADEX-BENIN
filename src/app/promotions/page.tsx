@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -20,7 +19,8 @@ import {
   GraduationCap,
   Clock,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Star
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { useFirestore, useCollection } from "@/firebase"
