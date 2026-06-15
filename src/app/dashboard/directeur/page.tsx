@@ -114,7 +114,7 @@ export default function DirectorDashboard() {
         {/* Hero Section avec Salutation */}
         <Card className="relative h-[200px] md:h-[280px] rounded-[1.8rem] md:rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
           <Image 
-            src="https://picsum.photos/seed/acadex-director-office/1920/1080"
+            src="/images/bg-dashboard-directeur.jpg"
             alt="School Class"
             fill
             className="object-cover brightness-75 group-hover:scale-105 transition-transform duration-[8000ms]"
