@@ -11,7 +11,9 @@ import {
   Trash2, 
   FileDown, 
   Loader2, 
-  Search
+  Search,
+  ChevronLeft,
+  ShieldCheck
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -24,6 +26,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import Link from "next/link"
 
 const officialClasses = [
   "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
@@ -170,85 +173,101 @@ export default function GenIdentifiersPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-in">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-black text-foreground tracking-tight">Générer Identifiants <span className="text-primary italic">Élèves</span></h1>
-            <p className="text-muted-foreground mt-2 font-medium">Les élèves utiliseront ces codes pour activer leur espace cockpit.</p>
+      <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
+          <div className="space-y-1">
+            <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
+              Gestion <span className="text-primary italic">Identifiants</span>
+            </h1>
+            <div className="flex items-center gap-2 text-muted-foreground font-bold text-[9px] md:text-sm uppercase tracking-widest">
+              <ShieldCheck className="size-3 md:size-4 text-emerald-500" /> Pilotage Administratif
+            </div>
           </div>
-          <Button onClick={handleExportPDF} variant="outline" className="border-2 rounded-2xl h-12 px-6 font-black bg-white">
-            <FileDown className="mr-2 size-5" /> Télécharger PDF (1 page/classe)
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleExportPDF} variant="outline" className="flex-1 md:flex-none border-2 rounded-xl md:rounded-2xl h-11 md:h-14 px-5 md:px-8 font-black bg-white text-[10px] md:text-sm active:scale-95 transition-all">
+              <FileDown className="mr-2 size-4" /> PDF Par Classe
+            </Button>
+          </div>
         </div>
 
-        <Card className="border-none shadow-sm bg-white rounded-[2.5rem] p-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
-            <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Classe Cible</Label>
-              <Select onValueChange={setSelectedClass}>
-                <SelectTrigger className="h-14 rounded-2xl border-2 font-black"><SelectValue placeholder="Choisir" /></SelectTrigger>
-                <SelectContent>{officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>)}</SelectContent>
+        <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3rem] p-5 md:p-10 border-l-[8px] md:border-l-[15px] border-primary">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 items-end">
+            <div className="space-y-1.5">
+              <Label className="font-black text-[9px] md:text-[10px] uppercase text-muted-foreground px-2">Classe Cible</Label>
+              <Select onValueChange={setSelectedClass} value={selectedClass}>
+                <SelectTrigger className="h-11 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-xs md:text-base"><SelectValue placeholder="Choisir" /></SelectTrigger>
+                <SelectContent className="rounded-xl border-2 p-1">
+                  {officialClasses.map(c => <SelectItem key={c} value={c} className="font-bold p-2.5 rounded-lg text-xs">{c}</SelectItem>)}
+                </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label className="font-black text-xs uppercase text-muted-foreground px-2">Quantité</Label>
-              <Input type="number" min="1" max="500" value={count} onChange={(e) => setCount(e.target.value)} className="h-14 rounded-2xl border-2 font-black text-lg" />
+            <div className="space-y-1.5">
+              <Label className="font-black text-[9px] md:text-[10px] uppercase text-muted-foreground px-2">Quantité</Label>
+              <Input type="number" min="1" max="500" value={count} onChange={(e) => setCount(e.target.value)} className="h-11 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-base md:text-xl text-center" />
             </div>
-            <div className="md:col-span-2">
-              <Button onClick={handleGenerate} disabled={loading || !selectedClass} className="w-full h-14 bg-primary hover:bg-primary/90 shadow-xl rounded-2xl font-black text-lg">
-                {loading ? <Loader2 className="mr-2 size-6 animate-spin" /> : <Zap className="mr-2 size-6 fill-white" />}
-                Générer les Codes
+            <div className="sm:col-span-2">
+              <Button onClick={handleGenerate} disabled={loading || !selectedClass} className="w-full h-11 md:h-14 bg-primary hover:bg-primary/90 shadow-xl rounded-xl md:rounded-2xl font-black text-[10px] md:text-lg transition-all active:scale-95 uppercase">
+                {loading ? <Loader2 className="mr-2 size-4 md:size-6 animate-spin" /> : <Zap className="mr-2 size-4 md:size-6 fill-white" />}
+                Générer les Codes Live
               </Button>
             </div>
           </div>
         </Card>
 
-        <div className="space-y-4">
-          <div className="relative group max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+        <div className="space-y-4 md:space-y-6">
+          <div className="relative group max-w-md px-1">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 size-4 md:size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
             <Input 
               placeholder="Chercher un matricule..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-12 h-14 bg-white border-none shadow-sm rounded-2xl font-medium"
+              className="pl-12 h-12 md:h-16 bg-white border-none shadow-sm rounded-xl md:rounded-2xl font-bold text-xs md:text-base"
             />
           </div>
 
-          <Card className="border-none shadow-sm bg-white rounded-[2.5rem] overflow-hidden">
-            <div className="p-0 overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted/30 text-muted-foreground uppercase text-[10px] font-black tracking-widest border-b">
-                    <th className="px-8 py-5 text-left">Identifiant unique</th>
-                    <th className="px-8 py-5 text-left">Classe</th>
-                    <th className="px-8 py-5 text-center">Statut</th>
-                    <th className="px-8 py-5 text-right">Actions</th>
+          <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3rem] overflow-hidden min-h-[400px]">
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full text-left">
+                <thead className="bg-muted/30 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b tracking-widest">
+                  <tr>
+                    <th className="px-5 py-5 md:px-10 md:py-8">Identifiant</th>
+                    <th className="px-5 py-5 md:px-10 md:py-8">Classe</th>
+                    <th className="px-5 py-5 md:px-10 md:py-8 text-center">Statut</th>
+                    <th className="px-5 py-5 md:px-10 md:py-8 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-muted/30">
+                <tbody className="divide-y divide-muted/10">
                   {loadingIds ? (
-                    <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary" /></td></tr>
+                    <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="size-10 animate-spin mx-auto text-primary/20" /></td></tr>
                   ) : filteredIds.length === 0 ? (
-                    <tr><td colSpan={4} className="p-20 text-center font-bold text-muted-foreground">Aucun code généré.</td></tr>
+                    <tr><td colSpan={4} className="p-24 text-center">
+                      <div className="size-16 md:size-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 opacity-20"><Zap className="size-8 md:size-10 text-muted-foreground" /></div>
+                      <p className="font-black text-muted-foreground/40 uppercase tracking-widest text-[10px] md:text-sm">Aucun code en circulation.</p>
+                    </td></tr>
                   ) : (
                     filteredIds.map((id: any) => (
                       <tr key={id.id} className="hover:bg-muted/5 transition-colors group">
-                        <td className="px-8 py-4">
-                          <span className="font-black text-lg tracking-wider">{id.matricule}</span>
+                        <td className="px-5 py-4 md:px-10 md:py-8">
+                          <span className="font-black text-sm md:text-2xl tracking-tighter tabular-nums text-foreground">{id.matricule}</span>
                         </td>
-                        <td className="px-8 py-4 font-bold text-muted-foreground">{id.classId}</td>
-                        <td className="px-8 py-4 text-center">
-                          <Badge variant="outline" className={`font-black rounded-full px-4 border-2 ${id.status === 'utilisé' ? 'border-emerald-100 text-emerald-600 bg-emerald-50' : 'border-amber-100 text-amber-600 bg-amber-50'}`}>
-                            {id.status.toUpperCase()}
+                        <td className="px-5 py-4 md:px-10 md:py-8">
+                           <Badge variant="outline" className="font-black text-[8px] md:text-xs border-primary/20 text-primary px-3">{id.classId}</Badge>
+                        </td>
+                        <td className="px-5 py-4 md:px-10 md:py-8 text-center">
+                          <Badge className={cn(
+                            "font-black rounded-full px-3 md:px-5 py-1 text-[7px] md:text-[10px] uppercase shadow-sm",
+                            id.status === 'utilisé' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+                          )}>
+                            {id.status}
                           </Badge>
                         </td>
-                        <td className="px-8 py-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button onClick={() => copyToClipboard(id.matricule)} variant="ghost" size="icon" className="size-10 rounded-xl hover:bg-primary/10 hover:text-primary">
-                              <Copy className="size-4" />
+                        <td className="px-5 py-4 md:px-10 md:py-8 text-right">
+                          <div className="flex justify-end gap-2 md:gap-3">
+                            <Button onClick={() => copyToClipboard(id.matricule)} variant="ghost" size="icon" className="size-9 md:size-12 rounded-lg md:rounded-xl hover:bg-primary/10 hover:text-primary transition-all">
+                              <Copy className="size-4 md:size-5" />
                             </Button>
-                            <Button onClick={() => handleDelete(id.id)} variant="ghost" size="icon" className="size-10 rounded-xl hover:bg-destructive/10 hover:text-destructive">
-                              <Trash2 className="size-4" />
+                            <Button onClick={() => handleDelete(id.id)} variant="ghost" size="icon" className="size-9 md:size-12 rounded-lg md:rounded-xl hover:bg-destructive/10 hover:text-destructive transition-all">
+                              <Trash2 className="size-4 md:size-5" />
                             </Button>
                           </div>
                         </td>

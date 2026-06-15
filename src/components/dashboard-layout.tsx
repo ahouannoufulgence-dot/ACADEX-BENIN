@@ -19,7 +19,8 @@ import {
   ClipboardList,
   Layers,
   CalendarDays,
-  TrendingUp
+  TrendingUp,
+  Zap
 } from "lucide-react"
 import {
   Sidebar,
@@ -63,6 +64,7 @@ const navigationConfig = {
     { name: "Statistiques", href: "/statistiques", icon: BarChart3 },
     { name: "Vie Scolaire", href: "/vie-scolaire", icon: ClipboardList },
     { name: "Élèves", href: "/eleves", icon: Users },
+    { name: "Identifiants", href: "/eleves/identifiants", icon: Zap },
     { name: "Enseignants", href: "/enseignants", icon: UserSquare2 },
     { name: "Notes", href: "/notes", icon: PenTool },
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
