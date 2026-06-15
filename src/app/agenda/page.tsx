@@ -1,27 +1,19 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
-  Calendar as CalendarIcon, 
   Clock, 
   MapPin, 
   User, 
   BookOpen,
   Zap,
-  Star,
-  Layers,
   FileDown,
   ShieldCheck,
   Grid3X3,
   Loader2,
-  AlertTriangle,
   Sparkles,
-  Search,
-  Filter,
-  ChevronRight,
   ArrowRight,
   History,
   Timer
@@ -108,7 +100,6 @@ export default function GlobalSchedulePage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Responsive */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-none">
@@ -142,7 +133,6 @@ export default function GlobalSchedulePage() {
             ))}
           </TabsList>
 
-          {/* Contrôles de vue - Optimisés Mobile */}
           <Card className="p-3 md:p-8 rounded-2xl md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col gap-4 md:gap-10">
              <div className="w-full">
                 <Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Jour de la Semaine</Label>

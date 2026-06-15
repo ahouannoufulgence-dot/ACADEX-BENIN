@@ -1,26 +1,19 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
   Clock, 
   Calendar, 
-  CheckCircle2, 
-  Save, 
   Trash2, 
   Plus,
-  ArrowRight,
   ShieldCheck,
   Zap,
   MapPin,
   Loader2,
-  AlertTriangle,
-  History,
-  Timer,
-  ChevronRight
+  Timer
 } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
@@ -34,7 +27,7 @@ import {
   SelectValue 
 } from "@/components/ui/select"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, addDoc, query, where, deleteDoc, doc, serverTimestamp, getDocs } from "firebase/firestore"
+import { collection, addDoc, query, where, deleteDoc, doc, serverTimestamp, orderBy } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
@@ -148,7 +141,6 @@ export default function AvailabilityPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Responsive */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-1">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
@@ -165,7 +157,6 @@ export default function AvailabilityPage() {
         </div>
 
         <div className="grid gap-6 md:gap-10 lg:grid-cols-12">
-          {/* Formulaire de Saisie - Mobile-First Stack */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="p-5 md:p-10 rounded-2xl md:rounded-[3rem] bg-white border-none shadow-sm space-y-6 md:space-y-8 border-t-[8px] border-primary">
               <div className="space-y-1">
@@ -230,7 +221,6 @@ export default function AvailabilityPage() {
             </Card>
           </div>
 
-          {/* Liste des Créneaux - Responsive Cards */}
           <div className="lg:col-span-8">
             <Card className="border-none shadow-sm bg-white rounded-2xl md:rounded-[4rem] overflow-hidden min-h-[400px] flex flex-col">
               <div className="p-5 md:p-12 border-b bg-muted/5 flex items-center justify-between">

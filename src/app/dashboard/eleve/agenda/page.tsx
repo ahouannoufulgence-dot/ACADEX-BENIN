@@ -1,15 +1,15 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card } from "@/components/ui/card"
-import { Calendar, Clock, MapPin, User, ChevronLeft, ChevronRight, Zap, Loader2, BookOpen, ShieldCheck, History, Timer, Star } from "lucide-react"
+import { Calendar, Clock, MapPin, User, BookOpen, ShieldCheck, History, Timer, Star, Loader2 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { collection, query, where } from "firebase/firestore"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
@@ -62,7 +62,6 @@ export default function StudentAgendaPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-12 animate-in fade-in duration-500">
         
-        {/* Header Responsive */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-6xl font-black text-foreground tracking-tight uppercase leading-none">
@@ -79,7 +78,6 @@ export default function StudentAgendaPage() {
         </div>
 
         <div className="grid gap-6 md:gap-14 lg:grid-cols-12">
-          {/* Navigation Semaine - Horizontal Scroll sur Mobile */}
           <div className="lg:col-span-3">
             <Card className="border-none shadow-sm bg-white rounded-2xl md:rounded-[4rem] p-3 md:p-10 h-fit lg:sticky lg:top-24">
               <div className="flex items-center gap-3 mb-4 md:mb-10 px-2">
@@ -107,7 +105,6 @@ export default function StudentAgendaPage() {
             </Card>
           </div>
 
-          {/* Liste des cours du jour - Mobile Cards */}
           <div className="lg:col-span-9 space-y-6 md:space-y-10">
             <div className="flex items-center justify-between px-2">
               <h2 className="text-xl md:text-5xl font-black text-foreground uppercase tracking-tight">Programme du <span className="text-primary italic">{selectedDay}</span></h2>
@@ -165,7 +162,6 @@ export default function StudentAgendaPage() {
           </div>
         </div>
 
-        {/* Footer Coaching IA - Mobile Optimized */}
         <Card className="p-6 md:p-20 bg-foreground text-white rounded-2xl md:rounded-[5rem] shadow-2xl relative overflow-hidden group border-none">
            <div className="flex flex-col md:flex-row items-center gap-6 md:gap-20 relative z-10">
               <div className="size-16 md:size-40 bg-primary/20 rounded-2xl md:rounded-[3.5rem] flex items-center justify-center shadow-inner group-hover:rotate-6 transition-transform">
