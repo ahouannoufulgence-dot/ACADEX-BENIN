@@ -1,3 +1,4 @@
+
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -15,7 +16,18 @@ import {
   RefreshCw,
   ChevronRight,
   TrendingUp,
-  FileText
+  FileText,
+  Search,
+  Plus,
+  ChevronLeft,
+  Star,
+  Users,
+  Award,
+  Zap,
+  Filter,
+  ArrowUpRight,
+  TrendingDown,
+  Download
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -54,6 +66,12 @@ const OFFICIAL_CLASSES = [
   "TLE A", "TLE B", "TLE C", "TLE D"
 ]
 
+const PROMOTIONS = ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TLE"]
+
+const MATIERES = [
+  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"
+]
+
 export default function GradesPage() {
   const db = useFirestore()
   const [userRole, setUserRole] = useState<string | null>(null)
@@ -66,6 +84,9 @@ export default function GradesPage() {
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
   const [selectedEvalType, setSelectedEvalType] = useState("int1")
+  const [selectedPromotion, setSelectedPromotion] = useState<string | null>(null)
+  const [selectedMatiere, setSelectedMatiere] = useState<string>("Mathématiques")
+  
   const [saving, setSaving] = useState(false)
   const [loadingExisting, setLoadingExisting] = useState(false)
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
@@ -74,16 +95,145 @@ export default function GradesPage() {
 
   useEffect(() => {
     setMounted(true)
-    setUserRole(localStorage.getItem('acadex_user_role'))
+    const role = localStorage.getItem('acadex_user_role')
+    setUserRole(role)
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
     setUserSubject(localStorage.getItem('acadex_user_subject') || "")
     setUserName(localStorage.getItem('acadex_user_name') || "")
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
+    
+    if (role === 'Enseignant' && localStorage.getItem('acadex_user_subject')) {
+      setSelectedMatiere(localStorage.getItem('acadex_user_subject')!)
+    }
   }, [])
 
+  const isDirector = userRole === "Directeur"
+
+  // Queries for Director View
+  const allStudentsQuery = useMemo(() => {
+    if (!db || !isDirector || !activeYear) return null
+    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
+  }, [db, isDirector, activeYear])
+
+  const allGradesQuery = useMemo(() => {
+    if (!db || !isDirector || !activeYear) return null
+    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
+  }, [db, isDirector, activeYear])
+
+  const { data: allStudents } = useCollection(allStudentsQuery)
+  const { data: allGrades } = useCollection(allGradesQuery)
+
+  // Calculations for Classes Cards (Director)
+  const classCardsData = useMemo(() => {
+    if (!isDirector || !allStudents) return []
+    
+    let filteredClasses = OFFICIAL_CLASSES
+    if (selectedPromotion) {
+      filteredClasses = OFFICIAL_CLASSES.filter(c => c.startsWith(selectedPromotion))
+    }
+
+    return filteredClasses.map(classId => {
+      const classStudents = allStudents.filter((s: any) => s.classId === classId)
+      const classGrades = allGrades?.filter((g: any) => g.classId === classId) || []
+      
+      // Basic stats per class
+      const distinctSubjects = new Set(classGrades.map((g: any) => g.subject)).size
+      const totalGrades = classGrades.length
+      const expectedGrades = classStudents.length * 5 * 10 // Estimation
+      const completion = Math.min(100, Math.round((totalGrades / Math.max(1, expectedGrades)) * 100))
+
+      // Average calculation per student in class
+      const studentAvgs = classStudents.map((s: any) => {
+        const sGrades = classGrades.filter((g: any) => g.studentId === s.matricule)
+        const subjects: Record<string, any> = {}
+        sGrades.forEach((g: any) => {
+          if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
+          if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+          if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+        })
+        let totalW = 0, totalC = 0
+        Object.values(subjects).forEach((sub: any) => {
+          const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a+b, 0) / sub.ints.length : null
+          const blocks = []
+          if (avgInt !== null) blocks.push(avgInt)
+          sub.devs.forEach((d: number) => blocks.push(d))
+          if (blocks.length > 0) {
+            totalW += (blocks.reduce((a, b) => a + b, 0) / blocks.length) * sub.coef
+            totalC += sub.coef
+          }
+        })
+        return totalC > 0 ? totalW / totalC : 0
+      }).filter(v => v > 0)
+
+      const classAvg = studentAvgs.length > 0 
+        ? (studentAvgs.reduce((a, b) => a + b, 0) / studentAvgs.length).toFixed(2)
+        : "0.00"
+
+      return {
+        id: classId,
+        studentCount: classStudents.length,
+        avg: classAvg,
+        completion,
+        subjectsCount: distinctSubjects
+      }
+    })
+  }, [allStudents, allGrades, isDirector, selectedPromotion])
+
+  // Calculations for Detailed Register (Director)
+  const registerData = useMemo(() => {
+    if (!selectedClass || !allStudents) return { students: [], stats: null }
+    
+    const classStudents = allStudents.filter((s: any) => s.classId === selectedClass)
+    const classGrades = allGrades?.filter((g: any) => g.classId === selectedClass && g.subject === selectedMatiere && g.term === selectedTrimestre) || []
+
+    const processedStudents = classStudents.map((s: any) => {
+      const sGrades = classGrades.filter((g: any) => g.studentId === s.matricule)
+      const data: any = { ...s, i1: null, i2: null, i3: null, d1: null, d2: null, coef: 2 }
+      
+      sGrades.forEach((g: any) => {
+        if (g.type === 'int1') data.i1 = g.value
+        if (g.type === 'int2') data.i2 = g.value
+        if (g.type === 'int3') data.i3 = g.value
+        if (g.type === 'dev1') data.d1 = g.value
+        if (g.type === 'dev2') data.d2 = g.value
+        data.coef = g.coefficient || 2
+      })
+
+      // ACADEX Logic
+      const interros = [data.i1, data.i2, data.i3].filter(v => v !== null)
+      const avgInt = interros.length > 0 ? interros.reduce((a,b) => a+b, 0) / interros.length : null
+      
+      const blocks = []
+      if (avgInt !== null) blocks.push(avgInt)
+      if (data.d1 !== null) blocks.push(data.d1)
+      if (data.d2 !== null) blocks.push(data.d2)
+
+      const subjectAvg = blocks.length > 0 ? blocks.reduce((a,b) => a+b, 0) / blocks.length : 0
+      data.subjectAvg = subjectAvg
+      data.weightedAvg = subjectAvg * data.coef
+      data.isProvisional = blocks.length < 3
+
+      return data
+    }).sort((a, b) => a.lastName.localeCompare(b.lastName))
+
+    const validAvgs = processedStudents.map(s => s.subjectAvg).filter(v => v > 0)
+    const classAvg = validAvgs.length > 0 ? (validAvgs.reduce((a,b) => a+b, 0) / validAvgs.length).toFixed(2) : "0.00"
+    const successCount = validAvgs.filter(v => v >= 10).length
+    const failCount = validAvgs.length - successCount
+    const successRate = validAvgs.length > 0 ? Math.round((successCount / validAvgs.length) * 100) : 0
+    const major = validAvgs.length > 0 ? Math.max(...validAvgs).toFixed(2) : "0.00"
+    const minor = validAvgs.length > 0 ? Math.min(...validAvgs).toFixed(2) : "0.00"
+
+    return { 
+      students: processedStudents, 
+      stats: { classAvg, successCount, failCount, successRate, major, minor, completion: successRate } 
+    }
+  }, [selectedClass, selectedMatiere, selectedTrimestre, allStudents, allGrades])
+
+  // Teacher View Logic
   useEffect(() => {
     const fetchData = async () => {
-      if (!selectedClass || !userSubject || !mounted) return
+      if (!selectedClass || !userSubject || !mounted || isDirector) return
       
       setLoadingExisting(true)
       try {
@@ -130,10 +280,10 @@ export default function GradesPage() {
       }
     }
     fetchData()
-  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear, mounted])
+  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear, mounted, isDirector])
 
-  const studentsQuery = useMemo(() => {
-    if (!db || !selectedClass || !mounted) return null
+  const teacherStudentsQuery = useMemo(() => {
+    if (!db || !selectedClass || !mounted || isDirector) return null
     return query(
       collection(db, 'students'), 
       where("classId", "==", selectedClass),
@@ -141,9 +291,9 @@ export default function GradesPage() {
       where("academicYear", "==", activeYear),
       orderBy("lastName", "asc")
     )
-  }, [db, selectedClass, activeYear, mounted])
+  }, [db, selectedClass, activeYear, mounted, isDirector])
 
-  const { data: students } = useCollection(studentsQuery)
+  const { data: teacherStudents } = useCollection(teacherStudentsQuery)
 
   const handleGradeChange = (matricule: string, value: string) => {
     const num = parseFloat(value)
@@ -170,7 +320,7 @@ export default function GradesPage() {
         updatedAt: serverTimestamp()
       }, { merge: true })
 
-      students?.forEach((student: any) => {
+      teacherStudents?.forEach((student: any) => {
         const valStr = gradesData[student.matricule]
         if (valStr === undefined || valStr === "") return 
 
@@ -204,14 +354,206 @@ export default function GradesPage() {
   }
 
   if (!mounted) return null
-  const isDirector = userRole === "Directeur"
   const classesToShow = isDirector ? OFFICIAL_CLASSES : userClasses
 
+  // RENDERING DIRECTOR VIEW
+  if (isDirector && !selectedClass) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
+            <div className="space-y-1">
+              <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
+                Registre <span className="text-primary italic">Global</span>
+              </h1>
+              <p className="text-[9px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                 <ShieldCheck className="size-3.5 md:size-4 text-emerald-500" /> Vision Centrale • {activeYear}
+              </p>
+            </div>
+            <div className="flex gap-2">
+               <Badge className="bg-primary/5 text-primary border-none font-black h-11 md:h-14 px-5 rounded-xl md:rounded-2xl hidden sm:flex items-center">
+                 {classCardsData.length} CLASSES SCELLÉES
+               </Badge>
+            </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+             <button 
+               onClick={() => setSelectedPromotion(null)}
+               className={cn(
+                 "px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2",
+                 !selectedPromotion ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted"
+               )}
+             >
+               TOUT
+             </button>
+             {PROMOTIONS.map(p => (
+               <button 
+                 key={p}
+                 onClick={() => setSelectedPromotion(p)}
+                 className={cn(
+                   "px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2 whitespace-nowrap",
+                   selectedPromotion === p ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted"
+                 )}
+               >
+                 {p}
+               </button>
+             ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+             {classCardsData.map((c) => (
+               <Card 
+                 key={c.id} 
+                 onClick={() => setSelectedClass(c.id)}
+                 className="p-6 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group relative overflow-hidden active:scale-95"
+               >
+                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
+                    <Layers className="size-20 md:size-24" />
+                  </div>
+                  <div className="flex items-center justify-between mb-6 relative z-10">
+                     <h3 className="text-xl md:text-3xl font-black text-foreground group-hover:text-primary transition-colors">{c.id}</h3>
+                     <Badge className={cn("font-black text-[8px] md:text-xs", Number(c.avg) >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>
+                       {c.avg}/20
+                     </Badge>
+                  </div>
+                  <div className="space-y-4 relative z-10">
+                     <div className="flex justify-between items-center text-[9px] md:text-xs font-bold text-muted-foreground uppercase">
+                        <span className="flex items-center gap-1.5"><Users className="size-3" /> {c.studentCount} Élèves</span>
+                        <span className="flex items-center gap-1.5"><Zap className="size-3 text-amber-500" /> {c.subjectsCount} Matières</span>
+                     </div>
+                     <div className="space-y-1.5">
+                        <div className="flex justify-between text-[7px] font-black uppercase text-muted-foreground">
+                           <span>Progression Saisie</span>
+                           <span>{c.completion}%</span>
+                        </div>
+                        <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                           <div className="bg-primary h-full transition-all duration-1000" style={{ width: `${c.completion}%` }} />
+                        </div>
+                     </div>
+                  </div>
+               </Card>
+             ))}
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (isDirector && selectedClass) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
+              <div className="space-y-1">
+                 <button onClick={() => setSelectedClass("")} className="flex items-center gap-2 text-muted-foreground hover:text-primary font-black text-[10px] md:text-sm uppercase tracking-widest mb-2 transition-all">
+                    <ChevronLeft className="size-4" /> Retour au registre
+                 </button>
+                 <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">{selectedClass}</span></h1>
+              </div>
+              <div className="flex gap-2">
+                 <Button variant="outline" className="flex-1 md:flex-none h-11 md:h-14 px-6 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm">
+                    <Download className="mr-2 size-4" /> Export Excel
+                 </Button>
+                 <Badge className="bg-foreground text-white border-none font-black h-11 md:h-14 px-6 rounded-xl md:rounded-2xl flex items-center text-[10px] md:text-sm shadow-xl">
+                   ANALYSE SCELLÉE
+                 </Badge>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+              {[
+                { label: "Moyenne Classe", val: registerData.stats?.classAvg, icon: TrendingUp, color: "text-primary", bg: "bg-emerald-50" },
+                { label: "Major", val: registerData.stats?.major, icon: Award, color: "text-amber-500", bg: "bg-amber-50" },
+                { label: "Taux Réussite", val: registerData.stats?.successRate + "%", icon: Zap, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Difficulté", val: registerData.stats?.failCount, icon: TrendingDown, color: "text-red-500", bg: "bg-red-50" },
+              ].map((s, i) => (
+                <Card key={i} className="p-4 md:p-6 rounded-2xl md:rounded-[2rem] border-none shadow-sm bg-white flex flex-col justify-between h-24 md:h-40">
+                   <div className={cn("p-2 rounded-lg w-fit", s.bg, s.color)}><s.icon className="size-4 md:size-6" /></div>
+                   <div>
+                      <p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">{s.label}</p>
+                      <h4 className="text-sm md:text-2xl font-black tabular-nums">{s.val}</h4>
+                   </div>
+                </Card>
+              ))}
+           </div>
+
+           <Card className="p-4 md:p-8 rounded-2xl md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col md:flex-row gap-4 md:gap-8 items-center border-l-[10px] border-primary">
+              <div className="w-full md:w-auto flex-1">
+                 <Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Matière</Label>
+                 <Select value={selectedMatiere} onValueChange={setSelectedMatiere}>
+                    <SelectTrigger className="h-11 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 p-1 max-h-[300px]">
+                       {MATIERES.map(m => <SelectItem key={m} value={m} className="font-bold p-2.5 rounded-lg text-xs">{m}</SelectItem>)}
+                    </SelectContent>
+                 </Select>
+              </div>
+              <div className="w-full md:w-64">
+                 <Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Trimestre</Label>
+                 <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
+                    <SelectTrigger className="h-11 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 p-1">
+                       {trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}
+                    </SelectContent>
+                 </Select>
+              </div>
+           </Card>
+
+           <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[4.5rem] overflow-hidden">
+              <div className="overflow-x-auto no-scrollbar relative">
+                 <table className="w-full text-left border-separate border-spacing-0">
+                    <thead className="bg-muted/30 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground sticky top-0 z-20">
+                       <tr>
+                          <th className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-30 bg-white border-b border-muted/30">ID & ÉLÈVE</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">SEXE</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 1</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 2</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 3</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">DEV 1</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">DEV 2</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30 bg-primary/5 text-primary">MOY/20</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 text-right border-b border-muted/30 bg-primary text-white">COEF x {registerData.students[0]?.coef || 2}</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-muted/10">
+                       {registerData.students.map((s: any) => (
+                         <tr key={s.id} className="hover:bg-muted/5 transition-all group">
+                            <td className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC] transition-colors border-r shadow-sm">
+                               <div className="min-w-[150px] md:min-w-[220px]">
+                                  <p className="font-black text-[10px] md:text-xl text-foreground uppercase truncate tracking-tight">{s.lastName} {s.firstName}</p>
+                                  <span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span>
+                               </div>
+                            </td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-bold text-muted-foreground/60">{s.gender === 'Masculin' ? 'M' : 'F'}</td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i1 ?? "--"}</td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i2 ?? "--"}</td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i3 ?? "--"}</td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.d1 ?? "--"}</td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.d2 ?? "--"}</td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-center">
+                               <Badge className={cn("h-8 md:h-12 w-14 md:w-20 justify-center rounded-lg md:rounded-xl font-black text-xs md:text-xl", s.subjectAvg >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>
+                                 {s.subjectAvg.toFixed(2)}
+                               </Badge>
+                            </td>
+                            <td className="px-5 py-4 md:px-10 md:py-8 text-right">
+                               <span className="font-black text-xs md:text-2xl text-primary tabular-nums">{s.weightedAvg.toFixed(2)}</span>
+                            </td>
+                         </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
+           </Card>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  // RENDERING TEACHER VIEW
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
           <div className="space-y-1">
             <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
               Saisie <span className="text-primary italic">Progressive</span>
@@ -223,7 +565,7 @@ export default function GradesPage() {
           </div>
           <Button 
             onClick={handleSaveGrades} 
-            disabled={saving || !selectedClass || (students?.length || 0) === 0} 
+            disabled={saving || !selectedClass || (teacherStudents?.length || 0) === 0} 
             className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl shadow-primary/20 h-12 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
           >
             {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} 
@@ -245,7 +587,7 @@ export default function GradesPage() {
                             type="number" 
                             value={classCoefficient} 
                             onChange={(e) => setClassCoefficient(e.target.value)}
-                            className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0"
+                            className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0 shadow-none focus-visible:ring-0"
                           />
                        </div>
                     </div>
@@ -323,11 +665,11 @@ export default function GradesPage() {
                     <tr>
                       <th className="px-5 py-4 md:px-8 md:py-8 tracking-widest">Élève</th>
                       <th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th>
-                      <th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Moyenne Prov.</th>
+                      <th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-muted/10">
-                    {students?.map((student: any) => (
+                    {teacherStudents?.map((student: any) => (
                       <tr key={student.id} className="hover:bg-muted/5 transition-all group">
                         <td className="px-5 py-4 md:px-8 md:py-8">
                            <div className="min-w-0">
