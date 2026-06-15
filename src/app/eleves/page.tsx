@@ -42,7 +42,6 @@ export default function StudentsPage() {
   const isTeacher = userRole === "Enseignant"
   const isDirector = userRole === "Directeur"
 
-  // Requête des élèves classés par Nom (A-Z)
   const studentsQuery = useMemo(() => {
     if (!db || !userRole) return null
     const baseCol = collection(db, "students")
@@ -90,7 +89,6 @@ export default function StudentsPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Header Dynamique Premium */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
           <div className="space-y-1.5">
             <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
@@ -113,7 +111,6 @@ export default function StudentsPage() {
           </div>
         </div>
 
-        {/* Quick Stats Grid - Mobile Optimized (2x2) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
            {[
              { label: "Total Élèves", val: stats.total, icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
@@ -134,7 +131,6 @@ export default function StudentsPage() {
            ))}
         </div>
 
-        {/* Toolbar & Search */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1 group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 md:size-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -163,7 +159,6 @@ export default function StudentsPage() {
           )}
         </div>
 
-        {/* List of Profiles */}
         <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3rem] overflow-hidden min-h-[400px]">
           {loadingStudents ? (
             <div className="flex flex-col items-center justify-center py-40 gap-4 opacity-20">
