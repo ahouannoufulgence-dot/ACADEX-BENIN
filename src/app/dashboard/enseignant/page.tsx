@@ -23,7 +23,6 @@ import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where, doc, onSnapshot } from "firebase/firestore"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
-import placeholderData from "@/app/lib/placeholder-images.json"
 import { cn } from "@/lib/utils"
 
 export default function TeacherDashboard() {
@@ -41,7 +40,7 @@ export default function TeacherDashboard() {
     setMounted(true)
 
     if (userId && db) {
-      // Écoute en temps réel du document enseignant pour réagir aux affectations du directeur
+      // ÉCOUTE TEMPS RÉEL DES AFFECTATIONS DU DIRECTEUR
       const unsub = onSnapshot(doc(db, "teachers", userId), (snap) => {
         if (snap.exists()) {
           const data = snap.data()
@@ -53,7 +52,7 @@ export default function TeacherDashboard() {
           setTeacherSubject(yearData.subject)
           setTeacherName(data.fullName || "Monsieur")
           
-          // Mise à jour du cache local pour les autres composants
+          // Mise à jour du cache local pour la navigation fluide
           localStorage.setItem('acadex_user_name', data.fullName || "Monsieur")
           localStorage.setItem('acadex_user_classes', JSON.stringify(yearData.classes))
           localStorage.setItem('acadex_user_subject', yearData.subject)
@@ -63,29 +62,15 @@ export default function TeacherDashboard() {
     }
   }, [db])
 
-  // On écoute aussi les changements d'année globale
+  // On écoute aussi les changements d'année globale via l'event custom
   useEffect(() => {
     const handleYearChange = (e: any) => {
       const newYear = e.detail
       setActiveYear(newYear)
-      // On force le rafraîchissement des affectations
-      const userId = localStorage.getItem('acadex_user_id')
-      if (userId && db) {
-         onSnapshot(doc(db, "teachers", userId), (snap) => {
-           if (snap.exists()) {
-             const data = snap.data()
-             const yearData = data.assignments?.[newYear] || { classes: [], subject: "" }
-             setTeacherClasses(yearData.classes)
-             setTeacherSubject(yearData.subject)
-             localStorage.setItem('acadex_user_classes', JSON.stringify(yearData.classes))
-             localStorage.setItem('acadex_user_subject', yearData.subject)
-           }
-         })
-      }
     }
     window.addEventListener('acadex_year_changed', handleYearChange)
     return () => window.removeEventListener('acadex_year_changed', handleYearChange)
-  }, [db])
+  }, [])
 
   const studentsQuery = useMemo(() => {
     if (!db || teacherClasses.length === 0) return null
@@ -101,7 +86,7 @@ export default function TeacherDashboard() {
     return [
       { title: "Mes Classes", value: teacherClasses.length.toString(), label: "Assignées", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
       { title: "Mes Élèves", value: (students?.length || 0).toString(), label: "Effectif Total", icon: BookOpen, color: "text-primary", bg: "bg-emerald-50" },
-      { title: "Saisie Notes", value: "---", label: "T1 - En cours", icon: PenTool, color: "text-amber-500", bg: "bg-amber-50" },
+      { title: "Saisie Notes", value: "---", label: "Trimestre en cours", icon: PenTool, color: "text-amber-500", bg: "bg-amber-50" },
       { title: "Statut Présence", value: "OK", label: today, icon: UserCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
     ]
   }, [students, teacherClasses, mounted])
@@ -110,18 +95,6 @@ export default function TeacherDashboard() {
 
   return (
     <DashboardLayout>
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <Image 
-          src="/images/bg-dashboard-enseignant.jpg"
-          alt="ACADEX Background"
-          fill
-          className="object-cover opacity-15"
-          priority
-          data-ai-hint="students green uniforms"
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/80 via-black/40 to-transparent" />
-      </div>
-
       <div className="relative z-10 space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
         <div className="relative min-h-[250px] md:min-h-[350px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group">
@@ -131,9 +104,8 @@ export default function TeacherDashboard() {
             fill
             className="object-cover brightness-[0.7] group-hover:scale-105 transition-transform duration-[3000ms]"
             priority
-            data-ai-hint="students green uniforms"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
           
           <div className="absolute inset-0 p-6 md:p-14 flex flex-col justify-end gap-4">
             <div className="space-y-2 md:space-y-4 max-w-xl">
@@ -145,7 +117,7 @@ export default function TeacherDashboard() {
               </h1>
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="bg-primary text-white border-none font-black px-4 md:px-6 py-2 rounded-full shadow-lg shadow-primary/30 uppercase tracking-widest text-[8px] md:text-xs">
-                  {teacherSubject || "En attente d'affectation"}
+                  {teacherSubject || "Chargement..."}
                 </Badge>
                 <div className="flex items-center gap-2 font-bold text-[9px] md:text-sm bg-white/10 backdrop-blur-md text-white/90 px-4 md:px-6 py-2 rounded-full border border-white/10">
                   <ShieldCheck className="size-3 md:size-4 text-emerald-400" /> Année {activeYear}
@@ -153,7 +125,7 @@ export default function TeacherDashboard() {
               </div>
             </div>
             <div className="md:absolute md:right-12 md:bottom-12 mt-4 md:mt-0">
-               <Button asChild className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-2xl rounded-2xl h-14 md:h-18 px-8 md:px-12 font-black text-base transition-all active:scale-95 mobile-touch-target">
+               <Button asChild className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-2xl rounded-2xl h-14 md:h-18 px-8 md:px-12 font-black text-base transition-all active:scale-95">
                  <Link href="/notes">
                    <PenTool className="mr-3 size-4 md:size-5" /> Saisir les Notes
                  </Link>
@@ -193,8 +165,8 @@ export default function TeacherDashboard() {
                     <h3 className="text-xl md:text-4xl font-black tracking-tight text-foreground">Mon Emploi du Temps</h3>
                     <p className="text-sm md:text-xl font-medium text-muted-foreground max-w-sm mx-auto leading-relaxed">Consultez votre programme officiel scellé pour l'année {activeYear}.</p>
                  </div>
-                 <Button asChild variant="outline" className="rounded-xl md:rounded-2xl font-black h-12 md:h-16 px-8 md:px-16 border-2 text-xs md:text-base hover:bg-primary hover:text-white hover:border-primary transition-all active:scale-95 mobile-touch-target">
-                    <Link href="/disponibilites">Ouvrir le Planning Complet</Link>
+                 <Button asChild variant="outline" className="rounded-xl md:rounded-2xl font-black h-12 md:h-16 px-8 md:px-16 border-2 text-xs md:text-base hover:bg-primary hover:text-white hover:border-primary transition-all active:scale-95">
+                    <Link href="/disponibilites">Ouvrir le Planning</Link>
                  </Button>
               </Card>
            </div>
@@ -228,7 +200,7 @@ export default function TeacherDashboard() {
                 <p className="text-xs md:text-base font-medium text-muted-foreground italic leading-relaxed mb-8 md:mb-12 relative z-10">
                   "Générez automatiquement les observations de fin de trimestre en analysant la progression réelle de vos élèves."
                 </p>
-                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 border border-primary/10 rounded-xl md:rounded-2xl font-black h-11 md:h-16 shadow-sm active:scale-95 transition-all relative z-10 mobile-touch-target">
+                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 border border-primary/10 rounded-xl md:rounded-2xl font-black h-11 md:h-16 shadow-sm active:scale-95 transition-all relative z-10">
                   <Link href="/assistant">Lancer l'Analyse IA</Link>
                 </Button>
               </Card>

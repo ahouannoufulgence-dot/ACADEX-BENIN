@@ -3,40 +3,33 @@
 
 import { useParams, useRouter } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   ChevronLeft,
   ShieldCheck,
-  UserSquare2,
-  Phone,
-  Mail,
-  BookOpen,
-  Calendar,
-  CheckCircle2,
-  UserX,
   Loader2,
   Edit2,
-  Trash2,
   Save,
   Zap,
   Archive,
   RefreshCw,
   Layers,
-  ArrowRight,
-  Info
+  Info,
+  X,
+  UserCheck,
+  CheckCircle2
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useState, useEffect, useMemo } from "react"
 import { useFirestore, useDoc } from "@/firebase"
-import { doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -68,7 +61,6 @@ export default function TeacherDetailPage() {
     status: ""
   })
 
-  // State pour les affectations de l'année active
   const [currentAssignments, setCurrentAssignments] = useState({
     classes: [] as string[],
     subject: ""
@@ -87,7 +79,6 @@ export default function TeacherDetailPage() {
         status: teacher.status || "En attente"
       })
 
-      // Charger les affectations spécifiques à l'année active
       const yearData = teacher.assignments?.[activeYear] || {
         classes: teacher.classes || [],
         subject: teacher.subject || ""
@@ -96,23 +87,17 @@ export default function TeacherDetailPage() {
     }
   }, [teacher, activeYear])
 
-  const handleUpdateInfo = () => {
-    updateDoc(teacherRef, {
-      ...editForm,
-      updatedAt: serverTimestamp()
-    })
-      .then(() => {
-        setIsEditing(false)
-        toast({ title: "Profil mis à jour", description: "Les informations de base ont été enregistrées." })
+  const handleUpdateInfo = async () => {
+    try {
+      await updateDoc(teacherRef, {
+        ...editForm,
+        updatedAt: serverTimestamp()
       })
-      .catch(async () => {
-        const error = new FirestorePermissionError({
-          path: teacherRef.path,
-          operation: 'update',
-          requestResourceData: editForm
-        })
-        errorEmitter.emit('permission-error', error)
-      })
+      setIsEditing(false)
+      toast({ title: "Profil mis à jour" })
+    } catch (e) {
+      toast({ title: "Erreur", variant: "destructive" })
+    }
   }
 
   const handleSaveAssignments = async () => {
@@ -124,7 +109,6 @@ export default function TeacherDetailPage() {
 
       await updateDoc(teacherRef, {
         assignments,
-        // On garde aussi à la racine pour la compatibilité descendante immédiate
         classes: currentAssignments.classes,
         subject: currentAssignments.subject,
         updatedAt: serverTimestamp()
@@ -132,7 +116,7 @@ export default function TeacherDetailPage() {
 
       toast({ 
         title: "Affectations scellées", 
-        description: `Le périmètre de M. ${editForm.fullName.split(' ')[0]} est à jour pour ${activeYear}.` 
+        description: `Mise à jour terminée pour l'année ${activeYear}.` 
       })
     } catch (e) {
       toast({ title: "Erreur de scellage", variant: "destructive" })
@@ -153,7 +137,7 @@ export default function TeacherDetailPage() {
   const handleArchive = async () => {
     try {
       await updateDoc(teacherRef, { status: "Archivé" })
-      toast({ title: "Enseignant archivé", description: "Le profil a été déplacé vers les archives." })
+      toast({ title: "Enseignant archivé" })
       router.push("/enseignants")
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
@@ -163,7 +147,7 @@ export default function TeacherDetailPage() {
   const handleRestore = async () => {
     try {
       await updateDoc(teacherRef, { status: "Actif" })
-      toast({ title: "Accès restauré", description: "Le professeur est de nouveau actif." })
+      toast({ title: "Accès restauré" })
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     }
@@ -171,7 +155,7 @@ export default function TeacherDetailPage() {
 
   if (loading) return (
     <DashboardLayout>
-      <div className="h-full flex flex-col items-center justify-center p-20 gap-6 opacity-30">
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-6 opacity-30">
         <Loader2 className="animate-spin text-primary size-12" />
         <p className="font-black text-muted-foreground uppercase tracking-[0.3em] text-[10px]">Accès au dossier...</p>
       </div>
@@ -181,7 +165,6 @@ export default function TeacherDetailPage() {
   if (!teacher) return (
     <DashboardLayout>
       <div className="p-20 text-center space-y-6">
-        <UserX className="size-20 text-muted-foreground mx-auto opacity-20" />
         <h3 className="text-3xl font-black uppercase text-foreground">Enseignant introuvable</h3>
         <Button asChild variant="outline" className="rounded-2xl h-14 px-10 border-2 font-black"><Link href="/enseignants">Retour au répertoire</Link></Button>
       </div>
@@ -216,179 +199,163 @@ export default function TeacherDetailPage() {
                className="flex-1 md:flex-none rounded-xl md:rounded-2xl h-11 md:h-14 px-5 md:px-10 font-black text-[10px] md:text-sm shadow-xl"
              >
                {isEditing ? <Save className="mr-2 size-4 md:size-5" /> : <Edit2 className="mr-2 size-4 md:size-5" />}
-               {isEditing ? "Sauvegarder Infos" : "Modifier Infos"}
+               {isEditing ? "Sauvegarder" : "Modifier Infos"}
              </Button>
           </div>
         </div>
 
-        <div className="grid gap-6 md:gap-10 lg:grid-cols-12">
-          {/* Main Info Card */}
-          <Card className={cn("lg:col-span-12 border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[4rem] overflow-hidden", isArchived && "grayscale")}>
-             <div className={cn("h-32 md:h-48 relative", isArchived ? "bg-muted" : "bg-primary")}>
-               <div className="absolute -bottom-10 md:-bottom-16 left-6 md:left-16 flex items-end gap-6">
-                 <Avatar className="size-24 md:size-40 border-[6px] md:border-[10px] border-white shadow-2xl">
-                   <AvatarFallback className="bg-primary text-white text-2xl md:text-6xl font-black">
-                     {(teacher.fullName || "??").substring(0, 2).toUpperCase()}
-                   </AvatarFallback>
-                 </Avatar>
-                 <div className="mb-4 md:mb-6 space-y-1 hidden md:block">
-                    <h1 className="text-xl md:text-4xl font-black text-white drop-shadow-lg uppercase tracking-tight">{teacher.fullName}</h1>
-                    <div className="flex items-center gap-3">
-                       <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-bold px-4 py-1 rounded-full text-xs">{teacher.subject}</Badge>
-                       <Badge variant="outline" className="border-white/40 text-white font-black text-[10px]">{teacher.officialId}</Badge>
-                    </div>
+        <Card className={cn("border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[4rem] overflow-hidden", isArchived && "grayscale")}>
+          <div className={cn("h-32 md:h-48 relative transition-colors duration-500", isArchived ? "bg-muted" : "bg-primary")}>
+            <div className="absolute -bottom-10 md:-bottom-16 left-6 md:left-16 flex items-end gap-6">
+              <Avatar className="size-24 md:size-40 border-[6px] md:border-[10px] border-white shadow-2xl">
+                <AvatarFallback className="bg-primary text-white text-2xl md:text-6xl font-black uppercase">
+                  {(teacher.fullName || "??").substring(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="mb-4 md:mb-6 space-y-1 hidden md:block">
+                 <h1 className="text-xl md:text-4xl font-black text-white drop-shadow-lg uppercase tracking-tight">{teacher.fullName}</h1>
+                 <div className="flex items-center gap-3">
+                    <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-bold px-4 py-1 rounded-full text-xs">{teacher.subject}</Badge>
+                    <Badge variant="outline" className="border-white/40 text-white font-black text-[10px]">{teacher.officialId}</Badge>
                  </div>
-               </div>
-             </div>
-             
-             <div className="pt-14 md:pt-24 pb-8 md:pb-12 px-6 md:px-16">
-               <Tabs defaultValue="affectations" className="space-y-8 md:space-y-12">
-                  <TabsList className="bg-muted/50 border-2 rounded-2xl h-12 md:h-16 p-1 flex w-full md:w-fit shadow-inner">
-                    <TabsTrigger value="affectations" className="flex-1 md:flex-none rounded-xl font-black px-6 md:px-12 text-[9px] md:text-sm uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all flex items-center gap-2">
-                       <Layers className="size-4" /> Affectations
-                    </TabsTrigger>
-                    <TabsTrigger value="informations" className="flex-1 md:flex-none rounded-xl font-black px-6 md:px-12 text-[9px] md:text-sm uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all flex items-center gap-2">
-                       <Info className="size-4" /> Informations
-                    </TabsTrigger>
-                  </TabsList>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pt-14 md:pt-24 pb-8 md:pb-12 px-6 md:px-16">
+            <Tabs defaultValue="affectations" className="space-y-8 md:space-y-12">
+               <TabsList className="bg-muted/50 border-2 rounded-2xl h-12 md:h-16 p-1 flex w-full md:w-fit shadow-inner">
+                 <TabsTrigger value="affectations" className="flex-1 md:flex-none rounded-xl font-black px-6 md:px-12 text-[9px] md:text-sm uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                    <Layers className="size-4" /> Affectations
+                 </TabsTrigger>
+                 <TabsTrigger value="informations" className="flex-1 md:flex-none rounded-xl font-black px-6 md:px-12 text-[9px] md:text-sm uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                    <Info className="size-4" /> Informations
+                 </TabsTrigger>
+               </TabsList>
 
-                  <TabsContent value="affectations" className="space-y-8 md:space-y-12 animate-in slide-in-from-right-4">
-                     <div className="grid lg:grid-cols-12 gap-8 md:gap-14">
-                        <div className="lg:col-span-5 space-y-6 md:space-y-10">
-                           <div className="space-y-2">
-                              <h3 className="text-xl md:text-3xl font-black flex items-center gap-3 tracking-tight uppercase"><Zap className="text-primary size-6 md:size-8 fill-primary" /> Pilotage {activeYear}</h3>
-                              <p className="text-[10px] md:text-base font-medium text-muted-foreground leading-relaxed">
-                                Définissez les classes et la matière sous la responsabilité de cet enseignant pour l'année scolaire active.
-                              </p>
-                           </div>
+               <TabsContent value="affectations" className="space-y-8 md:space-y-12 animate-in slide-in-from-right-4">
+                  <div className="grid lg:grid-cols-12 gap-8 md:gap-14">
+                     <div className="lg:col-span-5 space-y-6 md:space-y-10">
+                        <div className="space-y-2">
+                           <h3 className="text-xl md:text-3xl font-black flex items-center gap-3 tracking-tight uppercase"><Zap className="text-primary size-6 md:size-8 fill-primary" /> Pilotage {activeYear}</h3>
+                           <p className="text-[10px] md:text-base font-medium text-muted-foreground leading-relaxed">
+                             Définissez les classes et la matière sous la responsabilité de cet enseignant pour l'année scolaire active.
+                           </p>
+                        </div>
 
-                           <div className="space-y-6 md:space-y-8 p-6 md:p-10 bg-primary/5 rounded-3xl border-2 border-dashed border-primary/20">
-                              <div className="space-y-3">
-                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-primary tracking-[0.2em] px-1">Matière Spécifique</Label>
-                                 <select 
-                                   value={currentAssignments.subject} 
-                                   onChange={e => setCurrentAssignments({...currentAssignments, subject: e.target.value})}
-                                   className="w-full h-12 md:h-16 rounded-2xl border-2 border-primary/10 bg-white font-black text-sm md:text-xl px-4 focus:ring-primary focus:border-primary transition-all outline-none"
-                                 >
-                                    <option value="">Choisir une matière</option>
-                                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
-                                 </select>
-                              </div>
-
-                              <div className="space-y-4">
-                                 <div className="flex items-center justify-between px-1">
-                                    <Label className="font-black text-[9px] md:text-[11px] uppercase text-primary tracking-[0.2em]">Classes Assignées</Label>
-                                    <Badge className="bg-primary text-white font-black text-[8px] md:text-[10px]">{currentAssignments.classes.length} CLASSE(S)</Badge>
-                                 </div>
-                                 <div className="flex flex-wrap gap-2 md:gap-3">
-                                    {currentAssignments.classes.map(c => (
-                                      <Badge key={c} onClick={() => toggleClass(c)} className="bg-foreground text-white font-black px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl text-[9px] md:text-sm cursor-pointer hover:bg-destructive hover:scale-95 transition-all group">
-                                         {c} <X className="size-2 md:size-3 ml-2 group-hover:block" />
-                                      </Badge>
-                                    ))}
-                                    {currentAssignments.classes.length === 0 && (
-                                       <div className="py-4 text-center w-full italic text-muted-foreground opacity-40 text-xs md:text-base">Aucune classe pour {activeYear}</div>
-                                    )}
-                                 </div>
-                              </div>
-
-                              <Button 
-                                onClick={handleSaveAssignments} 
-                                disabled={savingAssignments}
-                                className="w-full h-12 md:h-18 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xs md:text-xl shadow-xl shadow-primary/20 transition-all active:scale-95 uppercase"
+                        <div className="space-y-6 md:space-y-8 p-6 md:p-10 bg-primary/5 rounded-3xl border-2 border-dashed border-primary/20">
+                           <div className="space-y-3">
+                              <Label className="font-black text-[9px] md:text-[11px] uppercase text-primary tracking-[0.2em] px-1">Matière Spécifique</Label>
+                              <select 
+                                value={currentAssignments.subject} 
+                                onChange={e => setCurrentAssignments({...currentAssignments, subject: e.target.value})}
+                                className="w-full h-12 md:h-16 rounded-2xl border-2 border-primary/10 bg-white font-black text-sm md:text-xl px-4 focus:ring-primary focus:border-primary transition-all outline-none"
                               >
-                                {savingAssignments ? <Loader2 className="animate-spin mr-2 size-4 md:size-6" /> : <ShieldCheck className="mr-2 size-4 md:size-6" />}
-                                Sceller Affectations
-                              </Button>
+                                 <option value="">Choisir une matière</option>
+                                 {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
                            </div>
-                        </div>
 
-                        <div className="lg:col-span-7 space-y-6">
-                           <div className="flex items-center justify-between px-2">
-                              <h4 className="font-black text-sm md:text-xl uppercase tracking-widest text-muted-foreground">Registre des Classes</h4>
-                              <div className="flex items-center gap-2 text-[9px] md:text-xs font-bold text-primary italic">
-                                 <Info className="size-3" /> Cliquer pour affecter/retirer
+                           <div className="space-y-4">
+                              <div className="flex items-center justify-between px-1">
+                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-primary tracking-[0.2em]">Classes Assignées</Label>
+                                 <Badge className="bg-primary text-white font-black text-[8px] md:text-[10px]">{currentAssignments.classes.length} CLASSES</Badge>
                               </div>
-                           </div>
-                           <ScrollArea className="h-[400px] md:h-[600px] rounded-[2.5rem] border-2 bg-muted/5 p-4 md:p-8">
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                                 {OFFICIAL_CLASSES.map(cls => (
-                                   <button 
-                                     key={cls}
-                                     onClick={() => toggleClass(cls)}
-                                     className={cn(
-                                       "p-4 md:p-8 rounded-2xl md:rounded-[2rem] border-2 font-black text-[10px] md:text-xl transition-all shadow-sm active:scale-90",
-                                       currentAssignments.classes.includes(cls) 
-                                         ? "bg-primary text-white border-primary shadow-xl scale-[1.02]" 
-                                         : "bg-white text-muted-foreground border-transparent hover:border-primary/20 hover:bg-primary/5"
-                                     )}
-                                   >
-                                      {cls}
-                                   </button>
+                              <div className="flex flex-wrap gap-2 md:gap-3">
+                                 {currentAssignments.classes.map(c => (
+                                   <Badge key={c} onClick={() => toggleClass(c)} className="bg-foreground text-white font-black px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl text-[9px] md:text-sm cursor-pointer hover:bg-destructive hover:scale-95 transition-all group">
+                                      {c} <X className="size-2.5 ml-2" />
+                                   </Badge>
                                  ))}
-                              </div>
-                           </ScrollArea>
-                        </div>
-                     </div>
-                  </TabsContent>
-
-                  <TabsContent value="informations" className="space-y-8 md:space-y-12 animate-in slide-in-from-left-4">
-                     <div className="grid md:grid-cols-2 gap-8 md:gap-14">
-                        <div className="space-y-6 md:space-y-10">
-                           <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 tracking-tight uppercase border-l-4 border-primary pl-4">Détails Personnels</h3>
-                           <div className="space-y-4 md:space-y-6">
-                              <div className="grid gap-1.5 md:gap-2">
-                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Nom Complet</Label>
-                                 <Input disabled={!isEditing} value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} className="h-11 md:h-14 rounded-xl font-bold text-sm md:text-lg border-2" />
-                              </div>
-                              <div className="grid gap-1.5 md:gap-2">
-                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Téléphone</Label>
-                                 <Input disabled={!isEditing} value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="h-11 md:h-14 rounded-xl font-bold text-sm md:text-lg border-2" />
-                              </div>
-                              <div className="grid gap-1.5 md:gap-2">
-                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Identifiant Système</Label>
-                                 <div className="h-11 md:h-14 rounded-xl bg-muted/30 flex items-center px-4 font-mono text-xs md:text-lg font-black border-2 border-transparent">{teacher.officialId}</div>
+                                 {currentAssignments.classes.length === 0 && (
+                                    <div className="py-4 text-center w-full italic text-muted-foreground opacity-40 text-xs md:text-base">Aucune classe pour {activeYear}</div>
+                                 )}
                               </div>
                            </div>
-                        </div>
 
-                        <div className="space-y-6 md:space-y-10">
-                           <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 tracking-tight uppercase border-l-4 border-primary pl-4">Statut & Sécurité</h3>
-                           <div className="space-y-4 md:space-y-8">
-                              <Card className="p-6 md:p-10 bg-foreground text-white rounded-[2rem] md:rounded-[3rem] shadow-xl relative overflow-hidden group border-none">
-                                 <div className="relative z-10 space-y-4 md:space-y-6">
-                                    <div className="flex items-center justify-between">
-                                       <span className="text-[9px] md:text-sm font-black uppercase text-white/40 tracking-widest">État du compte</span>
-                                       <Badge className={cn("font-black px-4 py-1.5 rounded-full uppercase text-[8px] md:text-xs", teacher.status === 'Actif' ? 'bg-emerald-500' : 'bg-amber-500')}>{teacher.status}</Badge>
-                                    </div>
-                                    <p className="text-xs md:text-lg font-medium leading-relaxed italic border-l-2 border-primary pl-4 opacity-80">
-                                       "L'accès de cet enseignant est scellé. Toute connexion est journalisée."
-                                    </p>
-                                    <div className="pt-4 md:pt-6 border-t border-white/10 flex items-center gap-4">
-                                       <Calendar className="size-4 md:size-6 text-primary" />
-                                       <span className="text-[9px] md:text-sm font-bold uppercase tracking-widest text-white/60">Inscrit le {new Date(teacher.registeredAt).toLocaleDateString('fr-FR')}</span>
-                                    </div>
+                           <Button 
+                             onClick={handleSaveAssignments} 
+                             disabled={savingAssignments}
+                             className="w-full h-12 md:h-18 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xs md:text-xl shadow-xl shadow-primary/20 transition-all active:scale-95 uppercase"
+                           >
+                             {savingAssignments ? <Loader2 className="animate-spin mr-2 size-4 md:size-6" /> : <ShieldCheck className="mr-2 size-4 md:size-6" />}
+                             Sceller Affectations
+                           </Button>
+                        </div>
+                     </div>
+
+                     <div className="lg:col-span-7 space-y-6">
+                        <div className="flex items-center justify-between px-2">
+                           <h4 className="font-black text-sm md:text-xl uppercase tracking-widest text-muted-foreground">Registre des Classes</h4>
+                           <div className="flex items-center gap-2 text-[9px] md:text-xs font-bold text-primary italic">
+                              <Info className="size-3" /> Cliquer pour affecter/retirer
+                           </div>
+                        </div>
+                        <ScrollArea className="h-[400px] md:h-[600px] rounded-[2.5rem] border-2 bg-muted/5 p-4 md:p-8">
+                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                              {OFFICIAL_CLASSES.map(cls => (
+                                <button 
+                                  key={cls}
+                                  onClick={() => toggleClass(cls)}
+                                  className={cn(
+                                    "p-4 md:p-8 rounded-2xl md:rounded-[2rem] border-2 font-black text-[10px] md:text-xl transition-all shadow-sm active:scale-90",
+                                    currentAssignments.classes.includes(cls) 
+                                      ? "bg-primary text-white border-primary shadow-xl scale-[1.02]" 
+                                      : "bg-white text-muted-foreground border-transparent hover:border-primary/20 hover:bg-primary/5"
+                                  )}
+                                >
+                                   {cls}
+                                </button>
+                              ))}
+                           </div>
+                        </ScrollArea>
+                     </div>
+                  </div>
+               </TabsContent>
+
+               <TabsContent value="informations" className="space-y-8 md:space-y-12 animate-in slide-in-from-left-4">
+                  <div className="grid md:grid-cols-2 gap-8 md:gap-14">
+                     <div className="space-y-6 md:space-y-10">
+                        <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 tracking-tight uppercase border-l-4 border-primary pl-4">Détails Personnels</h3>
+                        <div className="space-y-4 md:space-y-6">
+                           <div className="grid gap-1.5 md:gap-2">
+                              <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Nom Complet</Label>
+                              <Input disabled={!isEditing} value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} className="h-11 md:h-14 rounded-xl font-bold text-sm md:text-lg border-2" />
+                           </div>
+                           <div className="grid gap-1.5 md:gap-2">
+                              <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Téléphone</Label>
+                              <Input disabled={!isEditing} value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="h-11 md:h-14 rounded-xl font-bold text-sm md:text-lg border-2" />
+                           </div>
+                           <div className="grid gap-1.5 md:gap-2">
+                              <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Identifiant Système</Label>
+                              <div className="h-11 md:h-14 rounded-xl bg-muted/30 flex items-center px-4 font-mono text-xs md:text-lg font-black border-2 border-transparent">{teacher.officialId}</div>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="space-y-6 md:space-y-10">
+                        <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 tracking-tight uppercase border-l-4 border-primary pl-4">Statut & Sécurité</h3>
+                        <div className="space-y-4 md:space-y-8">
+                           <Card className="p-6 md:p-10 bg-foreground text-white rounded-[2rem] md:rounded-[3rem] shadow-xl relative overflow-hidden group border-none">
+                              <div className="relative z-10 space-y-4 md:space-y-6">
+                                 <div className="flex items-center justify-between">
+                                    <span className="text-[9px] md:text-sm font-black uppercase text-white/40 tracking-widest">État du compte</span>
+                                    <Badge className={cn("font-black px-4 py-1.5 rounded-full uppercase text-[8px] md:text-xs shadow-lg", teacher.status === 'Actif' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white')}>{teacher.status}</Badge>
                                  </div>
-                                 <ShieldCheck className="absolute -bottom-10 -right-10 size-40 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-                              </Card>
-                           </div>
+                                 <p className="text-xs md:text-lg font-medium leading-relaxed italic border-l-2 border-primary pl-4 opacity-80">
+                                    "L'accès de cet enseignant est scellé. Toute connexion est journalisée."
+                                 </p>
+                              </div>
+                              <ShieldCheck className="absolute -bottom-10 -right-10 size-40 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+                           </Card>
                         </div>
                      </div>
-                  </TabsContent>
-               </Tabs>
-             </div>
-          </Card>
-        </div>
+                  </div>
+               </TabsContent>
+            </Tabs>
+          </div>
+        </Card>
       </div>
     </DashboardLayout>
-  )
-}
-
-function X({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
   )
 }

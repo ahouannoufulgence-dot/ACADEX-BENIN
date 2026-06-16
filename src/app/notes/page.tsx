@@ -2,7 +2,7 @@
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { 
@@ -14,19 +14,9 @@ import {
   CheckCircle2, 
   Clock, 
   RefreshCw,
-  ChevronRight,
-  TrendingUp,
-  FileText,
-  Search,
-  Plus,
   ChevronLeft,
-  Star,
   Users,
-  Award,
   Zap,
-  Filter,
-  ArrowUpRight,
-  TrendingDown,
   Download,
   Layers
 } from "lucide-react"
@@ -42,8 +32,6 @@ import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
 import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs, orderBy, onSnapshot } from "firebase/firestore"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
@@ -70,9 +58,7 @@ const OFFICIAL_CLASSES = [
 
 const PROMOTIONS = ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TLE"]
 
-const MATIERES = [
-  "Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"
-]
+const MATIERES = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"]
 
 export default function GradesPage() {
   const db = useFirestore()
@@ -106,18 +92,14 @@ export default function GradesPage() {
     setUserName(localStorage.getItem('acadex_user_name') || "")
 
     if (role === 'Enseignant' && userId && db) {
+      // ÉCOUTE TEMPS RÉEL DES AFFECTATIONS POUR LA SAISIE DES NOTES
       const unsub = onSnapshot(doc(db, "teachers", userId), (snap) => {
         if (snap.exists()) {
           const data = snap.data()
-          const yearData = data.assignments?.[year] || {
-            classes: data.classes || [],
-            subject: data.subject || ""
-          }
+          const yearData = data.assignments?.[year] || { classes: [], subject: "" }
           setUserClasses(yearData.classes)
           setUserSubject(yearData.subject)
           setSelectedMatiere(yearData.subject)
-          localStorage.setItem('acadex_user_classes', JSON.stringify(yearData.classes))
-          localStorage.setItem('acadex_user_subject', yearData.subject)
         }
       })
       return () => unsub()
@@ -126,87 +108,36 @@ export default function GradesPage() {
 
   const isDirector = userRole === "Directeur"
 
-  const allStudentsQuery = useMemo(() => {
-    if (!db || !isDirector || !activeYear) return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
-  }, [db, isDirector, activeYear])
+  // REQUÊTE RÉACTIVE POUR LES ÉLÈVES DE LA CLASSE SÉLECTIONNÉE
+  const teacherStudentsQuery = useMemo(() => {
+    if (!db || !selectedClass || !mounted) return null
+    return query(
+      collection(db, 'students'), 
+      where("classId", "==", selectedClass),
+      where("status", "==", "Actif"),
+      where("academicYear", "==", activeYear),
+      orderBy("lastName", "asc")
+    )
+  }, [db, selectedClass, activeYear, mounted])
+
+  const { data: teacherStudents } = useCollection(teacherStudentsQuery)
 
   const allGradesQuery = useMemo(() => {
     if (!db || !activeYear) return null
     return query(collection(db, "grades"), where("academicYear", "==", activeYear))
   }, [db, activeYear])
 
-  const { data: allStudents } = useCollection(allStudentsQuery)
   const { data: allGrades } = useCollection(allGradesQuery)
 
-  const classCardsData = useMemo(() => {
-    if (!isDirector || !allStudents) return []
-    
-    let filteredClasses = OFFICIAL_CLASSES
-    if (selectedPromotion) {
-      filteredClasses = OFFICIAL_CLASSES.filter(c => c.startsWith(selectedPromotion))
-    }
-
-    return filteredClasses.map(classId => {
-      const classStudents = allStudents.filter((s: any) => s.classId === classId)
-      const classGrades = allGrades?.filter((g: any) => g.classId === classId) || []
-      
-      const distinctSubjects = new Set(classGrades.map((g: any) => g.subject)).size
-      const totalGrades = classGrades.length
-      const expectedGrades = classStudents.length * 5 * 10 
-      const completion = Math.min(100, Math.round((totalGrades / Math.max(1, expectedGrades)) * 100))
-
-      const studentAvgs = classStudents.map((s: any) => {
-        const sGrades = classGrades.filter((g: any) => g.studentId === s.matricule)
-        const subjects: Record<string, any> = {}
-        sGrades.forEach((g: any) => {
-          if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
-          if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
-          if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
-        })
-        let totalW = 0, totalC = 0
-        Object.values(subjects).forEach((sub: any) => {
-          const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a+b, 0) / sub.ints.length : null
-          const blocks = []
-          if (avgInt !== null) blocks.push(avgInt)
-          sub.devs.forEach((d: number) => blocks.push(d))
-          if (blocks.length > 0) {
-            totalW += (blocks.reduce((a, b) => a + b, 0) / blocks.length) * sub.coef
-            totalC += sub.coef
-          }
-        })
-        return totalC > 0 ? totalW / totalC : 0
-      }).filter(v => v > 0)
-
-      const classAvg = studentAvgs.length > 0 
-        ? (studentAvgs.reduce((a, b) => a + b, 0) / studentAvgs.length).toFixed(2)
-        : "0.00"
-
-      return {
-        id: classId,
-        studentCount: classStudents.length,
-        avg: classAvg,
-        completion,
-        subjectsCount: distinctSubjects
-      }
-    })
-  }, [allStudents, allGrades, isDirector, selectedPromotion])
-
+  // LOGIQUE DE CALCUL DU REGISTRE CENTRALISÉ (DIRECTEUR)
   const registerData = useMemo(() => {
-    if (!selectedClass || !allGrades) return { students: [], stats: null }
+    if (!selectedClass || !allGrades || !isDirector) return { students: [] }
     
-    // Filtrage des étudiants via queryFirestore plus tard, ici on utilise allStudents ou fetch local
-    // Pour les directeurs on a allStudents, pour les profs on a teacherStudents
-    const targetStudents = isDirector ? (allStudents || []) : [] 
-    const classStudents = targetStudents.filter((s: any) => s.classId === selectedClass)
-    
-    // Si classStudents est vide (cas prof), on attend useCollection(teacherStudentsQuery)
-    const displayList = isDirector ? classStudents : [] 
+    const studentsInClass = teacherStudents || []
+    const classGrades = allGrades.filter(g => g.classId === selectedClass && g.subject === selectedMatiere && g.term === selectedTrimestre)
 
-    const classGrades = allGrades?.filter((g: any) => g.classId === selectedClass && g.subject === selectedMatiere && g.term === selectedTrimestre) || []
-
-    const process = (list: any[]) => list.map((s: any) => {
-      const sGrades = classGrades.filter((g: any) => g.studentId === s.matricule)
+    const process = studentsInClass.map((s: any) => {
+      const sGrades = classGrades.filter(g => g.studentId === s.matricule)
       const data: any = { ...s, i1: null, i2: null, i3: null, d1: null, d2: null, coef: 2 }
       
       sGrades.forEach((g: any) => {
@@ -220,7 +151,6 @@ export default function GradesPage() {
 
       const interros = [data.i1, data.i2, data.i3].filter(v => v !== null)
       const avgInt = interros.length > 0 ? interros.reduce((a:number,b:number) => a+b, 0) / interros.length : null
-      
       const blocks = []
       if (avgInt !== null) blocks.push(avgInt)
       if (data.d1 !== null) blocks.push(data.d1)
@@ -230,72 +160,35 @@ export default function GradesPage() {
       data.subjectAvg = subjectAvg
       data.weightedAvg = subjectAvg * data.coef
       return data
-    }).sort((a, b) => a.lastName.localeCompare(b.lastName))
+    })
 
-    return { students: process(displayList) }
-  }, [selectedClass, selectedMatiere, selectedTrimestre, allStudents, allGrades, isDirector])
+    return { students: process }
+  }, [selectedClass, selectedMatiere, selectedTrimestre, teacherStudents, allGrades, isDirector])
 
+  // SYNC DES NOTES POUR LA SAISIE (ENSEIGNANT)
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCurrentGrades = async () => {
       if (!selectedClass || !userSubject || !mounted || isDirector) return
-      
       setLoadingExisting(true)
       try {
-        const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
-        let configSnap = await getDoc(doc(db, "subject_configs", configId))
-        
-        if (!configSnap.exists()) {
-          const level = selectedClass.split(' ')[0]
-          const levelConfigId = `${level}_${userSubject}`.replace(/\s/g, '_')
-          configSnap = await getDoc(doc(db, "subject_configs", levelConfigId))
-        }
-
-        if (configSnap.exists()) {
-          setClassCoefficient(configSnap.data().coef.toString())
-        }
-
-        const q = query(
-          collection(db, "grades"),
-          where("classId", "==", selectedClass),
-          where("subject", "==", userSubject),
-          where("term", "==", selectedTrimestre),
-          where("academicYear", "==", activeYear)
-        )
+        const q = query(collection(db, "grades"), where("classId", "==", selectedClass), where("subject", "==", userSubject), where("term", "==", selectedTrimestre), where("academicYear", "==", activeYear))
         const snap = await getDocs(q)
-        const allGradesForType = snap.docs.map(d => d.data())
-        
+        const currentTypeGrades: Record<string, string> = {}
         const stats: Record<string, boolean> = {}
-        evalTypes.forEach(type => {
-          stats[type.id] = allGradesForType.some(g => g.type === type.id)
+        
+        snap.docs.forEach(d => {
+          const g = d.data()
+          stats[g.type] = true
+          if (g.type === selectedEvalType) currentTypeGrades[g.studentId] = g.value.toString()
         })
         setCompletionStats(stats)
-
-        const currentTypeGrades: Record<string, string> = {}
-        allGradesForType.filter(g => g.type === selectedEvalType).forEach(g => {
-          currentTypeGrades[g.studentId] = g.value.toString()
-        })
         setGradesData(currentTypeGrades)
-      } catch (e) {
-        console.warn("Erreur synchro", e)
       } finally {
         setLoadingExisting(false)
       }
     }
-    fetchData()
+    fetchCurrentGrades()
   }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear, mounted, isDirector])
-
-  const teacherStudentsQuery = useMemo(() => {
-    if (!db || !selectedClass || !mounted || isDirector) return null
-    return query(
-      collection(db, 'students'), 
-      where("classId", "==", selectedClass),
-      where("status", "==", "Actif"),
-      where("academicYear", "==", activeYear),
-      orderBy("lastName", "asc")
-    )
-  }, [db, selectedClass, activeYear, mounted, isDirector])
-
-  const { data: teacherStudents } = useCollection(teacherStudentsQuery)
 
   const handleGradeChange = (matricule: string, value: string) => {
     const num = parseFloat(value)
@@ -304,29 +197,16 @@ export default function GradesPage() {
   }
 
   const handleSaveGrades = async () => {
-    if (!selectedClass || !selectedTrimestre || !selectedEvalType || !userSubject) return
+    if (!selectedClass || !userSubject || saving) return
     setSaving(true)
     const batch = writeBatch(db)
-
     try {
-      const configId = `${selectedClass}_${userSubject}`.replace(/\s/g, '_')
-      const configRef = doc(db, "subject_configs", configId)
-      batch.set(configRef, {
-        level: selectedClass.split(' ')[0],
-        classId: selectedClass,
-        subject: userSubject,
-        coef: Number(classCoefficient) || 2,
-        updatedAt: serverTimestamp()
-      }, { merge: true })
-
       teacherStudents?.forEach((student: any) => {
         const valStr = gradesData[student.matricule]
         if (valStr === undefined || valStr === "") return 
-
         const val = parseFloat(valStr)
         const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}_${activeYear}`.replace(/\s/g, '_')
         const gradeRef = doc(db, "grades", gradeId)
-        
         batch.set(gradeRef, {
           studentId: student.matricule, 
           studentName: `${student.lastName} ${student.firstName}`,
@@ -341,10 +221,8 @@ export default function GradesPage() {
           updatedAt: serverTimestamp()
         }, { merge: true })
       })
-
       await batch.commit()
-      toast({ title: "Registre scellé", description: `Les notes de ${selectedClass} sont à jour.` })
-      setCompletionStats(prev => ({ ...prev, [selectedEvalType]: true }))
+      toast({ title: "Registre scellé" })
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     } finally {
@@ -361,42 +239,22 @@ export default function GradesPage() {
         <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
             <div className="space-y-1">
-              <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">
-                Registre <span className="text-primary italic">Global</span>
-              </h1>
-              <p className="text-[9px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                 <ShieldCheck className="size-3.5 md:size-4 text-emerald-500" /> Vision Centrale • {activeYear}
-              </p>
+              <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">Global</span></h1>
+              <p className="text-[9px] md:text-sm font-bold text-muted-foreground uppercase flex items-center gap-2"><ShieldCheck className="size-3.5 text-emerald-500" /> Vision Centrale • {activeYear}</p>
             </div>
           </div>
-
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-             <button onClick={() => setSelectedPromotion(null)} className={cn("px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2", !selectedPromotion ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted")}>TOUT</button>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+             <button onClick={() => setSelectedPromotion(null)} className={cn("px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2 shrink-0", !selectedPromotion ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted")}>TOUT</button>
              {PROMOTIONS.map(p => (
-               <button key={p} onClick={() => setSelectedPromotion(p)} className={cn("px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2 whitespace-nowrap", selectedPromotion === p ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted")}>{p}</button>
+               <button key={p} onClick={() => setSelectedPromotion(p)} className={cn("px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2 shrink-0", selectedPromotion === p ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted")}>{p}</button>
              ))}
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
-             {classCardsData.map((c) => (
-               <Card key={c.id} onClick={() => setSelectedClass(c.id)} className="p-6 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group relative overflow-hidden active:scale-95">
-                  <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-700">
-                    <Layers className="size-20 md:size-24" />
-                  </div>
-                  <div className="flex items-center justify-between mb-6 relative z-10">
-                     <h3 className="text-xl md:text-3xl font-black text-foreground group-hover:text-primary transition-colors">{c.id}</h3>
-                     <Badge className={cn("font-black text-[8px] md:text-xs", Number(c.avg) >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{c.avg}/20</Badge>
-                  </div>
-                  <div className="space-y-4 relative z-10">
-                     <div className="flex justify-between items-center text-[9px] md:text-xs font-bold text-muted-foreground uppercase">
-                        <span className="flex items-center gap-1.5"><Users className="size-3" /> {c.studentCount} Élèves</span>
-                        <span className="flex items-center gap-1.5"><Zap className="size-3 text-amber-500" /> {c.subjectsCount} Matières</span>
-                     </div>
-                     <div className="space-y-1.5">
-                        <div className="flex justify-between text-[7px] font-black uppercase text-muted-foreground"><span>Progression Saisie</span><span>{c.completion}%</span></div>
-                        <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden"><div className="bg-primary h-full transition-all duration-1000" style={{ width: `${c.completion}%` }} /></div>
-                     </div>
-                  </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+             {OFFICIAL_CLASSES.filter(c => !selectedPromotion || c.startsWith(selectedPromotion)).map((classId) => (
+               <Card key={classId} onClick={() => setSelectedClass(classId)} className="p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group active:scale-95 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform"><Layers className="size-20" /></div>
+                  <h3 className="text-xl md:text-4xl font-black text-foreground group-hover:text-primary transition-colors relative z-10">{classId}</h3>
+                  <p className="text-[9px] md:text-xs font-bold text-muted-foreground mt-4 uppercase tracking-widest relative z-10">Ouvrir le registre</p>
                </Card>
              ))}
           </div>
@@ -407,84 +265,46 @@ export default function GradesPage() {
 
   if (isDirector && selectedClass) {
     const finalData = registerData.students
-    const avgs = finalData.map(s => s.subjectAvg).filter(v => v > 0)
-    const classAvg = avgs.length > 0 ? (avgs.reduce((a,b) => a+b, 0) / avgs.length).toFixed(2) : "0.00"
-    const successRate = avgs.length > 0 ? Math.round((avgs.filter(v => v >= 10).length / avgs.length) * 100) : 0
-
     return (
       <DashboardLayout>
         <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
-           <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
               <div className="space-y-1">
                  <button onClick={() => setSelectedClass("")} className="flex items-center gap-2 text-muted-foreground hover:text-primary font-black text-[10px] md:text-sm uppercase tracking-widest mb-2 transition-all"><ChevronLeft className="size-4" /> Retour au registre</button>
                  <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">{selectedClass}</span></h1>
               </div>
-              <div className="flex gap-2">
-                 <Button variant="outline" className="flex-1 md:flex-none h-11 md:h-14 px-6 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm"><Download className="mr-2 size-4" /> Export Excel</Button>
-              </div>
+              <Button variant="outline" className="h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl border-2 font-black bg-white"><Download className="mr-2 size-4" /> Export</Button>
            </div>
-
-           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-              {[
-                { label: "Moyenne Classe", val: classAvg, icon: TrendingUp, color: "text-primary", bg: "bg-emerald-50" },
-                { label: "Taux Réussite", val: successRate + "%", icon: Zap, color: "text-blue-600", bg: "bg-blue-50" },
-                { label: "Effectif", val: finalData.length, icon: Users, color: "text-amber-500", bg: "bg-amber-50" },
-                { label: "Année active", val: activeYear, icon: ShieldCheck, color: "text-emerald-600", bg: "bg-emerald-50" },
-              ].map((s, i) => (
-                <Card key={i} className="p-4 md:p-6 rounded-2xl md:rounded-[2rem] border-none shadow-sm bg-white flex flex-col justify-between h-24 md:h-40">
-                   <div className={cn("p-2 rounded-lg w-fit", s.bg, s.color)}><s.icon className="size-4 md:size-6" /></div>
-                   <div><p className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">{s.label}</p><h4 className="text-sm md:text-2xl font-black tabular-nums">{s.val}</h4></div>
-                </Card>
-              ))}
-           </div>
-
-           <Card className="p-4 md:p-8 rounded-2xl md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col md:flex-row gap-4 md:gap-8 items-center border-l-[10px] border-primary">
-              <div className="w-full md:w-auto flex-1">
-                 <Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Matière</Label>
-                 <Select value={selectedMatiere} onValueChange={setSelectedMatiere}>
-                    <SelectTrigger className="h-11 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl border-2 p-1 max-h-[300px]">{MATIERES.map(m => <SelectItem key={m} value={m} className="font-bold p-2.5 rounded-lg text-xs">{m}</SelectItem>)}</SelectContent>
-                 </Select>
-              </div>
-              <div className="w-full md:w-64">
-                 <Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Trimestre</Label>
-                 <Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}>
-                    <SelectTrigger className="h-11 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl border-2 p-1">{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}</SelectContent>
-                 </Select>
-              </div>
+           <Card className="p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col md:flex-row gap-4 md:gap-8 items-center border-l-[10px] border-primary">
+              <div className="flex-1 w-full"><Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Matière</Label><Select value={selectedMatiere} onValueChange={setSelectedMatiere}><SelectTrigger className="h-11 md:h-14 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1 max-h-[300px]">{MATIERES.map(m => <SelectItem key={m} value={m} className="font-bold p-2.5 rounded-lg text-xs">{m}</SelectItem>)}</SelectContent></Select></div>
+              <div className="w-full md:w-64"><Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Trimestre</Label><Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}><SelectTrigger className="h-11 md:h-14 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}</SelectContent></Select></div>
            </Card>
-
            <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[4.5rem] overflow-hidden">
               <div className="overflow-x-auto no-scrollbar relative">
                  <table className="w-full text-left border-separate border-spacing-0">
                     <thead className="bg-muted/30 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground sticky top-0 z-20">
                        <tr>
-                          <th className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-30 bg-white border-b border-muted/30">ID & ÉLÈVE</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">SEXE</th>
+                          <th className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-30 bg-white border-b border-muted/30 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">ID & ÉLÈVE</th>
                           <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 1</th>
                           <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 2</th>
                           <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 3</th>
                           <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">DEV 1</th>
                           <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">DEV 2</th>
                           <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30 bg-primary/5 text-primary">MOY/20</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-right border-b border-muted/30 bg-primary text-white">COEF x {finalData[0]?.coef || 2}</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/10">
                        {finalData.map((s: any) => (
                          <tr key={s.id} className="hover:bg-muted/5 transition-all group">
-                            <td className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC] transition-colors border-r shadow-sm">
-                               <div className="min-w-[150px] md:min-w-[220px]"><p className="font-black text-[10px] md:text-xl text-foreground uppercase truncate tracking-tight">{s.lastName} {s.firstName}</p><span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span></div>
+                            <td className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC] transition-colors border-r shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
+                               <div className="min-w-[150px] md:min-w-[220px]"><p className="font-black text-[10px] md:text-xl text-foreground uppercase truncate">{s.lastName} {s.firstName}</p><span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span></div>
                             </td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-bold text-muted-foreground/60">{s.gender === 'Masculin' ? 'M' : 'F'}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i1 ?? "--"}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i2 ?? "--"}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i3 ?? "--"}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.d1 ?? "--"}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.d2 ?? "--"}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center"><Badge className={cn("h-8 md:h-12 w-14 md:w-20 justify-center rounded-lg md:rounded-xl font-black text-xs md:text-xl", s.subjectAvg >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{s.subjectAvg.toFixed(2)}</Badge></td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-right"><span className="font-black text-xs md:text-2xl text-primary tabular-nums">{s.weightedAvg.toFixed(2)}</span></td>
                          </tr>
                        ))}
                     </tbody>
@@ -501,30 +321,27 @@ export default function GradesPage() {
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 px-1">
           <div className="space-y-1">
-            <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase leading-tight">Saisie <span className="text-primary italic">Progressive</span></h1>
-            <div className="flex items-center gap-2 text-muted-foreground font-bold text-[8px] md:text-sm"><Clock className="size-3 md:size-4 text-amber-500" /><span className="uppercase tracking-widest">Mode Trimestriel • {activeYear}</span></div>
+            <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Saisie <span className="text-primary italic">Notes</span></h1>
+            <p className="text-[8px] md:text-sm font-bold text-muted-foreground uppercase flex items-center gap-2"><Clock className="size-3 md:size-4 text-amber-500" /> Mode Trimestriel • {activeYear}</p>
           </div>
-          <Button onClick={handleSaveGrades} disabled={saving || !selectedClass || (teacherStudents?.length || 0) === 0} className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl h-12 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95">{saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} {saving ? "Scellage..." : "Sceller Évaluation"}</Button>
+          <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl h-12 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95">{saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} Sceller Évaluation</Button>
         </div>
 
-        <Card className="p-4 md:p-10 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[6px] md:border-l-[15px] border-primary">
+        <Card className="p-4 md:p-10 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[15px] border-primary">
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-              <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Matière & Coef</label><div className="flex items-center gap-3 bg-muted/20 p-2 md:p-3 rounded-xl"><div className="size-8 md:size-10 bg-white rounded-lg flex items-center justify-center text-primary shadow-sm shrink-0"><Calculator className="size-4 md:size-5" /></div><div className="flex-1 min-w-0"><p className="font-black text-[9px] md:text-xs uppercase text-foreground truncate">{userSubject || "N/A"}</p><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[7px] font-black text-primary">COEF:</span><Input type="number" value={classCoefficient} onChange={(e) => setClassCoefficient(e.target.value)} className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0 shadow-none focus-visible:ring-0" /></div></div></div></div>
+              <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Discipline</label><div className="flex items-center gap-3 bg-muted/20 p-2 md:p-3 rounded-xl"><Calculator className="size-5 text-primary" /><div className="flex-1 min-w-0"><p className="font-black text-[9px] md:text-xs uppercase text-foreground truncate">{userSubject || "N/A"}</p><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[7px] font-black text-primary">COEF:</span><Input type="number" value={classCoefficient} onChange={(e) => setClassCoefficient(e.target.value)} className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0 shadow-none focus-visible:ring-0" /></div></div></div></div>
               <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Classe</label><Select onValueChange={setSelectedClass} value={selectedClass}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue placeholder="Choisir" /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{classesToShow.map(c => <SelectItem key={c} value={c} className="font-bold p-2.5 rounded-lg text-xs">{c}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Trimestre</label><Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}</SelectContent></Select></div>
-              <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Évaluation</label><Select value={selectedEvalType} onValueChange={setSelectedEvalType}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{evalTypes.map(t => (<SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs flex items-center justify-between">{t.label} {completionStats[t.id] && "✓"}</SelectItem>))}</SelectContent></Select></div>
+              <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Évaluation</label><Select value={selectedEvalType} onValueChange={setSelectedEvalType}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{evalTypes.map(t => (<SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label} {completionStats[t.id] && "✓"}</SelectItem>))}</SelectContent></Select></div>
            </div>
         </Card>
 
         {selectedClass ? (
-          <div className="space-y-6">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">{evalTypes.map(t => (<div key={t.id} className={cn("min-w-[100px] p-2.5 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all shrink-0", completionStats[t.id] ? "bg-emerald-50 border-emerald-100" : "bg-muted/10 border-transparent opacity-40", selectedEvalType === t.id && "border-primary ring-2 ring-primary/10 opacity-100 scale-105")}><span className="text-[7px] font-black uppercase truncate">{t.label}</span>{completionStats[t.id] ? <CheckCircle2 className="size-2.5 text-emerald-600" /> : <Clock className="size-2.5 text-muted-foreground" />}</div>))}</div>
-            <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden min-h-[400px]">
-              <div className="p-5 md:p-12 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-4"><div className="flex items-center gap-3 md:gap-6"><div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0"><User className="size-5" /></div><div className="min-w-0"><h3 className="text-base md:text-2xl font-black text-foreground uppercase tracking-tight truncate">Registre {selectedClass}</h3><p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{evalTypes.find(e => e.id === selectedEvalType)?.label}</p></div></div>{loadingExisting && <div className="flex items-center gap-2 text-[9px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}</div>
-              <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left border-separate border-spacing-0"><thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b"><tr><th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th><th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th><th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th></tr></thead><tbody className="divide-y divide-muted/10">{teacherStudents?.map((student: any) => (<tr key={student.id} className="hover:bg-muted/5 transition-all group"><td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]"><div className="min-w-0"><p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p><span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span></div></td><td className="px-5 py-4 md:px-8 md:py-8 text-center"><Input type="number" step="0.25" placeholder="--.--" value={gradesData[student.matricule] || ""} onChange={(e) => handleGradeChange(student.matricule, e.target.value)} className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all" /></td><td className="px-5 py-4 md:px-8 md:py-8 text-right"><Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">{Number(gradesData[student.matricule] || 0).toFixed(1)}</Badge></td></tr>))}</tbody></table></div>
-            </Card>
-          </div>
-        ) : (<Card className="p-16 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-6"><div className="size-16 md:size-32 bg-muted rounded-[1.5rem] md:rounded-[2.5rem] flex items-center justify-center shadow-inner"><RefreshCw className="size-8 md:size-16 text-muted-foreground" /></div><div className="space-y-1"><h3 className="text-xl md:text-4xl font-black uppercase tracking-tight">Prêt pour la saisie ?</h3><p className="text-[10px] md:text-xl font-bold uppercase tracking-widest text-muted-foreground">Sélectionnez une classe autorisée</p></div></Card>)}
+          <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden min-h-[400px]">
+            <div className="p-5 md:p-12 border-b bg-muted/5 flex items-center justify-between gap-4"><div className="flex items-center gap-3 md:gap-6"><div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0"><User className="size-5" /></div><div className="min-w-0"><h3 className="text-base md:text-2xl font-black text-foreground uppercase truncate">Registre {selectedClass}</h3><p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{evalTypes.find(e => e.id === selectedEvalType)?.label}</p></div></div>{loadingExisting && <div className="flex items-center gap-2 text-[9px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}</div>
+            <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left border-separate border-spacing-0"><thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b"><tr><th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th><th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th><th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th></tr></thead><tbody className="divide-y divide-muted/10">{teacherStudents?.map((student: any) => (<tr key={student.id} className="hover:bg-muted/5 transition-all group"><td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]"><div className="min-w-0"><p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p><span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span></div></td><td className="px-5 py-4 md:px-8 md:py-8 text-center"><Input type="number" step="0.25" placeholder="--.--" value={gradesData[student.matricule] || ""} onChange={(e) => handleGradeChange(student.matricule, e.target.value)} className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all" /></td><td className="px-5 py-4 md:px-8 md:py-8 text-right"><Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">{Number(gradesData[student.matricule] || 0).toFixed(1)}</Badge></td></tr>))}</tbody></table></div>
+          </Card>
+        ) : (<Card className="p-16 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-6"><RefreshCw className="size-12 text-muted-foreground animate-spin opacity-20" /><div className="space-y-1"><h3 className="text-xl md:text-4xl font-black uppercase tracking-tight">Prêt pour la saisie ?</h3><p className="text-[10px] md:text-xl font-bold uppercase tracking-widest text-muted-foreground">Sélectionnez une classe autorisée</p></div></Card>)}
       </div>
     </DashboardLayout>
   )
