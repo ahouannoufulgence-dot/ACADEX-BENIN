@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Calculator,
   History,
-  LockIcon,
   ShieldAlert,
   Eye,
   Smartphone,
@@ -48,7 +47,6 @@ export default function SettingsPage() {
       if (snap.exists()) {
         const data = snap.data()
         setConfig(data)
-        // On ne met à jour les champs que si l'utilisateur n'est pas en train de charger
         if (!loading) {
           setSchoolName(data.schoolName || "")
           setAcademicYear(data.academicYear || "")
@@ -70,11 +68,11 @@ export default function SettingsPage() {
   const handleSaveInstitutional = async () => {
     setLoading(true)
     try {
-      await updateDoc(doc(db, "school_settings", "main_config"), {
+      await setDoc(doc(db, "school_settings", "main_config"), {
         schoolName,
         academicYear,
         updatedAt: serverTimestamp()
-      })
+      }, { merge: true })
       toast({ title: "Configuration scellée", description: "L'identité de l'établissement a été mise à jour." })
     } catch (e) {
       console.error(e)
@@ -88,11 +86,11 @@ export default function SettingsPage() {
     const newState = !termLocked
     setLoading(true)
     try {
-      await updateDoc(doc(db, "school_settings", "main_config"), {
+      await setDoc(doc(db, "school_settings", "main_config"), {
         termLocked: newState,
         lastLockAction: serverTimestamp(),
         author: localStorage.getItem('acadex_user_name') || "Direction"
-      })
+      }, { merge: true })
       setTermLocked(newState)
       toast({
         title: newState ? "Système Verrouillé" : "Système Déverrouillé",
@@ -191,7 +189,7 @@ export default function SettingsPage() {
                   <div className="relative z-10 space-y-6 md:space-y-10">
                     <div className="flex items-center gap-4">
                       <div className="size-12 md:size-16 bg-white/10 backdrop-blur-md rounded-xl md:rounded-2xl flex items-center justify-center border border-white/20 shadow-inner">
-                        <LockIcon className={cn("size-6 md:size-8", termLocked ? "text-white animate-pulse" : "text-primary")} />
+                        <Lock className={cn("size-6 md:size-8", termLocked ? "text-white animate-pulse" : "text-primary")} />
                       </div>
                       <h3 className="text-lg md:text-2xl font-black uppercase tracking-tight">Gel du Système</h3>
                     </div>

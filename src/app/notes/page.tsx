@@ -19,7 +19,7 @@ import {
   Zap,
   Download,
   Layers,
-  LockIcon
+  Lock
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -32,7 +32,7 @@ import {
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, writeBatch, serverTimestamp, getDoc, getDocs, orderBy, onSnapshot } from "firebase/firestore"
+import { collection, query, where, doc, writeBatch, serverTimestamp, getDocs, orderBy, onSnapshot } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
@@ -93,7 +93,6 @@ export default function GradesPage() {
     setActiveYear(year)
     setUserName(localStorage.getItem('acadex_user_name') || "")
 
-    // ÉCOUTE DU VERROUILLAGE SYSTÈME
     const unsubConfig = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
       if (snap.exists()) {
         setSystemLocked(snap.data().termLocked || false)
@@ -255,7 +254,7 @@ export default function GradesPage() {
             </div>
             {systemLocked && (
               <Badge className="bg-destructive text-white h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl flex items-center gap-3 font-black text-sm shadow-xl shadow-destructive/20">
-                 <LockIcon className="size-4 md:size-6" /> REGISTRES SCELLÉS
+                 <Lock className="size-4 md:size-6" /> REGISTRES SCELLÉS
               </Badge>
             )}
           </div>
@@ -290,7 +289,7 @@ export default function GradesPage() {
                  <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">{selectedClass}</span></h1>
               </div>
               <div className="flex items-center gap-3">
-                 {systemLocked && <Badge className="bg-destructive text-white px-5 h-12 rounded-xl font-black uppercase shadow-lg shadow-destructive/20"><LockIcon className="size-4 mr-2" /> Scellé</Badge>}
+                 {systemLocked && <Badge className="bg-destructive text-white px-5 h-12 rounded-xl font-black uppercase shadow-lg shadow-destructive/20"><Lock className="size-4 mr-2" /> Scellé</Badge>}
                  <Button variant="outline" className="h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl border-2 font-black bg-white"><Download className="mr-2 size-4" /> Export</Button>
               </div>
            </div>
@@ -346,7 +345,7 @@ export default function GradesPage() {
           <div className="flex items-center gap-3">
              {systemLocked && (
                <Badge className="bg-destructive text-white h-12 md:h-16 px-6 rounded-xl md:rounded-2xl font-black shadow-xl shadow-destructive/20 flex items-center gap-3">
-                  <LockIcon className="size-4 md:size-6" /> SYSTÈME SCELLÉ
+                  <Lock className="size-4 md:size-6" /> SYSTÈME SCELLÉ
                </Badge>
              )}
              <Button 
@@ -373,7 +372,7 @@ export default function GradesPage() {
           <Card className={cn("border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden min-h-[400px] relative", systemLocked && "opacity-80")}>
             {systemLocked && (
               <div className="absolute inset-0 z-50 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-6 p-10 text-center">
-                 <div className="size-20 bg-destructive/10 rounded-full flex items-center justify-center text-destructive animate-pulse shadow-lg"><LockIcon className="size-10" /></div>
+                 <div className="size-20 bg-destructive/10 rounded-full flex items-center justify-center text-destructive animate-pulse shadow-lg"><Lock className="size-10" /></div>
                  <div className="space-y-2">
                     <h3 className="text-xl md:text-3xl font-black uppercase">Saisie Verrouillée</h3>
                     <p className="text-[10px] md:text-lg font-medium text-muted-foreground max-w-md">La direction a scellé les registres pour ce trimestre. Aucune modification n'est autorisée.</p>
