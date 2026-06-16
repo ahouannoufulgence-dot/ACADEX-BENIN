@@ -18,7 +18,8 @@ import {
   Users,
   Zap,
   Download,
-  Layers
+  Layers,
+  LockIcon
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -68,6 +69,7 @@ export default function GradesPage() {
   const [userName, setUserName] = useState("")
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [mounted, setMounted] = useState(false)
+  const [systemLocked, setSystemLocked] = useState(false)
   
   const [selectedClass, setSelectedClass] = useState("")
   const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
@@ -91,9 +93,15 @@ export default function GradesPage() {
     setActiveYear(year)
     setUserName(localStorage.getItem('acadex_user_name') || "")
 
+    // ÉCOUTE DU VERROUILLAGE SYSTÈME
+    const unsubConfig = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
+      if (snap.exists()) {
+        setSystemLocked(snap.data().termLocked || false)
+      }
+    })
+
     if (role === 'Enseignant' && userId && db) {
-      // ÉCOUTE TEMPS RÉEL DES AFFECTATIONS POUR LA SAISIE DES NOTES
-      const unsub = onSnapshot(doc(db, "teachers", userId), (snap) => {
+      const unsubTeacher = onSnapshot(doc(db, "teachers", userId), (snap) => {
         if (snap.exists()) {
           const data = snap.data()
           const yearData = data.assignments?.[year] || { classes: [], subject: "" }
@@ -102,13 +110,13 @@ export default function GradesPage() {
           setSelectedMatiere(yearData.subject)
         }
       })
-      return () => unsub()
+      return () => { unsubConfig(); unsubTeacher(); }
     }
+    return () => unsubConfig()
   }, [db])
 
   const isDirector = userRole === "Directeur"
 
-  // REQUÊTE RÉACTIVE POUR LES ÉLÈVES DE LA CLASSE SÉLECTIONNÉE
   const teacherStudentsQuery = useMemo(() => {
     if (!db || !selectedClass || !mounted) return null
     return query(
@@ -129,7 +137,6 @@ export default function GradesPage() {
 
   const { data: allGrades } = useCollection(allGradesQuery)
 
-  // LOGIQUE DE CALCUL DU REGISTRE CENTRALISÉ (DIRECTEUR)
   const registerData = useMemo(() => {
     if (!selectedClass || !allGrades || !isDirector) return { students: [] }
     
@@ -165,7 +172,6 @@ export default function GradesPage() {
     return { students: process }
   }, [selectedClass, selectedMatiere, selectedTrimestre, teacherStudents, allGrades, isDirector])
 
-  // SYNC DES NOTES POUR LA SAISIE (ENSEIGNANT)
   useEffect(() => {
     const fetchCurrentGrades = async () => {
       if (!selectedClass || !userSubject || !mounted || isDirector) return
@@ -191,12 +197,17 @@ export default function GradesPage() {
   }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear, mounted, isDirector])
 
   const handleGradeChange = (matricule: string, value: string) => {
+    if (systemLocked && !isDirector) return
     const num = parseFloat(value)
     if (num > 20) return
     setGradesData(prev => ({ ...prev, [matricule]: value }))
   }
 
   const handleSaveGrades = async () => {
+    if (systemLocked && !isDirector) {
+      toast({ title: "Saisie impossible", description: "Le système est scellé par la direction.", variant: "destructive" })
+      return
+    }
     if (!selectedClass || !userSubject || saving) return
     setSaving(true)
     const batch = writeBatch(db)
@@ -242,6 +253,11 @@ export default function GradesPage() {
               <h1 className="text-3xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">Global</span></h1>
               <p className="text-[9px] md:text-sm font-bold text-muted-foreground uppercase flex items-center gap-2"><ShieldCheck className="size-3.5 text-emerald-500" /> Vision Centrale • {activeYear}</p>
             </div>
+            {systemLocked && (
+              <Badge className="bg-destructive text-white h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl flex items-center gap-3 font-black text-sm shadow-xl shadow-destructive/20">
+                 <LockIcon className="size-4 md:size-6" /> REGISTRES SCELLÉS
+              </Badge>
+            )}
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
              <button onClick={() => setSelectedPromotion(null)} className={cn("px-6 h-10 md:h-12 rounded-full font-black text-[9px] md:text-xs uppercase transition-all border-2 shrink-0", !selectedPromotion ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-transparent hover:bg-muted")}>TOUT</button>
@@ -273,7 +289,10 @@ export default function GradesPage() {
                  <button onClick={() => setSelectedClass("")} className="flex items-center gap-2 text-muted-foreground hover:text-primary font-black text-[10px] md:text-sm uppercase tracking-widest mb-2 transition-all"><ChevronLeft className="size-4" /> Retour au registre</button>
                  <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">{selectedClass}</span></h1>
               </div>
-              <Button variant="outline" className="h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl border-2 font-black bg-white"><Download className="mr-2 size-4" /> Export</Button>
+              <div className="flex items-center gap-3">
+                 {systemLocked && <Badge className="bg-destructive text-white px-5 h-12 rounded-xl font-black uppercase shadow-lg shadow-destructive/20"><LockIcon className="size-4 mr-2" /> Scellé</Badge>}
+                 <Button variant="outline" className="h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl border-2 font-black bg-white"><Download className="mr-2 size-4" /> Export</Button>
+              </div>
            </div>
            <Card className="p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col md:flex-row gap-4 md:gap-8 items-center border-l-[10px] border-primary">
               <div className="flex-1 w-full"><Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Matière</Label><Select value={selectedMatiere} onValueChange={setSelectedMatiere}><SelectTrigger className="h-11 md:h-14 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1 max-h-[300px]">{MATIERES.map(m => <SelectItem key={m} value={m} className="font-bold p-2.5 rounded-lg text-xs">{m}</SelectItem>)}</SelectContent></Select></div>
@@ -324,7 +343,21 @@ export default function GradesPage() {
             <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Saisie <span className="text-primary italic">Notes</span></h1>
             <p className="text-[8px] md:text-sm font-bold text-muted-foreground uppercase flex items-center gap-2"><Clock className="size-3 md:size-4 text-amber-500" /> Mode Trimestriel • {activeYear}</p>
           </div>
-          <Button onClick={handleSaveGrades} disabled={saving || !selectedClass} className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl h-12 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95">{saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} Sceller Évaluation</Button>
+          <div className="flex items-center gap-3">
+             {systemLocked && (
+               <Badge className="bg-destructive text-white h-12 md:h-16 px-6 rounded-xl md:rounded-2xl font-black shadow-xl shadow-destructive/20 flex items-center gap-3">
+                  <LockIcon className="size-4 md:size-6" /> SYSTÈME SCELLÉ
+               </Badge>
+             )}
+             <Button 
+               onClick={handleSaveGrades} 
+               disabled={saving || !selectedClass || systemLocked} 
+               className="w-full md:w-auto bg-primary hover:bg-primary/90 shadow-xl h-12 md:h-16 px-8 md:px-12 rounded-xl md:rounded-2xl font-black text-xs md:text-lg transition-all active:scale-95"
+             >
+               {saving ? <Loader2 className="animate-spin size-4 md:size-5" /> : <ShieldCheck className="mr-2 size-4 md:size-5" />} 
+               Sceller Évaluation
+             </Button>
+          </div>
         </div>
 
         <Card className="p-4 md:p-10 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[15px] border-primary">
@@ -337,9 +370,18 @@ export default function GradesPage() {
         </Card>
 
         {selectedClass ? (
-          <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden min-h-[400px]">
+          <Card className={cn("border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3.5rem] overflow-hidden min-h-[400px] relative", systemLocked && "opacity-80")}>
+            {systemLocked && (
+              <div className="absolute inset-0 z-50 bg-white/40 backdrop-blur-[2px] flex flex-col items-center justify-center gap-6 p-10 text-center">
+                 <div className="size-20 bg-destructive/10 rounded-full flex items-center justify-center text-destructive animate-pulse shadow-lg"><LockIcon className="size-10" /></div>
+                 <div className="space-y-2">
+                    <h3 className="text-xl md:text-3xl font-black uppercase">Saisie Verrouillée</h3>
+                    <p className="text-[10px] md:text-lg font-medium text-muted-foreground max-w-md">La direction a scellé les registres pour ce trimestre. Aucune modification n'est autorisée.</p>
+                 </div>
+              </div>
+            )}
             <div className="p-5 md:p-12 border-b bg-muted/5 flex items-center justify-between gap-4"><div className="flex items-center gap-3 md:gap-6"><div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0"><User className="size-5" /></div><div className="min-w-0"><h3 className="text-base md:text-2xl font-black text-foreground uppercase truncate">Registre {selectedClass}</h3><p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{evalTypes.find(e => e.id === selectedEvalType)?.label}</p></div></div>{loadingExisting && <div className="flex items-center gap-2 text-[9px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}</div>
-            <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left border-separate border-spacing-0"><thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b"><tr><th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th><th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th><th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th></tr></thead><tbody className="divide-y divide-muted/10">{teacherStudents?.map((student: any) => (<tr key={student.id} className="hover:bg-muted/5 transition-all group"><td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]"><div className="min-w-0"><p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p><span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span></div></td><td className="px-5 py-4 md:px-8 md:py-8 text-center"><Input type="number" step="0.25" placeholder="--.--" value={gradesData[student.matricule] || ""} onChange={(e) => handleGradeChange(student.matricule, e.target.value)} className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all" /></td><td className="px-5 py-4 md:px-8 md:py-8 text-right"><Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">{Number(gradesData[student.matricule] || 0).toFixed(1)}</Badge></td></tr>))}</tbody></table></div>
+            <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left border-separate border-spacing-0"><thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b"><tr><th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th><th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th><th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th></tr></thead><tbody className="divide-y divide-muted/10">{teacherStudents?.map((student: any) => (<tr key={student.id} className="hover:bg-muted/5 transition-all group"><td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]"><div className="min-w-0"><p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p><span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span></div></td><td className="px-5 py-4 md:px-8 md:py-8 text-center"><Input type="number" step="0.25" placeholder="--.--" value={gradesData[student.matricule] || ""} onChange={(e) => handleGradeChange(student.matricule, e.target.value)} disabled={systemLocked} className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all disabled:opacity-50" /></td><td className="px-5 py-4 md:px-8 md:py-8 text-right"><Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">{Number(gradesData[student.matricule] || 0).toFixed(1)}</Badge></td></tr>))}</tbody></table></div>
           </Card>
         ) : (<Card className="p-16 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-6"><RefreshCw className="size-12 text-muted-foreground animate-spin opacity-20" /><div className="space-y-1"><h3 className="text-xl md:text-4xl font-black uppercase tracking-tight">Prêt pour la saisie ?</h3><p className="text-[10px] md:text-xl font-bold uppercase tracking-widest text-muted-foreground">Sélectionnez une classe autorisée</p></div></Card>)}
       </div>

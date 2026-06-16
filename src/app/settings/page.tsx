@@ -21,13 +21,14 @@ import {
   Smartphone,
   Loader2,
   Clock,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { useState, useEffect, useMemo } from "react"
 import { useFirestore, useCollection } from "@/firebase"
-import { doc, onSnapshot, updateDoc, serverTimestamp, collection, query, orderBy, limit } from "firebase/firestore"
+import { doc, onSnapshot, updateDoc, serverTimestamp, collection, query, orderBy, limit, setDoc } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 
 export default function SettingsPage() {
@@ -47,15 +48,17 @@ export default function SettingsPage() {
       if (snap.exists()) {
         const data = snap.data()
         setConfig(data)
-        setSchoolName(data.schoolName || "")
-        setAcademicYear(data.academicYear || "")
-        setTermLocked(data.termLocked || false)
+        // On ne met à jour les champs que si l'utilisateur n'est pas en train de charger
+        if (!loading) {
+          setSchoolName(data.schoolName || "")
+          setAcademicYear(data.academicYear || "")
+          setTermLocked(data.termLocked || false)
+        }
       }
     })
     return () => unsub()
-  }, [db])
+  }, [db, loading])
 
-  // Fetch recent audit logs from student_life as example of activity
   const auditQuery = useMemo(() => query(
     collection(db, "student_life"),
     orderBy("createdAt", "desc"),
@@ -74,6 +77,7 @@ export default function SettingsPage() {
       })
       toast({ title: "Configuration scellée", description: "L'identité de l'établissement a été mise à jour." })
     } catch (e) {
+      console.error(e)
       toast({ title: "Erreur", description: "Impossible de mettre à jour les paramètres.", variant: "destructive" })
     } finally {
       setLoading(false)
@@ -82,12 +86,14 @@ export default function SettingsPage() {
 
   const handleToggleLock = async () => {
     const newState = !termLocked
-    setTermLocked(newState)
+    setLoading(true)
     try {
       await updateDoc(doc(db, "school_settings", "main_config"), {
         termLocked: newState,
-        lastLockAction: serverTimestamp()
+        lastLockAction: serverTimestamp(),
+        author: localStorage.getItem('acadex_user_name') || "Direction"
       })
+      setTermLocked(newState)
       toast({
         title: newState ? "Système Verrouillé" : "Système Déverrouillé",
         description: newState 
@@ -95,8 +101,10 @@ export default function SettingsPage() {
           : "Les enseignants peuvent à nouveau saisir les notes.",
       })
     } catch (e) {
-      setTermLocked(!newState)
+      console.error(e)
       toast({ title: "Erreur critique", description: "L'action de scellage a échoué.", variant: "destructive" })
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -159,13 +167,13 @@ export default function SettingsPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
-                              <p className="text-[10px] md:text-lg font-black text-foreground truncate uppercase">{log.motif || log.status}</p>
+                              <p className="text-[10px] md:text-lg font-black text-foreground truncate uppercase">{log.motif || log.status || "Action Système"}</p>
                               <Badge className={cn("text-[6px] md:text-[8px] font-black h-4 px-1.5 rounded-full shrink-0", log.category === 'discipline' ? 'bg-red-500' : 'bg-primary')}>
                                 {log.category.toUpperCase()}
                               </Badge>
                             </div>
                             <p className="text-[8px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest truncate">
-                              Par {log.authorName} • {log.createdAt ? new Date(log.createdAt.seconds * 1000).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "---"}
+                              Par {log.authorName || "Système"} • {log.createdAt ? new Date(log.createdAt.seconds * 1000).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "---"}
                             </p>
                           </div>
                         </div>
@@ -196,6 +204,7 @@ export default function SettingsPage() {
 
                     <Button 
                       onClick={handleToggleLock}
+                      disabled={loading}
                       className={cn(
                         "w-full h-12 md:h-18 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xl shadow-xl transition-all active:scale-95 uppercase",
                         termLocked 
@@ -203,7 +212,7 @@ export default function SettingsPage() {
                           : "bg-primary text-white hover:bg-primary/90"
                       )}
                     >
-                      {termLocked ? "Déverrouiller les Registres" : "Verrouiller le Trimestre"}
+                      {loading ? <Loader2 className="animate-spin size-5" /> : termLocked ? "Déverrouiller les Registres" : "Verrouiller le Trimestre"}
                     </Button>
                   </div>
                   <ShieldCheck className="absolute -bottom-10 -right-10 size-40 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-[5000ms]" />
