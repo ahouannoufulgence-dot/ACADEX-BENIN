@@ -34,13 +34,7 @@ export function initializeFirebase(): {
 
   authInstance = getAuth(firebaseAppInstance);
 
-  if (typeof window !== 'undefined' && !persistenceStarted) {
-    persistenceStarted = true;
-    
-    enableMultiTabIndexedDbPersistence(firestoreInstance).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('Firestore persistence: Plusieurs onglets ouverts. Cache activé en mode restreint.');
-      } else if (err.code === 'unimplemented') {
+else if (err.code === 'unimplemented') {
         console.warn('Firestore persistence: Ce navigateur ne supporte pas la persistance des données.');
       }
     });
