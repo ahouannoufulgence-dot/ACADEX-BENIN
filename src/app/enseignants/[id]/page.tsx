@@ -21,20 +21,33 @@ import {
   Save,
   Zap,
   Archive,
-  RefreshCw
+  RefreshCw,
+  Layers,
+  ArrowRight,
+  Info
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useState, useEffect, useMemo } from "react"
 import { useFirestore, useDoc } from "@/firebase"
-import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
 import { toast } from "@/hooks/use-toast"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+
+const OFFICIAL_CLASSES = [
+  "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",
+  "2NDE A", "2NDE B", "2NDE C", "2NDE D",
+  "1ERE A", "1ERE B", "1ERE C", "1ERE D",
+  "TLE A", "TLE B", "TLE C", "TLE D"
+]
+
+const SUBJECTS = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"]
 
 export default function TeacherDetailPage() {
   const { id } = useParams()
@@ -44,13 +57,26 @@ export default function TeacherDetailPage() {
   const teacherRef = useMemo(() => doc(db, "teachers", id as string), [db, id])
   const { data: teacher, loading } = useDoc(teacherRef)
   
+  const [activeYear, setActiveYear] = useState("")
   const [isEditing, setIsEditing] = useState(false)
+  const [savingAssignments, setSavingAssignments] = useState(false)
+  
   const [editForm, setEditForm] = useState({
     fullName: "",
     subject: "",
     phone: "",
     status: ""
   })
+
+  // State pour les affectations de l'année active
+  const [currentAssignments, setCurrentAssignments] = useState({
+    classes: [] as string[],
+    subject: ""
+  })
+
+  useEffect(() => {
+    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
+  }, [])
 
   useEffect(() => {
     if (teacher) {
@@ -60,14 +86,24 @@ export default function TeacherDetailPage() {
         phone: teacher.phone || "",
         status: teacher.status || "En attente"
       })
-    }
-  }, [teacher])
 
-  const handleUpdate = () => {
-    updateDoc(teacherRef, editForm)
+      // Charger les affectations spécifiques à l'année active
+      const yearData = teacher.assignments?.[activeYear] || {
+        classes: teacher.classes || [],
+        subject: teacher.subject || ""
+      }
+      setCurrentAssignments(yearData)
+    }
+  }, [teacher, activeYear])
+
+  const handleUpdateInfo = () => {
+    updateDoc(teacherRef, {
+      ...editForm,
+      updatedAt: serverTimestamp()
+    })
       .then(() => {
         setIsEditing(false)
-        toast({ title: "Profil mis à jour", description: "Les modifications ont été enregistrées." })
+        toast({ title: "Profil mis à jour", description: "Les informations de base ont été enregistrées." })
       })
       .catch(async () => {
         const error = new FirestorePermissionError({
@@ -77,6 +113,41 @@ export default function TeacherDetailPage() {
         })
         errorEmitter.emit('permission-error', error)
       })
+  }
+
+  const handleSaveAssignments = async () => {
+    if (!activeYear) return
+    setSavingAssignments(true)
+    try {
+      const assignments = teacher.assignments || {}
+      assignments[activeYear] = currentAssignments
+
+      await updateDoc(teacherRef, {
+        assignments,
+        // On garde aussi à la racine pour la compatibilité descendante immédiate
+        classes: currentAssignments.classes,
+        subject: currentAssignments.subject,
+        updatedAt: serverTimestamp()
+      })
+
+      toast({ 
+        title: "Affectations scellées", 
+        description: `Le périmètre de M. ${editForm.fullName.split(' ')[0]} est à jour pour ${activeYear}.` 
+      })
+    } catch (e) {
+      toast({ title: "Erreur de scellage", variant: "destructive" })
+    } finally {
+      setSavingAssignments(false)
+    }
+  }
+
+  const toggleClass = (cls: string) => {
+    setCurrentAssignments(prev => ({
+      ...prev,
+      classes: prev.classes.includes(cls) 
+        ? prev.classes.filter(c => c !== cls)
+        : [...prev.classes, cls]
+    }))
   }
 
   const handleArchive = async () => {
@@ -96,15 +167,6 @@ export default function TeacherDetailPage() {
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     }
-  }
-
-  const toggleStatus = () => {
-    const newStatus = editForm.status === "Actif" ? "Suspendu" : "Actif"
-    updateDoc(teacherRef, { status: newStatus })
-      .then(() => {
-        setEditForm(prev => ({ ...prev, status: newStatus }))
-        toast({ title: "Statut modifié", description: `Enseignant désormais : ${newStatus}` })
-      })
   }
 
   if (loading) return (
@@ -132,7 +194,6 @@ export default function TeacherDetailPage() {
     <DashboardLayout>
       <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Detail Header - Mobile Responsive */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <Link href="/enseignants" className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors font-black group text-[10px] md:text-sm uppercase tracking-widest">
             <ChevronLeft className="size-4 md:size-6 transition-transform group-hover:-translate-x-1" />
@@ -151,150 +212,183 @@ export default function TeacherDetailPage() {
              
              <Button 
                variant={isEditing ? "outline" : "default"} 
-               onClick={() => isEditing ? handleUpdate() : setIsEditing(true)}
+               onClick={() => isEditing ? handleUpdateInfo() : setIsEditing(true)}
                className="flex-1 md:flex-none rounded-xl md:rounded-2xl h-11 md:h-14 px-5 md:px-10 font-black text-[10px] md:text-sm shadow-xl"
              >
                {isEditing ? <Save className="mr-2 size-4 md:size-5" /> : <Edit2 className="mr-2 size-4 md:size-5" />}
-               {isEditing ? "Sauvegarder" : "Modifier"}
+               {isEditing ? "Sauvegarder Infos" : "Modifier Infos"}
              </Button>
-             
-             {!isArchived && (
-               <Button 
-                 onClick={toggleStatus}
-                 className={cn(
-                   "flex-1 md:flex-none rounded-xl md:rounded-2xl h-11 md:h-14 px-5 md:px-8 font-black text-[10px] md:text-sm transition-all shadow-sm",
-                   editForm.status === 'Actif' ? 'bg-destructive/10 text-destructive hover:bg-destructive/20' : 'bg-emerald-500 text-white'
-                 )}
-               >
-                 {editForm.status === 'Actif' ? <UserX className="mr-2 size-4 md:size-5" /> : <CheckCircle2 className="mr-2 size-4 md:size-5" />}
-                 {editForm.status === 'Actif' ? "Suspendre" : "Activer"}
-               </Button>
-             )}
           </div>
         </div>
 
         <div className="grid gap-6 md:gap-10 lg:grid-cols-12">
           {/* Main Info Card */}
-          <Card className={cn("lg:col-span-8 border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[4rem] overflow-hidden", isArchived && "grayscale")}>
-             <div className={cn("h-32 md:h-56 relative", isArchived ? "bg-muted" : "bg-primary")}>
-               <div className="absolute -bottom-12 md:-bottom-20 left-6 md:left-16">
-                 <Avatar className="size-24 md:size-48 border-[6px] md:border-[12px] border-white shadow-2xl">
+          <Card className={cn("lg:col-span-12 border-none shadow-sm bg-white rounded-[2.5rem] md:rounded-[4rem] overflow-hidden", isArchived && "grayscale")}>
+             <div className={cn("h-32 md:h-48 relative", isArchived ? "bg-muted" : "bg-primary")}>
+               <div className="absolute -bottom-10 md:-bottom-16 left-6 md:left-16 flex items-end gap-6">
+                 <Avatar className="size-24 md:size-40 border-[6px] md:border-[10px] border-white shadow-2xl">
                    <AvatarFallback className="bg-primary text-white text-2xl md:text-6xl font-black">
                      {(teacher.fullName || "??").substring(0, 2).toUpperCase()}
                    </AvatarFallback>
                  </Avatar>
-                 {isArchived && (
-                    <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
-                       <Archive className="size-8 md:size-16 text-white" />
+                 <div className="mb-4 md:mb-6 space-y-1 hidden md:block">
+                    <h1 className="text-xl md:text-4xl font-black text-white drop-shadow-lg uppercase tracking-tight">{teacher.fullName}</h1>
+                    <div className="flex items-center gap-3">
+                       <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-bold px-4 py-1 rounded-full text-xs">{teacher.subject}</Badge>
+                       <Badge variant="outline" className="border-white/40 text-white font-black text-[10px]">{teacher.officialId}</Badge>
                     </div>
-                 )}
+                 </div>
                </div>
              </div>
              
-             <div className="pt-20 md:pt-32 pb-8 md:pb-16 px-6 md:px-16 space-y-8 md:space-y-12">
-               <div className="space-y-3 md:space-y-4">
-                 {isEditing ? (
-                   <div className="space-y-2">
-                     <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Nom Complet</Label>
-                     <Input 
-                       value={editForm.fullName} 
-                       onChange={e => setEditForm({...editForm, fullName: e.target.value})} 
-                       className="text-xl md:text-5xl font-black h-14 md:h-24 rounded-2xl md:rounded-[2rem] border-4 border-primary/10 px-6"
-                     />
-                   </div>
-                 ) : (
-                   <h1 className="text-2xl md:text-6xl font-black text-foreground tracking-tight uppercase">{teacher.fullName} {isArchived && "(ARCHIVÉ)"}</h1>
-                 )}
-                 <div className="flex flex-wrap items-center gap-3 md:gap-6">
-                    <Badge className="bg-primary text-white border-none font-black text-[9px] md:text-sm px-4 md:px-8 py-1 md:py-2 rounded-full shadow-lg shadow-primary/20 uppercase tracking-widest">{teacher.subject}</Badge>
-                    <div className="flex items-center gap-2 bg-muted/50 px-4 py-1.5 md:py-2.5 rounded-full border border-muted/50">
-                      <span className="text-[8px] md:text-[11px] font-black text-muted-foreground uppercase tracking-widest">ID OFFICIEL:</span>
-                      <span className="text-[10px] md:text-sm font-black text-foreground">{teacher.officialId}</span>
-                    </div>
-                    <Badge className={cn("font-black px-4 md:px-8 py-1 md:py-2 rounded-full uppercase tracking-tighter text-[9px] md:text-xs", teacher.status === 'Actif' ? 'bg-emerald-500' : 'bg-amber-500')}>
-                      {teacher.status}
-                    </Badge>
-                 </div>
-               </div>
+             <div className="pt-14 md:pt-24 pb-8 md:pb-12 px-6 md:px-16">
+               <Tabs defaultValue="affectations" className="space-y-8 md:space-y-12">
+                  <TabsList className="bg-muted/50 border-2 rounded-2xl h-12 md:h-16 p-1 flex w-full md:w-fit shadow-inner">
+                    <TabsTrigger value="affectations" className="flex-1 md:flex-none rounded-xl font-black px-6 md:px-12 text-[9px] md:text-sm uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                       <Layers className="size-4" /> Affectations
+                    </TabsTrigger>
+                    <TabsTrigger value="informations" className="flex-1 md:flex-none rounded-xl font-black px-6 md:px-12 text-[9px] md:text-sm uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md transition-all flex items-center gap-2">
+                       <Info className="size-4" /> Informations
+                    </TabsTrigger>
+                  </TabsList>
 
-               <div className="grid md:grid-cols-2 gap-8 md:gap-14 border-t border-muted/30 pt-8 md:pt-14">
-                  <div className="space-y-6 md:space-y-10">
-                    <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 md:gap-5 tracking-tight uppercase"><ShieldCheck className="text-primary size-5 md:size-8" /> Coordonnées</h3>
-                    <div className="space-y-3 md:space-y-6">
-                       <div className="flex items-center gap-4 md:gap-8 p-5 md:p-8 bg-muted/20 rounded-2xl md:rounded-[2.5rem] border border-muted/50 group hover:border-primary/30 transition-all shadow-inner">
-                          <div className="size-10 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center text-primary shadow-sm"><Phone className="size-5 md:size-7" /></div>
-                          <div className="min-w-0">
-                            <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Téléphone Direct</p>
-                            <p className="font-black text-sm md:text-xl truncate">{teacher.phone || "Non renseigné"}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-4 md:gap-8 p-5 md:p-8 bg-muted/20 rounded-2xl md:rounded-[2.5rem] border border-muted/50 opacity-60">
-                          <div className="size-10 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center text-primary shadow-sm"><Mail className="size-5 md:size-7" /></div>
-                          <div>
-                            <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Email Acadex</p>
-                            <p className="font-black text-sm md:text-xl italic">Email non configuré</p>
-                          </div>
-                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-6 md:space-y-10">
-                    <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 md:gap-5 tracking-tight uppercase"><BookOpen className="text-primary size-5 md:size-8" /> Périmètre</h3>
-                    <div className="space-y-4 md:space-y-8">
-                       <div className="p-6 md:p-10 bg-primary/5 rounded-2xl md:rounded-[2.5rem] border-2 border-dashed border-primary/20">
-                          <p className="text-[8px] md:text-[10px] font-black uppercase text-primary tracking-[0.2em] mb-6">Classes sous responsabilité</p>
-                          <div className="flex flex-wrap gap-2 md:gap-4">
-                             {(teacher.classes || []).map((cls: string) => (
-                               <Badge key={cls} className="bg-foreground text-white font-black px-3 md:px-6 py-1.5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-sm hover:scale-105 transition-transform">{cls}</Badge>
-                             ))}
-                             {(!teacher.classes || teacher.classes.length === 0) && (
-                               <p className="text-xs md:text-lg font-medium italic text-muted-foreground py-4">Aucune classe assignée pour l'instant.</p>
-                             )}
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-4 text-muted-foreground">
-                          <Calendar className="size-4 md:size-6 text-primary" />
-                          <span className="text-[10px] md:text-sm font-bold uppercase tracking-widest">Inscrit le {new Date(teacher.registeredAt).toLocaleDateString('fr-FR')}</span>
-                       </div>
-                    </div>
-                  </div>
-               </div>
+                  <TabsContent value="affectations" className="space-y-8 md:space-y-12 animate-in slide-in-from-right-4">
+                     <div className="grid lg:grid-cols-12 gap-8 md:gap-14">
+                        <div className="lg:col-span-5 space-y-6 md:space-y-10">
+                           <div className="space-y-2">
+                              <h3 className="text-xl md:text-3xl font-black flex items-center gap-3 tracking-tight uppercase"><Zap className="text-primary size-6 md:size-8 fill-primary" /> Pilotage {activeYear}</h3>
+                              <p className="text-[10px] md:text-base font-medium text-muted-foreground leading-relaxed">
+                                Définissez les classes et la matière sous la responsabilité de cet enseignant pour l'année scolaire active.
+                              </p>
+                           </div>
+
+                           <div className="space-y-6 md:space-y-8 p-6 md:p-10 bg-primary/5 rounded-3xl border-2 border-dashed border-primary/20">
+                              <div className="space-y-3">
+                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-primary tracking-[0.2em] px-1">Matière Spécifique</Label>
+                                 <select 
+                                   value={currentAssignments.subject} 
+                                   onChange={e => setCurrentAssignments({...currentAssignments, subject: e.target.value})}
+                                   className="w-full h-12 md:h-16 rounded-2xl border-2 border-primary/10 bg-white font-black text-sm md:text-xl px-4 focus:ring-primary focus:border-primary transition-all outline-none"
+                                 >
+                                    <option value="">Choisir une matière</option>
+                                    {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
+                                 </select>
+                              </div>
+
+                              <div className="space-y-4">
+                                 <div className="flex items-center justify-between px-1">
+                                    <Label className="font-black text-[9px] md:text-[11px] uppercase text-primary tracking-[0.2em]">Classes Assignées</Label>
+                                    <Badge className="bg-primary text-white font-black text-[8px] md:text-[10px]">{currentAssignments.classes.length} CLASSE(S)</Badge>
+                                 </div>
+                                 <div className="flex flex-wrap gap-2 md:gap-3">
+                                    {currentAssignments.classes.map(c => (
+                                      <Badge key={c} onClick={() => toggleClass(c)} className="bg-foreground text-white font-black px-3 py-1.5 md:px-5 md:py-2.5 rounded-xl text-[9px] md:text-sm cursor-pointer hover:bg-destructive hover:scale-95 transition-all group">
+                                         {c} <X className="size-2 md:size-3 ml-2 group-hover:block" />
+                                      </Badge>
+                                    ))}
+                                    {currentAssignments.classes.length === 0 && (
+                                       <div className="py-4 text-center w-full italic text-muted-foreground opacity-40 text-xs md:text-base">Aucune classe pour {activeYear}</div>
+                                    )}
+                                 </div>
+                              </div>
+
+                              <Button 
+                                onClick={handleSaveAssignments} 
+                                disabled={savingAssignments}
+                                className="w-full h-12 md:h-18 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black text-xs md:text-xl shadow-xl shadow-primary/20 transition-all active:scale-95 uppercase"
+                              >
+                                {savingAssignments ? <Loader2 className="animate-spin mr-2 size-4 md:size-6" /> : <ShieldCheck className="mr-2 size-4 md:size-6" />}
+                                Sceller Affectations
+                              </Button>
+                           </div>
+                        </div>
+
+                        <div className="lg:col-span-7 space-y-6">
+                           <div className="flex items-center justify-between px-2">
+                              <h4 className="font-black text-sm md:text-xl uppercase tracking-widest text-muted-foreground">Registre des Classes</h4>
+                              <div className="flex items-center gap-2 text-[9px] md:text-xs font-bold text-primary italic">
+                                 <Info className="size-3" /> Cliquer pour affecter/retirer
+                              </div>
+                           </div>
+                           <ScrollArea className="h-[400px] md:h-[600px] rounded-[2.5rem] border-2 bg-muted/5 p-4 md:p-8">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                                 {OFFICIAL_CLASSES.map(cls => (
+                                   <button 
+                                     key={cls}
+                                     onClick={() => toggleClass(cls)}
+                                     className={cn(
+                                       "p-4 md:p-8 rounded-2xl md:rounded-[2rem] border-2 font-black text-[10px] md:text-xl transition-all shadow-sm active:scale-90",
+                                       currentAssignments.classes.includes(cls) 
+                                         ? "bg-primary text-white border-primary shadow-xl scale-[1.02]" 
+                                         : "bg-white text-muted-foreground border-transparent hover:border-primary/20 hover:bg-primary/5"
+                                     )}
+                                   >
+                                      {cls}
+                                   </button>
+                                 ))}
+                              </div>
+                           </ScrollArea>
+                        </div>
+                     </div>
+                  </TabsContent>
+
+                  <TabsContent value="informations" className="space-y-8 md:space-y-12 animate-in slide-in-from-left-4">
+                     <div className="grid md:grid-cols-2 gap-8 md:gap-14">
+                        <div className="space-y-6 md:space-y-10">
+                           <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 tracking-tight uppercase border-l-4 border-primary pl-4">Détails Personnels</h3>
+                           <div className="space-y-4 md:space-y-6">
+                              <div className="grid gap-1.5 md:gap-2">
+                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Nom Complet</Label>
+                                 <Input disabled={!isEditing} value={editForm.fullName} onChange={e => setEditForm({...editForm, fullName: e.target.value})} className="h-11 md:h-14 rounded-xl font-bold text-sm md:text-lg border-2" />
+                              </div>
+                              <div className="grid gap-1.5 md:gap-2">
+                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Téléphone</Label>
+                                 <Input disabled={!isEditing} value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} className="h-11 md:h-14 rounded-xl font-bold text-sm md:text-lg border-2" />
+                              </div>
+                              <div className="grid gap-1.5 md:gap-2">
+                                 <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Identifiant Système</Label>
+                                 <div className="h-11 md:h-14 rounded-xl bg-muted/30 flex items-center px-4 font-mono text-xs md:text-lg font-black border-2 border-transparent">{teacher.officialId}</div>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="space-y-6 md:space-y-10">
+                           <h3 className="font-black text-lg md:text-2xl flex items-center gap-3 tracking-tight uppercase border-l-4 border-primary pl-4">Statut & Sécurité</h3>
+                           <div className="space-y-4 md:space-y-8">
+                              <Card className="p-6 md:p-10 bg-foreground text-white rounded-[2rem] md:rounded-[3rem] shadow-xl relative overflow-hidden group border-none">
+                                 <div className="relative z-10 space-y-4 md:space-y-6">
+                                    <div className="flex items-center justify-between">
+                                       <span className="text-[9px] md:text-sm font-black uppercase text-white/40 tracking-widest">État du compte</span>
+                                       <Badge className={cn("font-black px-4 py-1.5 rounded-full uppercase text-[8px] md:text-xs", teacher.status === 'Actif' ? 'bg-emerald-500' : 'bg-amber-500')}>{teacher.status}</Badge>
+                                    </div>
+                                    <p className="text-xs md:text-lg font-medium leading-relaxed italic border-l-2 border-primary pl-4 opacity-80">
+                                       "L'accès de cet enseignant est scellé. Toute connexion est journalisée."
+                                    </p>
+                                    <div className="pt-4 md:pt-6 border-t border-white/10 flex items-center gap-4">
+                                       <Calendar className="size-4 md:size-6 text-primary" />
+                                       <span className="text-[9px] md:text-sm font-bold uppercase tracking-widest text-white/60">Inscrit le {new Date(teacher.registeredAt).toLocaleDateString('fr-FR')}</span>
+                                    </div>
+                                 </div>
+                                 <ShieldCheck className="absolute -bottom-10 -right-10 size-40 md:size-64 text-white/[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
+                              </Card>
+                           </div>
+                        </div>
+                     </div>
+                  </TabsContent>
+               </Tabs>
              </div>
           </Card>
-
-          <div className="lg:col-span-4 space-y-6 md:space-y-10">
-             <Card className="p-8 md:p-14 bg-foreground text-white rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl relative overflow-hidden group border-none">
-                <div className="relative z-10 space-y-8 md:space-y-12">
-                   <h3 className="text-xl md:text-3xl font-black flex items-center gap-3 md:gap-5 tracking-tight uppercase">
-                    <Zap className="text-primary size-5 md:size-8 fill-primary" /> Activité Live
-                   </h3>
-                   <div className="space-y-6 md:space-y-8 text-xs md:text-lg font-medium">
-                      <div className="p-5 md:p-8 bg-white/5 rounded-2xl md:rounded-[2rem] border border-white/10 italic text-white/80 leading-relaxed shadow-inner">
-                        "Cet enseignant a scellé 142 notes lors de l'année scolaire 2024-2025."
-                      </div>
-                      <div className="pt-6 md:pt-10 border-t border-white/10 flex justify-between items-center">
-                         <span className="text-white/40 uppercase font-black text-[9px] md:text-sm tracking-widest">Dernière session</span>
-                         <span className="font-black text-[10px] md:text-lg text-primary">02/05/2025</span>
-                      </div>
-                   </div>
-                </div>
-                <UserSquare2 className="absolute -bottom-10 -right-10 size-48 md:size-80 text-white/[0.02] pointer-events-none group-hover:scale-110 transition-transform duration-1000" />
-             </Card>
-
-             <Card className="p-8 md:p-14 rounded-[2.5rem] md:rounded-[3.5rem] bg-white border-none shadow-sm flex flex-col items-center justify-center text-center space-y-6 md:space-y-10 border-2 border-primary/5">
-                <div className="size-16 md:size-24 bg-muted rounded-2xl md:rounded-[2rem] flex items-center justify-center opacity-30 shadow-inner">
-                   <ShieldCheck className="size-8 md:size-12 text-primary" />
-                </div>
-                <div className="space-y-2 md:space-y-4">
-                  <h4 className="text-lg md:text-2xl font-black uppercase tracking-tight">Audit d'Intégrité</h4>
-                  <p className="text-[10px] md:text-sm font-bold text-muted-foreground uppercase leading-relaxed tracking-widest px-4">
-                    Toute modification du dossier est journalisée dans le registre de sécurité d'Acadex.
-                  </p>
-                </div>
-             </Card>
-          </div>
         </div>
       </div>
     </DashboardLayout>
+  )
+}
+
+function X({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M18 6 6 18" />
+      <path d="m6 6 12 12" />
+    </svg>
   )
 }

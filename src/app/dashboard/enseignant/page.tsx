@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
 import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { collection, query, where, doc, onSnapshot } from "firebase/firestore"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import placeholderData from "@/app/lib/placeholder-images.json"
@@ -34,20 +34,58 @@ export default function TeacherDashboard() {
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
 
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
-
   useEffect(() => {
-    const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
-    const subject = localStorage.getItem('acadex_user_subject') || ""
-    const name = localStorage.getItem('acadex_user_name') || "Monsieur"
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
-    
-    setTeacherClasses(classes)
-    setTeacherSubject(subject)
-    setTeacherName(name)
+    const userId = localStorage.getItem('acadex_user_id')
     setActiveYear(year)
     setMounted(true)
-  }, [])
+
+    if (userId && db) {
+      // Écoute en temps réel du document enseignant pour réagir aux affectations du directeur
+      const unsub = onSnapshot(doc(db, "teachers", userId), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data()
+          const yearData = data.assignments?.[year] || {
+            classes: data.classes || [],
+            subject: data.subject || ""
+          }
+          setTeacherClasses(yearData.classes)
+          setTeacherSubject(yearData.subject)
+          setTeacherName(data.fullName || "Monsieur")
+          
+          // Mise à jour du cache local pour les autres composants
+          localStorage.setItem('acadex_user_name', data.fullName || "Monsieur")
+          localStorage.setItem('acadex_user_classes', JSON.stringify(yearData.classes))
+          localStorage.setItem('acadex_user_subject', yearData.subject)
+        }
+      })
+      return () => unsub()
+    }
+  }, [db])
+
+  // On écoute aussi les changements d'année globale
+  useEffect(() => {
+    const handleYearChange = (e: any) => {
+      const newYear = e.detail
+      setActiveYear(newYear)
+      // On force le rafraîchissement des affectations
+      const userId = localStorage.getItem('acadex_user_id')
+      if (userId && db) {
+         onSnapshot(doc(db, "teachers", userId), (snap) => {
+           if (snap.exists()) {
+             const data = snap.data()
+             const yearData = data.assignments?.[newYear] || { classes: [], subject: "" }
+             setTeacherClasses(yearData.classes)
+             setTeacherSubject(yearData.subject)
+             localStorage.setItem('acadex_user_classes', JSON.stringify(yearData.classes))
+             localStorage.setItem('acadex_user_subject', yearData.subject)
+           }
+         })
+      }
+    }
+    window.addEventListener('acadex_year_changed', handleYearChange)
+    return () => window.removeEventListener('acadex_year_changed', handleYearChange)
+  }, [db])
 
   const studentsQuery = useMemo(() => {
     if (!db || teacherClasses.length === 0) return null
@@ -72,7 +110,6 @@ export default function TeacherDashboard() {
 
   return (
     <DashboardLayout>
-      {/* Immersive Background Image */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Image 
           src="/images/bg-dashboard-enseignant.jpg"
@@ -87,7 +124,6 @@ export default function TeacherDashboard() {
 
       <div className="relative z-10 space-y-6 md:space-y-10 animate-in fade-in duration-500">
         
-        {/* Hero Banner */}
         <div className="relative min-h-[250px] md:min-h-[350px] rounded-[2.5rem] md:rounded-[3.5rem] overflow-hidden shadow-2xl group">
           <Image 
             src="/images/bg-dashboard-enseignant.jpg"
@@ -109,7 +145,7 @@ export default function TeacherDashboard() {
               </h1>
               <div className="flex flex-wrap items-center gap-3">
                 <Badge className="bg-primary text-white border-none font-black px-4 md:px-6 py-2 rounded-full shadow-lg shadow-primary/30 uppercase tracking-widest text-[8px] md:text-xs">
-                  {teacherSubject}
+                  {teacherSubject || "En attente d'affectation"}
                 </Badge>
                 <div className="flex items-center gap-2 font-bold text-[9px] md:text-sm bg-white/10 backdrop-blur-md text-white/90 px-4 md:px-6 py-2 rounded-full border border-white/10">
                   <ShieldCheck className="size-3 md:size-4 text-emerald-400" /> Année {activeYear}
@@ -126,7 +162,6 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
           {stats.map((stat, i) => (
             <Card key={stat.title} className="p-5 md:p-9 rounded-[2rem] md:rounded-[2.5rem] border-none shadow-sm flex flex-col justify-between bg-white/90 backdrop-blur-sm hover:shadow-xl transition-all group relative overflow-hidden h-full">
@@ -148,7 +183,6 @@ export default function TeacherDashboard() {
           ))}
         </div>
 
-        {/* Action Blocks */}
         <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
            <div className="lg:col-span-8 space-y-6 md:space-y-10">
               <Card className="border-none shadow-sm bg-white/95 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden p-8 md:p-20 flex flex-col items-center justify-center text-center space-y-6 md:space-y-10">
