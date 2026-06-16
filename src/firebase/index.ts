@@ -14,7 +14,6 @@ import { firebaseConfig } from './config';
 let firebaseAppInstance: FirebaseApp | null = null;
 let firestoreInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
-let persistenceStarted = false;
 
 export function initializeFirebase(): {
   firebaseApp: FirebaseApp;
@@ -34,7 +33,12 @@ export function initializeFirebase(): {
 
   authInstance = getAuth(firebaseAppInstance);
 
-else if (err.code === 'unimplemented') {
+  // Activation de la persistance hors-ligne en mode multi-onglets
+  if (typeof window !== 'undefined') {
+    enableMultiTabIndexedDbPersistence(firestoreInstance).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('Firestore persistence: Plusieurs onglets ouverts, persistance active dans un seul.');
+      } else if (err.code === 'unimplemented') {
         console.warn('Firestore persistence: Ce navigateur ne supporte pas la persistance des données.');
       }
     });
