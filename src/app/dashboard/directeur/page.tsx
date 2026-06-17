@@ -24,8 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link"
 import Image from "next/image"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, doc, onSnapshot, query, where, orderBy, limit } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { useMemo, useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -37,11 +36,20 @@ const sparkData = [
 ];
 
 export default function DirectorDashboard() {
-  const db = useFirestore()
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [directorName, setDirectorName] = useState("Directeur")
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
+
+  const [students, setStudents] = useState<any[]>([])
+  const [teachers, setTeachers] = useState<any[]>([])
+  const [unusedIds, setUnusedIds] = useState<any[]>([])
+  const [payments, setPayments] = useState<any[]>([])
+  const [grades, setGrades] = useState<any[]>([])
+  const [recentAudit, setRecentAudit] = useState<any[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
+  const [loadingTeachers, setLoadingTeachers] = useState(true)
+  const [loadingGrades, setLoadingGrades] = useState(true)
 
   useEffect(() => {
     setMounted(true)
@@ -50,40 +58,52 @@ export default function DirectorDashboard() {
     setActiveYear(year)
     setDirectorName(name)
 
-    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data()
-        setSchoolInfo({ name: d.schoolName || "ACADEX", logo: d.logoUrl || "" })
-      }
-    })
-    return () => unsub()
-  }, [db])
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+      if (data) setSchoolInfo({ name: data.school_name || "ACADEX", logo: data.logo_url || "" })
+    }
+    fetchSettings()
+  }, [])
 
-  const studentsQuery = useMemo(() => query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif")), [db, activeYear])
-  const teachersQuery = useMemo(() => query(collection(db, "teachers")), [db])
-  const regIdsQuery = useMemo(() => query(collection(db, "registration_ids"), where("status", "==", "non utilisé")), [db])
-  const paymentsQuery = useMemo(() => query(collection(db, "payments"), where("academicYear", "==", activeYear)), [db, activeYear])
-  const gradesQuery = useMemo(() => query(collection(db, "grades"), where("academicYear", "==", activeYear)), [db, activeYear])
-  const auditQuery = useMemo(() => query(collection(db, "student_life"), orderBy("createdAt", "desc"), limit(5)), [db])
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoadingStudents(true)
+      setLoadingTeachers(true)
+      setLoadingGrades(true)
 
-  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
-  const { data: teachers, loading: loadingTeachers } = useCollection(teachersQuery)
-  const { data: unusedIds } = useCollection(regIdsQuery)
-  const { data: payments } = useCollection(paymentsQuery)
-  const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
-  const { data: recentAudit } = useCollection(auditQuery)
+      const [studentsRes, teachersRes, idsRes, paymentsRes, gradesRes, auditRes] = await Promise.all([
+        supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
+        supabase.from('teachers').select('*'),
+        supabase.from('registration_ids').select('*').eq('status', 'non utilisé'),
+        supabase.from('payments').select('*').eq('academic_year', activeYear),
+        supabase.from('grades').select('*').eq('academic_year', activeYear),
+        supabase.from('student_life').select('*').order('created_at', { ascending: false }).limit(5)
+      ])
+
+      setStudents(studentsRes.data || [])
+      setTeachers(teachersRes.data || [])
+      setUnusedIds(idsRes.data || [])
+      setPayments(paymentsRes.data || [])
+      setGrades(gradesRes.data || [])
+      setRecentAudit(auditRes.data || [])
+      setLoadingStudents(false)
+      setLoadingTeachers(false)
+      setLoadingGrades(false)
+    }
+    fetchData()
+  }, [activeYear])
 
   const stats = useMemo(() => {
     const totalStudents = students?.length || 0
     const totalTeachers = teachers?.length || 0
     const idsCount = unusedIds?.length || 0
-    const revenue = (payments || []).reduce((acc, p: any) => acc + (parseFloat(p.amountPaid) || 0), 0)
+    const revenue = (payments || []).reduce((acc, p: any) => acc + (parseFloat(p.amount_paid) || 0), 0)
     
     let globalSum = 0, gpaCount = 0, totalGradesEntered = grades?.length || 0
     
     if (students && grades) {
       students.forEach((s: any) => {
-        const sGrades = grades.filter(g => g.studentId === s.matricule)
+        const sGrades = grades.filter(g => g.student_matricule === s.matricule)
         const subjects: Record<string, any> = {}
         sGrades.forEach(g => {
           if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
@@ -234,11 +254,11 @@ export default function DirectorDashboard() {
                           </div>
                           <div className="min-w-0">
                              <h4 className="font-black text-[10px] md:text-sm truncate uppercase">{log.motif}</h4>
-                             <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground truncate">Par {log.authorName || "Système"}</p>
+                             <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground truncate">Par {log.author_name || "Système"}</p>
                           </div>
                        </div>
                        <Badge className="bg-white border-2 border-muted text-[7px] md:text-[9px] font-black h-5 md:h-6 px-2 rounded-full shrink-0">
-                          {log.createdAt ? new Date(log.createdAt?.seconds * 1000).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : "--:--"}
+                          {log.created_at ? new Date(log.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : "--:--"}
                        </Badge>
                     </div>
                  ))}
