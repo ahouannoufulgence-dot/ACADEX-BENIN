@@ -12,15 +12,11 @@ import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFirestore } from "@/firebase";
-import { collection, query, where, getDocs, doc, getDoc, writeBatch, serverTimestamp } from "firebase/firestore";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { supabase } from "@/lib/supabase";
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function RegisterStudentPage() {
   const router = useRouter();
-  const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,17 +41,13 @@ export default function RegisterStudentPage() {
 
   useEffect(() => {
     const fetchConfig = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, "school_settings", "main_config"));
-        if (docSnap.exists()) {
-          setActiveYear(docSnap.data().academicYear || "2026-2027");
-        }
-      } catch (e) {
-        console.warn("Config non trouvée");
+      const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single();
+      if (data) {
+        setActiveYear(data.academic_year || "2026-2027");
       }
     };
     fetchConfig();
-  }, [db]);
+  }, []);
 
   const verifyIdentifier = async () => {
     const formatted = matricule.trim().toUpperCase();
@@ -66,23 +58,25 @@ export default function RegisterStudentPage() {
 
     setLoading(true);
     try {
-      const q = query(collection(db, "registration_ids"), where("matricule", "==", formatted));
-      const snap = await getDocs(q);
+      const { data, error } = await supabase
+        .from('registration_ids')
+        .select('*')
+        .eq('matricule', formatted)
+        .single();
 
-      if (snap.empty) {
+      if (error || !data) {
         toast({ title: "Identifiant invalide", description: "Ce matricule n'a pas été généré par l'établissement.", variant: "destructive" });
         return;
       }
 
-      const data = snap.docs[0].data();
       if (data.status === "utilisé") {
         toast({ title: "Identifiant déjà utilisé", description: "Ce compte a déjà été activé.", variant: "destructive" });
         return;
       }
 
-      setRegDoc({ ...data, id: snap.docs[0].id });
+      setRegDoc(data);
       setStep(2);
-      toast({ title: "Identifiant validé", description: `Bienvenue en ${data.classId} !` });
+      toast({ title: "Identifiant validé", description: `Bienvenue en ${data.class_id} !` });
     } catch (e) {
       toast({ title: "Erreur de connexion", description: "Impossible de vérifier l'identifiant.", variant: "destructive" });
     } finally {
@@ -97,25 +91,28 @@ export default function RegisterStudentPage() {
     }
 
     setLoading(true);
-    
+
     const studentData = {
-      ...form,
       matricule: regDoc.matricule,
-      classId: regDoc.classId,
+      first_name: form.firstName,
+      last_name: form.lastName,
+      gender: form.gender,
+      phone: form.phone,
+      city_of_birth: form.cityOfBirth,
+      dob: form.dob || null,
+      parent_name: form.parentName,
+      parent_first_name: form.parentFirstName,
+      password: form.password,
+      class_id: regDoc.class_id,
       status: "Actif",
-      academicYear: activeYear,
-      registeredAt: new Date().toISOString()
+      academic_year: activeYear,
     };
 
     try {
-      const batch = writeBatch(db);
-      const studentRef = doc(collection(db, "students"));
-      const regIdRef = doc(db, "registration_ids", regDoc.id);
+      const { error: insertError } = await supabase.from('students').insert(studentData);
+      if (insertError) throw insertError;
 
-      batch.set(studentRef, studentData);
-      batch.update(regIdRef, { status: "utilisé", activatedAt: serverTimestamp() });
-
-      await batch.commit();
+      await supabase.from('registration_ids').update({ status: 'utilisé', activated_at: new Date().toISOString() }).eq('id', regDoc.id);
 
       localStorage.setItem('acadex_user_id', regDoc.matricule);
       localStorage.setItem('acadex_user_role', 'Élève');
@@ -124,12 +121,6 @@ export default function RegisterStudentPage() {
       
       setStep(3);
     } catch (err) {
-      const error = new FirestorePermissionError({
-        path: 'students',
-        operation: 'create',
-        requestResourceData: studentData,
-      });
-      errorEmitter.emit('permission-error', error);
       toast({ title: "Échec de l'inscription", variant: "destructive" });
     } finally {
       setLoading(false);

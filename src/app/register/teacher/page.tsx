@@ -11,15 +11,11 @@ import { ShieldCheck, UserCircle2, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRig
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { useFirestore } from "@/firebase";
-import { collection, addDoc } from "firebase/firestore";
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { supabase } from "@/lib/supabase";
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function RegisterTeacherPage() {
   const router = useRouter();
-  const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -70,24 +66,20 @@ export default function RegisterTeacherPage() {
     setGeneratedId(newId);
 
     const teacherData = {
-      officialId: newId,
-      fullName: `${form.firstName} ${form.lastName}`,
+      official_id: newId,
+      full_name: `${form.firstName} ${form.lastName}`,
       phone: form.phone,
       subject: form.subject,
       classes: form.classes,
-      status: "En attente",
-      registeredAt: new Date().toISOString()
+      password: form.password,
     };
 
-    addDoc(collection(db, "teachers"), teacherData)
-      .catch(async () => {
-        const error = new FirestorePermissionError({
-          path: 'teachers',
-          operation: 'create',
-          requestResourceData: teacherData,
-        });
-        errorEmitter.emit('permission-error', error);
-      });
+    const { error } = await supabase.from('teachers').insert(teacherData);
+    if (error) {
+      toast({ title: "Erreur d'inscription", description: error.message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
     localStorage.setItem('acadex_user_role', `Enseignant`);
