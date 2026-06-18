@@ -21,20 +21,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import Image from "next/image"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { useMemo, useEffect, useState } from "react"
 import placeholderData from "@/app/lib/placeholder-images.json"
 import { cn } from "@/lib/utils"
 
 export default function StudentDashboard() {
-  const db = useFirestore()
   const [studentId, setStudentId] = useState("")
   const [studentName, setStudentName] = useState("Élève")
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
-
-  const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
 
   useEffect(() => {
     setStudentId(localStorage.getItem('acadex_user_id') || "")
@@ -43,12 +39,18 @@ export default function StudentDashboard() {
     setMounted(true)
   }, [])
 
-  const gradesQuery = useMemo(() => {
-    if (!db || !studentId) return null
-    return query(collection(db, "grades"), where("studentId", "==", studentId), where("academicYear", "==", activeYear))
-  }, [db, studentId, activeYear])
+  const [grades, setGrades] = useState<any[]>([])
+  const [loadingGrades, setLoadingGrades] = useState(true)
 
-  const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
+  useEffect(() => {
+    const fetchGrades = async () => {
+      if (!studentId) { setLoadingGrades(false); return }
+      const { data } = await supabase.from("grades").select("*").eq("student_matricule", studentId).eq("academic_year", activeYear)
+      setGrades(data || [])
+      setLoadingGrades(false)
+    }
+    fetchGrades()
+  }, [studentId, activeYear])
 
   const stats = useMemo(() => {
     if (!mounted || !grades) return [

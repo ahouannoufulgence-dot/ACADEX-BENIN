@@ -19,50 +19,47 @@ import {
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import Image from "next/image"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, onSnapshot } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export default function TeacherDashboard() {
-  const db = useFirestore()
   const [teacherName, setTeacherName] = useState("Monsieur")
   const [teacherClasses, setTeacherClasses] = useState<string[]>([])
   const [teacherSubject, setTeacherSubject] = useState("")
   const [mounted, setMounted] = useState(false)
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [students, setStudents] = useState<any[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
 
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     const userId = localStorage.getItem('acadex_user_id')
+    const name = localStorage.getItem('acadex_user_name') || "Monsieur"
+    const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || '[]')
+    const subject = localStorage.getItem('acadex_user_subject') || ""
     setActiveYear(year)
+    setTeacherName(name)
+    setTeacherClasses(classes)
+    setTeacherSubject(subject)
     setMounted(true)
 
-    if (userId && db) {
-      // ÉCOUTE TEMPS RÉEL DES AFFECTATIONS DU DIRECTEUR
-      const unsub = onSnapshot(doc(db, "teachers", userId), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data()
-          const yearData = data.assignments?.[year] || {
-            classes: data.classes || [],
-            subject: data.subject || ""
-          }
-          setTeacherClasses(yearData.classes)
-          setTeacherSubject(yearData.subject)
-          setTeacherName(data.fullName || "Monsieur")
-          
-          // Mise à jour du cache local pour la navigation fluide
-          localStorage.setItem('acadex_user_name', data.fullName || "Monsieur")
-          localStorage.setItem('acadex_user_classes', JSON.stringify(yearData.classes))
-          localStorage.setItem('acadex_user_subject', yearData.subject)
-        }
-      })
-      return () => unsub()
+    const fetchTeacher = async () => {
+      if (!userId) return
+      const { data } = await supabase.from('teachers').select('*').eq('official_id', userId).single()
+      if (data) {
+        setTeacherName(data.full_name || "Monsieur")
+        setTeacherClasses(data.classes || [])
+        setTeacherSubject(data.subject || "")
+        localStorage.setItem('acadex_user_name', data.full_name || "Monsieur")
+        localStorage.setItem('acadex_user_classes', JSON.stringify(data.classes || []))
+        localStorage.setItem('acadex_user_subject', data.subject || "")
+      }
     }
-  }, [db])
+    fetchTeacher()
+  }, [])
 
-  // On écoute aussi les changements d'année globale via l'event custom
   useEffect(() => {
     const handleYearChange = (e: any) => {
       const newYear = e.detail
@@ -72,12 +69,16 @@ export default function TeacherDashboard() {
     return () => window.removeEventListener('acadex_year_changed', handleYearChange)
   }, [])
 
-  const studentsQuery = useMemo(() => {
-    if (!db || teacherClasses.length === 0) return null
-    return query(collection(db, "students"), where("classId", "in", teacherClasses), where("academicYear", "==", activeYear))
-  }, [db, teacherClasses, activeYear])
-
-  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (teacherClasses.length === 0) { setLoadingStudents(false); return }
+      setLoadingStudents(true)
+      const { data } = await supabase.from('students').select('*').in('class_id', teacherClasses).eq('academic_year', activeYear)
+      setStudents(data || [])
+      setLoadingStudents(false)
+    }
+    fetchStudents()
+  }, [teacherClasses, activeYear])
 
   const stats = useMemo(() => {
     if (!mounted) return []
