@@ -20,8 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase/index"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 export default function StudentsPage() {
@@ -31,7 +30,8 @@ export default function StudentsPage() {
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
   
-  const db = useFirestore()
+  const [students, setStudents] = useState<any[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
 
   useEffect(() => {
     setUserRole(localStorage.getItem('acadex_user_role'))
@@ -42,36 +42,36 @@ export default function StudentsPage() {
   const isTeacher = userRole === "Enseignant"
   const isDirector = userRole === "Directeur"
 
-  const studentsQuery = useMemo(() => {
-    if (!db || !userRole) return null
-    const baseCol = collection(db, "students")
-    
-    if (isTeacher) {
-      if (userClasses.length === 0) return null
-      return query(
-        baseCol, 
-        where("academicYear", "==", activeYear), 
-        where("classId", "in", userClasses),
-        orderBy("lastName", "asc")
-      )
+  useEffect(() => {
+    if (!userRole) return
+
+    const fetchStudents = async () => {
+      setLoadingStudents(true)
+      let queryBuilder = supabase.from('students').select('*').eq('academic_year', activeYear).order('last_name', { ascending: true })
+
+      if (isTeacher) {
+        if (userClasses.length === 0) { setStudents([]); setLoadingStudents(false); return }
+        queryBuilder = queryBuilder.in('class_id', userClasses)
+      } else if (!isDirector) {
+        setStudents([])
+        setLoadingStudents(false)
+        return
+      }
+
+      const { data } = await queryBuilder
+      setStudents(data || [])
+      setLoadingStudents(false)
     }
-
-    if (isDirector) {
-      return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
-    }
-
-    return null
-  }, [db, userRole, activeYear, isTeacher, isDirector, userClasses])
-
-  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
+    fetchStudents()
+  }, [userRole, activeYear, isTeacher, isDirector, userClasses])
 
   const filteredStudents = useMemo(() => {
     if (!students) return []
     let list = students
-    if (selectedClass) list = list.filter((s: any) => s.classId === selectedClass)
+    if (selectedClass) list = list.filter((s: any) => s.class_id === selectedClass)
     
     return list.filter((s: any) => 
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
       (s.matricule && s.matricule.toLowerCase().includes(searchTerm.toLowerCase()))
     )
   }, [students, searchTerm, selectedClass])
@@ -182,13 +182,13 @@ export default function StudentsPage() {
                       <Avatar className="size-12 md:size-24 border-4 border-muted group-hover:border-primary/20 transition-all shadow-sm">
                         <AvatarImage src={`https://picsum.photos/seed/${s.id}/400/400`} />
                         <AvatarFallback className="font-black text-sm md:text-3xl bg-primary/5 text-primary">
-                          {s.lastName[0]}{s.firstName[0]}
+                          {s.last_name[0]}{s.first_name[0]}
                         </AvatarFallback>
                       </Avatar>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 md:gap-4 flex-wrap">
-                           <h4 className="font-black text-sm md:text-3xl text-foreground group-hover:text-primary transition-colors uppercase tracking-tight truncate">{s.lastName} {s.firstName}</h4>
-                           <Badge className="bg-primary text-white font-black text-[7px] md:text-[10px] px-2 md:px-4 py-0.5 rounded-full shadow-sm">{s.classId}</Badge>
+                           <h4 className="font-black text-sm md:text-3xl text-foreground group-hover:text-primary transition-colors uppercase tracking-tight truncate">{s.last_name} {s.first_name}</h4>
+                           <Badge className="bg-primary text-white font-black text-[7px] md:text-[10px] px-2 md:px-4 py-0.5 rounded-full shadow-sm">{s.class_id}</Badge>
                         </div>
                         <div className="flex items-center gap-3 md:gap-6 mt-1.5 md:mt-3">
                            <div className="flex items-center gap-1.5 text-[8px] md:text-sm font-bold text-muted-foreground/60 uppercase">

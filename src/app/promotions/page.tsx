@@ -23,8 +23,7 @@ import {
   Star
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, onSnapshot, orderBy } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
@@ -41,28 +40,35 @@ const levels = [
 ]
 
 export default function PromotionsPage() {
-  const db = useFirestore()
   const [activeYear, setActiveYear] = useState("")
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
+  const [students, setStudents] = useState<any[]>([])
+  const [grades, setGrades] = useState<any[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
+  const [loadingGrades, setLoadingGrades] = useState(true)
 
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     setActiveYear(year)
   }, [])
 
-  const studentsQuery = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
-  }, [db, activeYear])
-
-  const gradesQuery = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
-  }, [db, activeYear])
-
-  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
-  const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
+  useEffect(() => {
+    if (!activeYear) return
+    const fetchData = async () => {
+      setLoadingStudents(true)
+      setLoadingGrades(true)
+      const [sRes, gRes] = await Promise.all([
+        supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
+        supabase.from('grades').select('*').eq('academic_year', activeYear)
+      ])
+      setStudents(sRes.data || [])
+      setGrades(gRes.data || [])
+      setLoadingStudents(false)
+      setLoadingGrades(false)
+    }
+    fetchData()
+  }, [activeYear])
 
   const academicData = useMemo(() => {
     const defaultData = { levelsMap: {}, classStats: {}, studentsProcessed: [] }
@@ -76,7 +82,7 @@ export default function PromotionsPage() {
     })
 
     const studentsProcessed = students.map((student: any) => {
-      const studentGrades = grades?.filter((g: any) => g.studentId === student.matricule) || []
+      const studentGrades = grades?.filter((g: any) => g.student_matricule === student.matricule) || []
       const subjects: Record<string, any> = {}
       
       studentGrades.forEach((g: any) => {
@@ -109,8 +115,8 @@ export default function PromotionsPage() {
 
     const classGroups: Record<string, any[]> = {}
     studentsProcessed.forEach(s => {
-      if (!classGroups[s.classId]) classGroups[s.classId] = []
-      classGroups[s.classId].push(s)
+      if (!classGroups[s.class_id]) classGroups[s.class_id] = []
+      classGroups[s.class_id].push(s)
     })
 
     Object.keys(classGroups).forEach(cid => {
@@ -132,10 +138,10 @@ export default function PromotionsPage() {
     })
 
     studentsProcessed.forEach(s => {
-      const levelId = levels.find(l => s.classId?.toUpperCase().includes(l.id))?.id
+      const levelId = levels.find(l => s.class_id?.toUpperCase().includes(l.id))?.id
       if (levelId && levelsMap[levelId]) {
         levelsMap[levelId].students.push(s)
-        levelsMap[levelId].classes.add(s.classId)
+        levelsMap[levelId].classes.add(s.class_id)
         levelsMap[levelId].totalAvg += s.generalAvg
         levelsMap[levelId].count += 1
       }
@@ -147,7 +153,7 @@ export default function PromotionsPage() {
   const currentClassStudents = useMemo(() => {
     if (!academicData.studentsProcessed || !selectedClass) return []
     return academicData.studentsProcessed
-      .filter((s: any) => s.classId === selectedClass)
+      .filter((s: any) => s.class_id === selectedClass)
       .sort((a: any, b: any) => (a.lastName || "").localeCompare(b.lastName || ""))
   }, [academicData, selectedClass])
 
