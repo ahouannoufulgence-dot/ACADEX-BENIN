@@ -21,8 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, orderBy } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
@@ -40,7 +39,6 @@ const OFFICIAL_CLASSES = [
 ]
 
 export default function GlobalSchedulePage() {
-  const db = useFirestore()
   const [activeYear, setActiveYear] = useState("")
   const [selectedDay, setSelectedDay] = useState("Lundi")
   const [activeTab, setActiveTab] = useState("global")
@@ -48,28 +46,36 @@ export default function GlobalSchedulePage() {
   const [selectedTeacher, setSelectedTeacher] = useState("")
   const [analyzing, setAnalyzing] = useState(false)
   const [aiReport, setAiReport] = useState<string | null>(null)
+  const [allSchedules, setAllSchedules] = useState<any[]>([])
+  const [teachers, setTeachers] = useState<any[]>([])
+  const [loadingSchedules, setLoadingSchedules] = useState(true)
 
   useEffect(() => {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
-  const schedulesQuery = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "schedules"), where("academicYear", "==", activeYear))
-  }, [db, activeYear])
-
-  const teachersQuery = useMemo(() => query(collection(db, "teachers"), orderBy("fullName", "asc")), [db])
-
-  const { data: allSchedules, loading: loadingSchedules } = useCollection(schedulesQuery)
-  const { data: teachers } = useCollection(teachersQuery)
+  useEffect(() => {
+    if (!activeYear) return
+    const fetchData = async () => {
+      setLoadingSchedules(true)
+      const [sRes, tRes] = await Promise.all([
+        supabase.from('schedules').select('*').eq('academic_year', activeYear),
+        supabase.from('teachers').select('*').order('full_name', { ascending: true })
+      ])
+      setAllSchedules(sRes.data || [])
+      setTeachers(tRes.data || [])
+      setLoadingSchedules(false)
+    }
+    fetchData()
+  }, [activeYear])
 
   const filteredSchedules = useMemo(() => {
     if (!allSchedules) return []
     if (activeTab === "classe") {
-      return allSchedules.filter((s: any) => s.classId === selectedClass).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime))
+      return allSchedules.filter((s: any) => s.class_id === selectedClass).sort((a: any, b: any) => a.start_time.localeCompare(b.start_time))
     }
     if (activeTab === "professeur") {
-      return allSchedules.filter((s: any) => s.teacherId === selectedTeacher).sort((a: any, b: any) => a.startTime.localeCompare(b.startTime))
+      return allSchedules.filter((s: any) => s.teacher_id === selectedTeacher).sort((a: any, b: any) => a.start_time.localeCompare(b.start_time))
     }
     return allSchedules
   }, [allSchedules, activeTab, selectedClass, selectedTeacher])
@@ -171,7 +177,7 @@ export default function GlobalSchedulePage() {
                     <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
                         <SelectTrigger className="h-10 md:h-14 rounded-xl md:rounded-2xl border-2 font-black text-xs md:text-sm"><SelectValue placeholder="Choisir un prof" /></SelectTrigger>
                         <SelectContent className="rounded-xl border-2 p-1.5 max-h-[300px]">
-                          {teachers?.map((t:any) => <SelectItem key={t.id} value={t.officialId || t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.fullName}</SelectItem>)}
+                          {teachers?.map((t:any) => <SelectItem key={t.id} value={t.official_id || t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.full_name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                   </div>
@@ -204,7 +210,7 @@ export default function GlobalSchedulePage() {
                            <tr key={time}>
                               <td className="p-2 md:px-6 md:py-6 bg-muted/20 rounded-lg md:rounded-2xl text-center font-black text-[8px] md:text-2xl tabular-nums text-foreground/40 sticky left-0 z-20 backdrop-blur-md">{time}</td>
                               {OFFICIAL_CLASSES.map(cls => {
-                                const course = allSchedules?.find((s:any) => s.day === selectedDay && s.classId === cls && s.startTime <= time && s.endTime > time)
+                                const course = allSchedules?.find((s:any) => s.day === selectedDay && s.class_id === cls && s.start_time <= time && s.end_time > time)
                                 return (
                                   <td key={`${cls}-${time}`} className={cn(
                                     "p-1 md:p-4 rounded-lg md:rounded-2xl transition-all border-2 h-10 md:h-28 text-center",
@@ -213,7 +219,7 @@ export default function GlobalSchedulePage() {
                                      {course ? (
                                        <div className="space-y-0.5 md:space-y-2 group cursor-help">
                                           <p className="text-[6px] md:text-base font-black text-foreground uppercase tracking-tight truncate group-hover:text-primary transition-colors">{course.subject}</p>
-                                          <p className="text-[5px] md:text-[10px] font-bold text-muted-foreground uppercase truncate opacity-70 hidden md:block">{course.teacherName?.split(' ')[0]}</p>
+                                          <p className="text-[5px] md:text-[10px] font-bold text-muted-foreground uppercase truncate opacity-70 hidden md:block">{course.teacher_name?.split(' ')[0]}</p>
                                           <Badge className="bg-primary/5 text-primary text-[5px] md:text-[8px] h-3 md:h-5 rounded-md border-none uppercase px-1 shadow-none hidden md:inline-flex">{course.room || '---'}</Badge>
                                        </div>
                                      ) : (
@@ -252,12 +258,12 @@ export default function GlobalSchedulePage() {
                              <div className="flex items-center gap-3 md:gap-10 min-w-0">
                                 <div className="size-10 md:size-24 bg-muted rounded-lg md:rounded-[2.5rem] flex flex-col items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0 shadow-inner">
                                    <Clock className="size-3.5 md:size-7" />
-                                   <span className="text-[6px] md:text-sm font-black uppercase tracking-tighter">{course.startTime?.split(':')[0]}H</span>
+                                   <span className="text-[6px] md:text-sm font-black uppercase tracking-tighter">{course.start_time?.split(':')[0]}H</span>
                                 </div>
                                 <div className="space-y-0.5 md:space-y-1.5 truncate">
                                    <h4 className="text-xs md:text-3xl font-black text-foreground uppercase tracking-tight truncate group-hover:text-primary transition-colors">{course.subject}</h4>
                                    <div className="flex flex-wrap items-center gap-2 md:gap-6 text-[6px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                                      <span className="flex items-center gap-1"><User className="size-2 md:size-4 text-primary" /> {course.teacherName}</span>
+                                      <span className="flex items-center gap-1"><User className="size-2 md:size-4 text-primary" /> {course.teacher_name}</span>
                                       <span className="flex items-center gap-1"><MapPin className="size-2 md:size-4 text-primary" /> {course.room || '---'}</span>
                                    </div>
                                 </div>
