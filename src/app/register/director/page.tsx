@@ -11,13 +11,11 @@ import { ShieldCheck, UserCog, Lock, CheckCircle2, Copy, ArrowLeft, ArrowRight, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
+import { supabase } from "@/lib/supabase";
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function RegisterDirectorPage() {
   const router = useRouter();
-  const db = useFirestore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -47,18 +45,13 @@ export default function RegisterDirectorPage() {
     }
     setLoading(true);
     try {
-      const configRef = doc(db, "school_settings", "main_config");
-      await setDoc(configRef, {
-        schoolName: form.schoolName,
-        motto: "Discipline - Travail - Excellence",
-        address: `${form.address}, ${form.city}`,
-        phone: form.phone,
-        academicYear: "2026-2027",
-        availableYears: ["2026-2027"],
-        levels: ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TERMINALE"],
-        createdAt: serverTimestamp(),
-        setupCompleted: true
+      const { error } = await supabase.from('school_settings').upsert({
+        id: 'main_config',
+        school_name: form.schoolName,
+        academic_year: "2026-2027",
       });
+
+      if (error) throw error;
 
       localStorage.setItem('acadex_user_name', `${form.firstName} ${form.lastName}`);
       localStorage.setItem('acadex_user_role', 'Directeur');
