@@ -31,8 +31,7 @@ import {
   Area
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { useMemo, useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -49,34 +48,38 @@ const LEVELS = [
 ]
 
 export default function StatisticsModule() {
-  const db = useFirestore()
   const [activeTab, setActiveTab] = useState("synthèse")
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [mounted, setMounted] = useState(false)
+  const [students, setStudents] = useState<any[]>([])
+  const [grades, setGrades] = useState<any[]>([])
+  const [payments, setPayments] = useState<any[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
+  const [loadingGrades, setLoadingGrades] = useState(true)
 
   useEffect(() => {
     setMounted(true)
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
-  const studentsCol = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "students"), where("academicYear", "==", activeYear), where("status", "==", "Actif"))
-  }, [db, activeYear])
-
-  const gradesCol = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
-  }, [db, activeYear])
-
-  const paymentsCol = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "payments"), where("academicYear", "==", activeYear))
-  }, [db, activeYear])
-
-  const { data: students, loading: loadingStudents } = useCollection(studentsCol)
-  const { data: grades, loading: loadingGrades } = useCollection(gradesCol)
-  const { data: payments } = useCollection(paymentsCol)
+  useEffect(() => {
+    if (!activeYear) return
+    const fetchData = async () => {
+      setLoadingStudents(true)
+      setLoadingGrades(true)
+      const [sRes, gRes, pRes] = await Promise.all([
+        supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
+        supabase.from('grades').select('*').eq('academic_year', activeYear),
+        supabase.from('payments').select('*').eq('academic_year', activeYear)
+      ])
+      setStudents(sRes.data || [])
+      setGrades(gRes.data || [])
+      setPayments(pRes.data || [])
+      setLoadingStudents(false)
+      setLoadingGrades(false)
+    }
+    fetchData()
+  }, [activeYear])
 
   const analysis = useMemo(() => {
     if (!students || !grades) return { 
@@ -87,7 +90,7 @@ export default function StatisticsModule() {
     const classStats: Record<string, { totalGrades: number, expectedGrades: number, sumGPA: number, count: number }> = {}
     
     const studentAverages = students.map((s: any) => {
-      const sGrades = grades.filter(g => g.studentId === s.matricule)
+      const sGrades = grades.filter(g => g.student_matricule === s.matricule)
       const subjects: Record<string, any> = {}
       
       sGrades.forEach(g => {
@@ -120,13 +123,13 @@ export default function StatisticsModule() {
 
       const gpa = totalCoef > 0 ? totalWeighted / totalCoef : 0
       
-      if (!classStats[s.classId]) {
-        classStats[s.classId] = { totalGrades: 0, expectedGrades: 0, sumGPA: 0, count: 0 }
+      if (!classStats[s.class_id]) {
+        classStats[s.class_id] = { totalGrades: 0, expectedGrades: 0, sumGPA: 0, count: 0 }
       }
-      classStats[s.classId].sumGPA += gpa
-      classStats[s.classId].count++
-      classStats[s.classId].totalGrades += sGrades.length
-      classStats[s.classId].expectedGrades += 5 * 10 
+      classStats[s.class_id].sumGPA += gpa
+      classStats[s.class_id].count++
+      classStats[s.class_id].totalGrades += sGrades.length
+      classStats[s.class_id].expectedGrades += 5 * 10 
 
       return gpa
     })
@@ -137,7 +140,7 @@ export default function StatisticsModule() {
 
     const promoMap: Record<string, { total: number, count: number }> = {}
     students.forEach((s, i) => {
-      const level = LEVELS.find(l => s.classId?.toUpperCase().includes(l.id))?.id || "AUTRE"
+      const level = LEVELS.find(l => s.class_id?.toUpperCase().includes(l.id))?.id || "AUTRE"
       if (!promoMap[level]) promoMap[level] = { total: 0, count: 0 }
       promoMap[level].total += studentAverages[i]
       promoMap[level].count += 1
@@ -161,8 +164,8 @@ export default function StatisticsModule() {
     return { 
       totalStudents: students.length, 
       globalGPA, 
-      revenue: payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0,
-      payRate: (students.length > 0 ? (payments?.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0) || 0) / (students.length * 150000) * 100 : 0),
+      revenue: payments?.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0) || 0,
+      payRate: (students.length > 0 ? (payments?.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0) || 0) / (students.length * 150000) * 100 : 0),
       promoData,
       isProvisional: overallCompletion < 95,
       completionRate: Math.round(overallCompletion),
