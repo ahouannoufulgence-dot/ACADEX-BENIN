@@ -31,8 +31,7 @@ import { toast } from "@/hooks/use-toast"
 import { useState, useMemo, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import {
   Dialog,
   DialogContent,
@@ -57,8 +56,12 @@ const OFFICIAL_CLASSES = [
 ]
 
 export default function TreasuryModule() {
-  const db = useFirestore()
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [payments, setPayments] = useState<any[]>([])
+  const [expenses, setExpenses] = useState<any[]>([])
+  const [students, setStudents] = useState<any[]>([])
+  const [classFees, setClassFees] = useState<any[]>([])
+  const [loadingPayments, setLoadingPayments] = useState(true)
   const [activeTab, setActiveTab] = useState("dashboard")
   const [isAdding, setIsAdding] = useState(false)
   const [isAddingExpense, setIsAddingExpense] = useState(false)
@@ -87,43 +90,37 @@ export default function TreasuryModule() {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
-  const paymentsQuery = useMemo(() => query(
-    collection(db, "payments"), 
-    where("academicYear", "==", activeYear),
-    orderBy("date", "desc")
-  ), [db, activeYear])
+  const fetchAll = async () => {
+    setLoadingPayments(true)
+    const [pRes, eRes, sRes, fRes] = await Promise.all([
+      supabase.from('payments').select('*').eq('academic_year', activeYear).order('date', { ascending: false }),
+      supabase.from('expenses').select('*').eq('academic_year', activeYear).order('date', { ascending: false }),
+      supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
+      supabase.from('class_contributions').select('*').eq('academic_year', activeYear)
+    ])
+    setPayments(pRes.data || [])
+    setExpenses(eRes.data || [])
+    setStudents(sRes.data || [])
+    setClassFees(fRes.data || [])
+    setLoadingPayments(false)
+  }
 
-  const expensesQuery = useMemo(() => query(
-    collection(db, "expenses"), 
-    where("academicYear", "==", activeYear),
-    orderBy("date", "desc")
-  ), [db, activeYear])
-
-  const studentsQuery = useMemo(() => query(
-    collection(db, "students"), 
-    where("academicYear", "==", activeYear),
-    where("status", "==", "Actif")
-  ), [db, activeYear])
-
-  const { data: payments, loading: loadingPayments } = useCollection(paymentsQuery)
-  const { data: expenses } = useCollection(expensesQuery)
-  const { data: students } = useCollection(studentsQuery)
-  const { data: classFees } = useCollection(query(collection(db, "class_contributions"), where("academicYear", "==", activeYear)))
+  useEffect(() => { fetchAll() }, [activeYear])
 
   useEffect(() => {
     if (classFees) {
       const data: Record<string, string> = {}
-      classFees.forEach((f: any) => { data[f.classId] = f.amount.toString() })
+      classFees.forEach((f: any) => { data[f.class_id] = f.amount.toString() })
       setFeesData(data)
     }
   }, [classFees])
 
   const stats = useMemo(() => {
-    const totalReceived = payments?.reduce((acc, p: any) => acc + (Number(p.amountPaid) || 0), 0) || 0
+    const totalReceived = payments?.reduce((acc, p: any) => acc + (Number(p.amount_paid) || 0), 0) || 0
     const totalExpenses = expenses?.reduce((acc, e: any) => acc + (Number(e.amount) || 0), 0) || 0
     let expected = 0
     students?.forEach((s: any) => {
-      const fee = classFees?.find((f: any) => f.classId === s.classId)?.amount || 150000
+      const fee = classFees?.find((f: any) => f.class_id === s.class_id)?.amount || 150000
       expected += Number(fee)
     })
     const percent = expected > 0 ? (totalReceived / expected) * 100 : 0
@@ -133,7 +130,7 @@ export default function TreasuryModule() {
   const filteredStudents = useMemo(() => {
     if (!students) return []
     return students.filter((s: any) => 
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(studentSearch.toLowerCase()) || 
+      `${s.first_name} ${s.last_name}`.toLowerCase().includes(studentSearch.toLowerCase()) || 
       s.matricule.toLowerCase().includes(studentSearch.toLowerCase())
     )
   }, [students, studentSearch])
@@ -149,7 +146,7 @@ export default function TreasuryModule() {
       await addDoc(collection(db, "payments"), {
         ...formData,
         amountPaid: Number(formData.amountPaid),
-        studentName: student ? `${student.lastName} ${student.firstName}` : "Inconnu",
+        studentName: student ? `${student.last_name} ${student.first_name}` : "Inconnu",
         academicYear: activeYear,
         createdAt: serverTimestamp(),
         author: localStorage.getItem('acadex_user_name') || "Direction"
@@ -164,14 +161,15 @@ export default function TreasuryModule() {
   const handleSaveFees = async () => {
     setSavingFees(true)
     try {
-      const batch = writeBatch(db)
-      OFFICIAL_CLASSES.forEach(classId => {
-        const amount = Number(feesData[classId]) || 150000
-        const feeRef = doc(db, "class_contributions", `${classId}_${activeYear}`.replace(/\s/g, '_'))
-        batch.set(feeRef, { classId, amount, academicYear: activeYear, updatedAt: serverTimestamp() })
-      })
-      await batch.commit()
+      const rows = OFFICIAL_CLASSES.map(classId => ({
+        class_id: classId,
+        amount: Number(feesData[classId]) || 150000,
+        academic_year: activeYear,
+      }))
+      const { error } = await supabase.from('class_contributions').upsert(rows, { onConflict: 'class_id,academic_year' })
+      if (error) throw error
       toast({ title: "Tarifs scellés" })
+      fetchAll()
     } catch (e) { toast({ title: "Erreur", variant: "destructive" }) }
     finally { setSavingFees(false) }
   }
@@ -220,7 +218,7 @@ export default function TreasuryModule() {
                                    formData.studentId === s.matricule ? "bg-primary text-white shadow-lg" : "hover:bg-muted/50"
                                  )}
                                >
-                                 {s.lastName} {s.firstName}
+                                 {s.last_name} {s.first_name}
                                </button>
                              ))}
                           </ScrollArea>
@@ -326,7 +324,7 @@ export default function TreasuryModule() {
                                 </div>
                                 <div className="text-right shrink-0">
                                    <p className={cn("font-black text-xs md:text-2xl tabular-nums", isExpense ? "text-red-600" : "text-emerald-600")}>
-                                     {isExpense ? '-' : '+'}{Number(isExpense ? tx.amount : tx.amountPaid).toLocaleString()}
+                                     {isExpense ? '-' : '+'}{Number(isExpense ? tx.amount : tx.amount_paid).toLocaleString()}
                                    </p>
                                    <span className="text-[6px] md:text-[10px] font-bold text-muted-foreground/40 uppercase">{new Date(tx.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                                 </div>
@@ -389,7 +387,7 @@ export default function TreasuryModule() {
                            </div>
                         </div>
                         <div className="text-right shrink-0">
-                           <p className="font-black text-sm md:text-2xl text-emerald-600 tabular-nums">+{Number(p.amountPaid).toLocaleString()} F</p>
+                           <p className="font-black text-sm md:text-2xl text-emerald-600 tabular-nums">+{Number(p.amount_paid).toLocaleString()} F</p>
                            <span className="text-[7px] md:text-[9px] font-black text-muted-foreground uppercase opacity-40 sm:hidden">{new Date(p.date).toLocaleDateString('fr-FR')}</span>
                         </div>
                       </div>
