@@ -32,8 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, addDoc, serverTimestamp, orderBy, doc, onSnapshot } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -41,7 +40,6 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 
 export default function StudentLifePage() {
-  const db = useFirestore()
   const [userRole, setUserRole] = useState("")
   const [userId, setUserId] = useState("")
   const [userClasses, setUserClasses] = useState<string[]>([])
@@ -51,6 +49,8 @@ export default function StudentLifePage() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
+  const [students, setStudents] = useState<any[]>([])
+  const [loadingStudents, setLoadingStudents] = useState(true)
 
   const [presenceForm, setPresenceForm] = useState({ status: "Présent", motif: "", time: "08:00" })
   const [disciplineForm, setDisciplineForm] = useState({ type: "Avertissement oral", motif: "" })
@@ -63,66 +63,69 @@ export default function StudentLifePage() {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
 
-    const unsubConfig = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) setSchoolConfig(snap.data())
-    })
-    return () => unsubConfig()
-  }, [db])
-
-  // REQUÊTE FILTRÉE ET CLASSÉE (A-Z)
-  const studentsQuery = useMemo(() => {
-    if (!db || !activeYear || userRole === "Élève") return null
-    const baseCol = collection(db, "students")
-    
-    // Restriction aux classes assignées si c'est un enseignant + TRI A-Z
-    if (userRole === "Enseignant") {
-      if (userClasses.length === 0) return null
-      return query(
-        baseCol, 
-        where("academicYear", "==", activeYear), 
-        where("classId", "in", userClasses),
-        orderBy("lastName", "asc")
-      )
+    const fetchConfig = async () => {
+      const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+      if (data) setSchoolConfig(data)
     }
+    fetchConfig()
+  }, [])
 
-    // Le directeur voit tout + TRI A-Z
-    return query(baseCol, where("academicYear", "==", activeYear), orderBy("lastName", "asc"))
-  }, [db, activeYear, userRole, userClasses])
+  useEffect(() => {
+    if (!activeYear || userRole === "Élève" || !userRole) return
 
-  const { data: students, loading: loadingStudents } = useCollection(studentsQuery)
+    const fetchStudents = async () => {
+      setLoadingStudents(true)
+      let queryBuilder = supabase.from('students').select('*').eq('academic_year', activeYear).order('last_name', { ascending: true })
+
+      if (userRole === "Enseignant") {
+        if (userClasses.length === 0) { setStudents([]); setLoadingStudents(false); return }
+        queryBuilder = queryBuilder.in('class_id', userClasses)
+      }
+
+      const { data } = await queryBuilder
+      setStudents(data || [])
+      setLoadingStudents(false)
+    }
+    fetchStudents()
+  }, [activeYear, userRole, userClasses])
 
   const filteredStudents = useMemo(() => {
     if (!students) return []
     return students
       .filter((s: any) => 
-        `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) || 
         s.matricule.toLowerCase().includes(searchTerm.toLowerCase())
       )
       .sort((a: any, b: any) => {
-        const nameA = `${a.lastName} ${a.firstName}`.toLowerCase()
-        const nameB = `${b.lastName} ${b.firstName}`.toLowerCase()
+        const nameA = `${a.last_name} ${a.first_name}`.toLowerCase()
+        const nameB = `${b.last_name} ${b.first_name}`.toLowerCase()
         return nameA.localeCompare(nameB)
       })
   }, [students, searchTerm])
 
   const currentTargetId = userRole === "Élève" ? userId : selectedStudent?.matricule
+  const [events, setEvents] = useState<any[]>([])
+  const [loadingEvents, setLoadingEvents] = useState(true)
 
-  const lifeEventsQuery = useMemo(() => {
-    if (!db || !currentTargetId || !activeYear) return null
-    return query(
-      collection(db, "student_life"), 
-      where("studentId", "==", currentTargetId),
-      where("academicYear", "==", activeYear),
-      orderBy("createdAt", "desc")
-    )
-  }, [db, currentTargetId, activeYear])
+  const fetchEvents = async () => {
+    if (!currentTargetId || !activeYear) { setEvents([]); return }
+    setLoadingEvents(true)
+    const { data } = await supabase
+      .from('student_life')
+      .select('*')
+      .eq('student_id', currentTargetId)
+      .eq('academic_year', activeYear)
+      .order('created_at', { ascending: false })
+    setEvents(data || [])
+    setLoadingEvents(false)
+  }
 
-  const { data: events, loading: loadingEvents } = useCollection(lifeEventsQuery)
+  useEffect(() => { fetchEvents() }, [currentTargetId, activeYear])
 
   const stats = useMemo(() => {
     if (!events) return { presence: 0, absence: 0, retards: 0, discipline: 0, conductGrade: 20 }
     let conductGrade = 20
-    events.forEach((e: any) => { if (e.pointsImpact) conductGrade += Number(e.pointsImpact) })
+    events.forEach((e: any) => { if (e.points_impact) conductGrade += Number(e.points_impact) })
     
     return {
       presence: events.filter((e: any) => e.category === 'presence' && e.status === 'Présent').length,
@@ -134,21 +137,20 @@ export default function StudentLifePage() {
   }, [events])
 
   const handleAddEvent = async (category: string) => {
-    if (!currentTargetId || !db) return
+    if (!currentTargetId) return
     setLoading(true)
     try {
       let pointsImpact = 0
       const data: any = {
         category,
-        studentId: currentTargetId,
-        studentName: userRole === "Élève" ? localStorage.getItem('acadex_user_name') : `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-        academicYear: activeYear,
-        authorName: localStorage.getItem('acadex_user_name'),
-        createdAt: serverTimestamp(),
+        student_id: currentTargetId,
+        student_name: userRole === "Élève" ? localStorage.getItem('acadex_user_name') : `${selectedStudent.first_name} ${selectedStudent.last_name}`,
+        academic_year: activeYear,
+        author_name: localStorage.getItem('acadex_user_name'),
         date: new Date().toISOString().split('T')[0]
       }
 
-      const rules = schoolConfig?.conductRules || { tardy: -0.5, absence: -1, warning: -2, exclusion: -5 }
+      const rules = schoolConfig?.conduct_rules || { tardy: -0.5, absence: -1, warning: -2, exclusion: -5 }
 
       if (category === 'presence') {
         Object.assign(data, presenceForm)
@@ -158,16 +160,19 @@ export default function StudentLifePage() {
         Object.assign(data, disciplineForm)
         pointsImpact = disciplineForm.type.includes('Exclusion') ? rules.exclusion : rules.warning
       } else if (category === 'conduite') {
-        Object.assign(data, { pointsImpact: bonusForm.points, motif: bonusForm.motif, status: bonusForm.points > 0 ? 'Bonus' : 'Malus' })
+        Object.assign(data, { points_impact: bonusForm.points, motif: bonusForm.motif, status: bonusForm.points > 0 ? 'Bonus' : 'Malus' })
         pointsImpact = bonusForm.points
       }
 
-      data.pointsImpact = pointsImpact
-      await addDoc(collection(db, "student_life"), data)
+      data.points_impact = pointsImpact
+      const { error } = await supabase.from('student_life').insert(data)
+      if (error) throw error
+
       toast({ title: "Action scellée" })
       setPresenceForm({ status: "Présent", motif: "", time: "08:00" })
       setDisciplineForm({ type: "Avertissement oral", motif: "" })
       setBonusForm({ points: 1, motif: "" })
+      fetchEvents()
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     } finally {
@@ -230,13 +235,13 @@ export default function StudentLifePage() {
                       >
                         <Avatar className={cn("size-9 md:size-12 border-2 transition-all", selectedStudent?.id === s.id ? "border-white/20" : "border-muted/20")}>
                           <AvatarFallback className={cn("font-black text-[10px] md:text-sm", selectedStudent?.id === s.id ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>
-                            {s.lastName[0]}
+                            {s.last_name[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="text-left min-w-0 flex-1">
-                          <p className="font-black text-xs md:text-base truncate uppercase tracking-tight">{s.lastName} {s.firstName}</p>
+                          <p className="font-black text-xs md:text-base truncate uppercase tracking-tight">{s.last_name} {s.first_name}</p>
                           <div className="flex items-center justify-between mt-0.5">
-                            <span className={cn("text-[7px] md:text-[9px] font-black uppercase", selectedStudent?.id === s.id ? "text-white/60" : "text-primary/60")}>{s.classId}</span>
+                            <span className={cn("text-[7px] md:text-[9px] font-black uppercase", selectedStudent?.id === s.id ? "text-white/60" : "text-primary/60")}>{s.class_id}</span>
                             <span className={cn("text-[7px] md:text-[8px] font-bold uppercase", selectedStudent?.id === s.id ? "text-white/40" : "text-muted-foreground/40")}>{s.matricule}</span>
                           </div>
                         </div>
@@ -262,9 +267,9 @@ export default function StudentLifePage() {
                 {isStaff && (
                   <div className="flex items-center gap-3 lg:hidden">
                     <Button variant="ghost" size="icon" onClick={() => setSelectedStudent(null)} className="size-9 rounded-lg bg-white shadow-sm border border-muted/20"><ChevronLeft className="size-4" /></Button>
-                    <Avatar className="size-9 border-2 border-primary/20"><AvatarFallback className="font-black text-[10px]">{selectedStudent.lastName[0]}</AvatarFallback></Avatar>
+                    <Avatar className="size-9 border-2 border-primary/20"><AvatarFallback className="font-black text-[10px]">{selectedStudent.last_name[0]}</AvatarFallback></Avatar>
                     <div className="min-w-0">
-                      <h4 className="font-black text-[10px] uppercase truncate">{selectedStudent.lastName} {selectedStudent.firstName}</h4>
+                      <h4 className="font-black text-[10px] uppercase truncate">{selectedStudent.last_name} {selectedStudent.first_name}</h4>
                     </div>
                   </div>
                 )}
@@ -385,9 +390,9 @@ export default function StudentLifePage() {
                                    <div className="space-y-0.5 w-full">
                                       <h4 className="font-black text-xs md:text-2xl text-foreground uppercase tracking-tight flex items-center gap-2">
                                         <span className="truncate">{event.status || event.type}</span>
-                                        {event.pointsImpact !== undefined && (
-                                          <Badge className={cn("rounded-md md:rounded-xl font-black h-5 md:h-10 px-1.5 md:px-5 text-[7px] md:text-sm shadow-sm shrink-0", event.pointsImpact > 0 ? "bg-emerald-500 text-white" : "bg-destructive text-white")}>
-                                            {event.pointsImpact > 0 ? `+${event.pointsImpact}` : event.pointsImpact} PTS
+                                        {event.points_impact !== undefined && (
+                                          <Badge className={cn("rounded-md md:rounded-xl font-black h-5 md:h-10 px-1.5 md:px-5 text-[7px] md:text-sm shadow-sm shrink-0", event.points_impact > 0 ? "bg-emerald-500 text-white" : "bg-destructive text-white")}>
+                                            {event.points_impact > 0 ? `+${event.points_impact}` : event.points_impact} PTS
                                           </Badge>
                                         )}
                                       </h4>
