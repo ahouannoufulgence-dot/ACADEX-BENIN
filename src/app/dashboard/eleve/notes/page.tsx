@@ -24,45 +24,46 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, getDoc } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 
 export default function StudentGradesPage() {
-  const db = useFirestore()
   const [studentId, setStudentId] = useState("")
   const [studentInternalId, setStudentInternalId] = useState("")
   const [activeTerm, setActiveTab] = useState("T1")
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [myGrades, setMyGrades] = useState<any[]>([])
+  const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
+  const [loadingMyGrades, setLoadingMyGrades] = useState(true)
 
   useEffect(() => {
     const matricule = localStorage.getItem('acadex_user_id') || ""
     setStudentId(matricule)
+    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
     
     const findInternalId = async () => {
-      const q = query(collection(db, "students"), where("matricule", "==", matricule))
-      const snap = await (await import("firebase/firestore")).getDocs(q)
-      if (!snap.empty) setStudentInternalId(snap.docs[0].id)
+      const { data } = await supabase.from('students').select('id').eq('matricule', matricule).single()
+      if (data) setStudentInternalId(data.id)
     }
     findInternalId()
-    
-    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
-  }, [db])
+  }, [])
 
-  const myGradesQuery = useMemo(() => {
-    if (!db || !studentId) return null
-    return query(collection(db, "grades"), where("studentId", "==", studentId), where("academicYear", "==", activeYear))
-  }, [db, studentId, activeYear])
-
-  const myLifeEventsQuery = useMemo(() => {
-    if (!db || !studentId) return null
-    return query(collection(db, "student_life"), where("studentId", "==", studentId), where("academicYear", "==", activeYear))
-  }, [db, studentId, activeYear])
-
-  const { data: myGrades, loading: loadingMyGrades } = useCollection(myGradesQuery)
-  const { data: myLifeEvents } = useCollection(myLifeEventsQuery)
+  useEffect(() => {
+    if (!studentId) return
+    const fetchData = async () => {
+      setLoadingMyGrades(true)
+      const [gRes, eRes] = await Promise.all([
+        supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
+        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear)
+      ])
+      setMyGrades(gRes.data || [])
+      setMyLifeEvents(eRes.data || [])
+      setLoadingMyGrades(false)
+    }
+    fetchData()
+  }, [studentId, activeYear])
 
   const analysis = useMemo(() => {
     if (!myGrades) return null
@@ -71,7 +72,7 @@ export default function StudentGradesPage() {
 
     let conductValue = 20
     if (myLifeEvents) {
-      myLifeEvents.forEach((e: any) => { if (e.pointsImpact) conductValue += Number(e.pointsImpact) })
+      myLifeEvents.forEach((e: any) => { if (e.points_impact) conductValue += Number(e.points_impact) })
     }
     conductValue = Math.max(0, Math.min(20, conductValue))
 
