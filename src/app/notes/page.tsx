@@ -31,8 +31,7 @@ import {
 } from "@/components/ui/select"
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where, doc, writeBatch, serverTimestamp, getDocs, orderBy, onSnapshot } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
 
@@ -62,7 +61,6 @@ const PROMOTIONS = ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TLE"]
 const MATIERES = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"]
 
 export default function GradesPage() {
-  const db = useFirestore()
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClasses, setUserClasses] = useState<string[]>([])
   const [userSubject, setUserSubject] = useState("")
@@ -82,6 +80,8 @@ export default function GradesPage() {
   const [gradesData, setGradesData] = useState<Record<string, string>>({})
   const [completionStats, setCompletionStats] = useState<Record<string, boolean>>({})
   const [classCoefficient, setClassCoefficient] = useState<string>("2")
+  const [teacherStudents, setTeacherStudents] = useState<any[]>([])
+  const [allGrades, setAllGrades] = useState<any[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -93,57 +93,59 @@ export default function GradesPage() {
     setActiveYear(year)
     setUserName(localStorage.getItem('acadex_user_name') || "")
 
-    const unsubConfig = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) {
-        setSystemLocked(snap.data().termLocked || false)
-      }
-    })
-
-    if (role === 'Enseignant' && userId && db) {
-      const unsubTeacher = onSnapshot(doc(db, "teachers", userId), (snap) => {
-        if (snap.exists()) {
-          const data = snap.data()
-          const yearData = data.assignments?.[year] || { classes: [], subject: "" }
-          setUserClasses(yearData.classes)
-          setUserSubject(yearData.subject)
-          setSelectedMatiere(yearData.subject)
-        }
-      })
-      return () => { unsubConfig(); unsubTeacher(); }
+    const fetchConfig = async () => {
+      const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+      if (data) setSystemLocked(data.term_locked || false)
     }
-    return () => unsubConfig()
-  }, [db])
+    fetchConfig()
+
+    if (role === 'Enseignant' && userId) {
+      const fetchTeacher = async () => {
+        const { data } = await supabase.from('teachers').select('*').eq('official_id', userId).single()
+        if (data) {
+          setUserClasses(data.classes || [])
+          setUserSubject(data.subject || "")
+          setSelectedMatiere(data.subject || "Mathématiques")
+        }
+      }
+      fetchTeacher()
+    }
+  }, [])
 
   const isDirector = userRole === "Directeur"
 
-  const teacherStudentsQuery = useMemo(() => {
-    if (!db || !selectedClass || !mounted) return null
-    return query(
-      collection(db, 'students'), 
-      where("classId", "==", selectedClass),
-      where("status", "==", "Actif"),
-      where("academicYear", "==", activeYear),
-      orderBy("lastName", "asc")
-    )
-  }, [db, selectedClass, activeYear, mounted])
+  useEffect(() => {
+    if (!selectedClass || !mounted) return
+    const fetchStudents = async () => {
+      const { data } = await supabase
+        .from('students')
+        .select('*')
+        .eq('class_id', selectedClass)
+        .eq('status', 'Actif')
+        .eq('academic_year', activeYear)
+        .order('last_name', { ascending: true })
+      setTeacherStudents(data || [])
+    }
+    fetchStudents()
+  }, [selectedClass, activeYear, mounted])
 
-  const { data: teacherStudents } = useCollection(teacherStudentsQuery)
-
-  const allGradesQuery = useMemo(() => {
-    if (!db || !activeYear) return null
-    return query(collection(db, "grades"), where("academicYear", "==", activeYear))
-  }, [db, activeYear])
-
-  const { data: allGrades } = useCollection(allGradesQuery)
+  useEffect(() => {
+    if (!activeYear) return
+    const fetchGrades = async () => {
+      const { data } = await supabase.from('grades').select('*').eq('academic_year', activeYear)
+      setAllGrades(data || [])
+    }
+    fetchGrades()
+  }, [activeYear])
 
   const registerData = useMemo(() => {
     if (!selectedClass || !allGrades || !isDirector) return { students: [] }
     
     const studentsInClass = teacherStudents || []
-    const classGrades = allGrades.filter(g => g.classId === selectedClass && g.subject === selectedMatiere && g.term === selectedTrimestre)
+    const classGrades = allGrades.filter(g => g.class_id === selectedClass && g.subject === selectedMatiere && g.term === selectedTrimestre)
 
     const process = studentsInClass.map((s: any) => {
-      const sGrades = classGrades.filter(g => g.studentId === s.matricule)
+      const sGrades = classGrades.filter(g => g.student_matricule === s.matricule)
       const data: any = { ...s, i1: null, i2: null, i3: null, d1: null, d2: null, coef: 2 }
       
       sGrades.forEach((g: any) => {
@@ -176,15 +178,20 @@ export default function GradesPage() {
       if (!selectedClass || !userSubject || !mounted || isDirector) return
       setLoadingExisting(true)
       try {
-        const q = query(collection(db, "grades"), where("classId", "==", selectedClass), where("subject", "==", userSubject), where("term", "==", selectedTrimestre), where("academicYear", "==", activeYear))
-        const snap = await getDocs(q)
+        const { data } = await supabase
+          .from('grades')
+          .select('*')
+          .eq('class_id', selectedClass)
+          .eq('subject', userSubject)
+          .eq('term', selectedTrimestre)
+          .eq('academic_year', activeYear)
+
         const currentTypeGrades: Record<string, string> = {}
         const stats: Record<string, boolean> = {}
         
-        snap.docs.forEach(d => {
-          const g = d.data()
+        ;(data || []).forEach((g: any) => {
           stats[g.type] = true
-          if (g.type === selectedEvalType) currentTypeGrades[g.studentId] = g.value.toString()
+          if (g.type === selectedEvalType) currentTypeGrades[g.student_matricule] = g.value.toString()
         })
         setCompletionStats(stats)
         setGradesData(currentTypeGrades)
@@ -193,7 +200,7 @@ export default function GradesPage() {
       }
     }
     fetchCurrentGrades()
-  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, db, activeYear, mounted, isDirector])
+  }, [selectedClass, selectedTrimestre, selectedEvalType, userSubject, activeYear, mounted, isDirector])
 
   const handleGradeChange = (matricule: string, value: string) => {
     if (systemLocked && !isDirector) return
@@ -209,29 +216,29 @@ export default function GradesPage() {
     }
     if (!selectedClass || !userSubject || saving) return
     setSaving(true)
-    const batch = writeBatch(db)
     try {
-      teacherStudents?.forEach((student: any) => {
-        const valStr = gradesData[student.matricule]
-        if (valStr === undefined || valStr === "") return 
-        const val = parseFloat(valStr)
-        const gradeId = `${student.matricule}_${userSubject}_${selectedTrimestre}_${selectedEvalType}_${activeYear}`.replace(/\s/g, '_')
-        const gradeRef = doc(db, "grades", gradeId)
-        batch.set(gradeRef, {
-          studentId: student.matricule, 
-          studentName: `${student.lastName} ${student.firstName}`,
-          classId: selectedClass,
+      const rows = (teacherStudents || [])
+        .filter((student: any) => {
+          const valStr = gradesData[student.matricule]
+          return valStr !== undefined && valStr !== ""
+        })
+        .map((student: any) => ({
+          student_matricule: student.matricule,
+          student_name: `${student.last_name} ${student.first_name}`,
+          class_id: selectedClass,
           subject: userSubject,
           term: selectedTrimestre,
           type: selectedEvalType,
-          value: val,
+          value: parseFloat(gradesData[student.matricule]),
           coefficient: Number(classCoefficient) || 2,
-          teacherName: userName,
-          academicYear: activeYear,
-          updatedAt: serverTimestamp()
-        }, { merge: true })
-      })
-      await batch.commit()
+          teacher_name: userName,
+          academic_year: activeYear,
+        }))
+
+      if (rows.length > 0) {
+        const { error } = await supabase.from('grades').upsert(rows, { onConflict: 'student_matricule,subject,term,type,academic_year' })
+        if (error) throw error
+      }
       toast({ title: "Registre scellé" })
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
@@ -315,7 +322,7 @@ export default function GradesPage() {
                        {finalData.map((s: any) => (
                          <tr key={s.id} className="hover:bg-muted/5 transition-all group">
                             <td className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC] transition-colors border-r shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
-                               <div className="min-w-[150px] md:min-w-[220px]"><p className="font-black text-[10px] md:text-xl text-foreground uppercase truncate">{s.lastName} {s.firstName}</p><span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span></div>
+                               <div className="min-w-[150px] md:min-w-[220px]"><p className="font-black text-[10px] md:text-xl text-foreground uppercase truncate">{s.last_name} {s.first_name}</p><span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span></div>
                             </td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i1 ?? "--"}</td>
                             <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i2 ?? "--"}</td>
@@ -380,7 +387,7 @@ export default function GradesPage() {
               </div>
             )}
             <div className="p-5 md:p-12 border-b bg-muted/5 flex items-center justify-between gap-4"><div className="flex items-center gap-3 md:gap-6"><div className="size-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm shrink-0"><User className="size-5" /></div><div className="min-w-0"><h3 className="text-base md:text-2xl font-black text-foreground uppercase truncate">Registre {selectedClass}</h3><p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{evalTypes.find(e => e.id === selectedEvalType)?.label}</p></div></div>{loadingExisting && <div className="flex items-center gap-2 text-[9px] font-black text-primary animate-pulse uppercase tracking-widest"><RefreshCw className="size-3 animate-spin" /> Synchro...</div>}</div>
-            <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left border-separate border-spacing-0"><thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b"><tr><th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th><th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th><th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th></tr></thead><tbody className="divide-y divide-muted/10">{teacherStudents?.map((student: any) => (<tr key={student.id} className="hover:bg-muted/5 transition-all group"><td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]"><div className="min-w-0"><p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.lastName} {student.firstName}</p><span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span></div></td><td className="px-5 py-4 md:px-8 md:py-8 text-center"><Input type="number" step="0.25" placeholder="--.--" value={gradesData[student.matricule] || ""} onChange={(e) => handleGradeChange(student.matricule, e.target.value)} disabled={systemLocked} className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all disabled:opacity-50" /></td><td className="px-5 py-4 md:px-8 md:py-8 text-right"><Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">{Number(gradesData[student.matricule] || 0).toFixed(1)}</Badge></td></tr>))}</tbody></table></div>
+            <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left border-separate border-spacing-0"><thead className="bg-muted/20 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b"><tr><th className="px-5 py-4 md:px-8 md:py-8 tracking-widest sticky left-0 z-10 bg-white">Élève</th><th className="px-5 py-4 md:px-8 md:py-8 text-center tracking-widest">Note / 20</th><th className="px-5 py-4 md:px-8 md:py-8 text-right bg-primary text-white tracking-widest">Note Saisie</th></tr></thead><tbody className="divide-y divide-muted/10">{teacherStudents?.map((student: any) => (<tr key={student.id} className="hover:bg-muted/5 transition-all group"><td className="px-5 py-4 md:px-8 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC]"><div className="min-w-0"><p className="font-black text-xs md:text-xl text-foreground uppercase leading-tight truncate">{student.last_name} {student.first_name}</p><span className="font-bold text-[7px] md:text-[10px] text-muted-foreground uppercase">{student.matricule}</span></div></td><td className="px-5 py-4 md:px-8 md:py-8 text-center"><Input type="number" step="0.25" placeholder="--.--" value={gradesData[student.matricule] || ""} onChange={(e) => handleGradeChange(student.matricule, e.target.value)} disabled={systemLocked} className="w-20 md:w-32 h-10 md:h-14 mx-auto rounded-xl md:rounded-2xl text-center text-lg md:text-2xl font-black border-2 border-primary/10 focus:ring-primary shadow-inner bg-muted/10 group-hover:bg-white transition-all disabled:opacity-50" /></td><td className="px-5 py-4 md:px-8 md:py-8 text-right"><Badge className="h-8 md:h-12 w-20 md:w-32 justify-center rounded-lg md:rounded-xl bg-primary/5 text-primary border-2 border-primary/10 text-xs md:text-xl font-black">{Number(gradesData[student.matricule] || 0).toFixed(1)}</Badge></td></tr>))}</tbody></table></div>
           </Card>
         ) : (<Card className="p-16 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[4rem] bg-white/50 opacity-40 flex flex-col items-center justify-center space-y-6"><RefreshCw className="size-12 text-muted-foreground animate-spin opacity-20" /><div className="space-y-1"><h3 className="text-xl md:text-4xl font-black uppercase tracking-tight">Prêt pour la saisie ?</h3><p className="text-[10px] md:text-xl font-bold uppercase tracking-widest text-muted-foreground">Sélectionnez une classe autorisée</p></div></Card>)}
       </div>
