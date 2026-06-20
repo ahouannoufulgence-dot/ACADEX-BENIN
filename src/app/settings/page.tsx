@@ -26,12 +26,10 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { useState, useEffect, useMemo } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { doc, onSnapshot, updateDoc, serverTimestamp, collection, query, orderBy, limit, setDoc } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 export default function SettingsPage() {
-  const db = useFirestore()
   const [loading, setLoading] = useState(false)
   const [config, setConfig] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
@@ -40,39 +38,43 @@ export default function SettingsPage() {
   const [schoolName, setSchoolName] = useState("")
   const [academicYear, setAcademicYear] = useState("")
   const [termLocked, setTermLocked] = useState(false)
+  const [auditLogs, setAuditLogs] = useState<any[]>([])
+  const [loadingLogs, setLoadingLogs] = useState(true)
+
+  const fetchConfig = async () => {
+    const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+    if (data) {
+      setConfig(data)
+      setSchoolName(data.school_name || "")
+      setAcademicYear(data.academic_year || "")
+      setTermLocked(data.term_locked || false)
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
-    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setConfig(data)
-        if (!loading) {
-          setSchoolName(data.schoolName || "")
-          setAcademicYear(data.academicYear || "")
-          setTermLocked(data.termLocked || false)
-        }
-      }
-    })
-    return () => unsub()
-  }, [db, loading])
+    fetchConfig()
+  }, [])
 
-  const auditQuery = useMemo(() => query(
-    collection(db, "student_life"),
-    orderBy("createdAt", "desc"),
-    limit(10)
-  ), [db])
-
-  const { data: auditLogs, loading: loadingLogs } = useCollection(auditQuery)
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLoadingLogs(true)
+      const { data } = await supabase.from('student_life').select('*').order('created_at', { ascending: false }).limit(10)
+      setAuditLogs(data || [])
+      setLoadingLogs(false)
+    }
+    fetchLogs()
+  }, [])
 
   const handleSaveInstitutional = async () => {
     setLoading(true)
     try {
-      await setDoc(doc(db, "school_settings", "main_config"), {
-        schoolName,
-        academicYear,
-        updatedAt: serverTimestamp()
-      }, { merge: true })
+      const { error } = await supabase.from('school_settings').upsert({
+        id: 'main_config',
+        school_name: schoolName,
+        academic_year: academicYear,
+      })
+      if (error) throw error
       toast({ title: "Configuration scellée", description: "L'identité de l'établissement a été mise à jour." })
     } catch (e) {
       console.error(e)
@@ -86,11 +88,12 @@ export default function SettingsPage() {
     const newState = !termLocked
     setLoading(true)
     try {
-      await setDoc(doc(db, "school_settings", "main_config"), {
-        termLocked: newState,
-        lastLockAction: serverTimestamp(),
+      const { error } = await supabase.from('school_settings').upsert({
+        id: 'main_config',
+        term_locked: newState,
         author: localStorage.getItem('acadex_user_name') || "Direction"
-      }, { merge: true })
+      })
+      if (error) throw error
       setTermLocked(newState)
       toast({
         title: newState ? "Système Verrouillé" : "Système Déverrouillé",
@@ -171,7 +174,7 @@ export default function SettingsPage() {
                               </Badge>
                             </div>
                             <p className="text-[8px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest truncate">
-                              Par {log.authorName || "Système"} • {log.createdAt ? new Date(log.createdAt.seconds * 1000).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "---"}
+                              Par {log.author_name || "Système"} • {log.created_at ? new Date(log.created_at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "---"}
                             </p>
                           </div>
                         </div>
