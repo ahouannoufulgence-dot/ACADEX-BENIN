@@ -10,8 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "@/hooks/use-toast"
-import { useFirestore } from "@/firebase"
-import { doc, setDoc, getDocs, collection, deleteDoc } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 
 const BENIN_SUBJECTS = [
   "Mathématiques", 
@@ -34,7 +33,6 @@ const BENIN_SUBJECTS = [
 const LEVELS = ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TERMINALE"]
 
 export default function SubjectsAndCoefficientsPage() {
-  const db = useFirestore()
   const [selectedLevel, setSelectedLevel] = useState("TERMINALE")
   const [configs, setConfigs] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
@@ -42,29 +40,29 @@ export default function SubjectsAndCoefficientsPage() {
   const fetchConfigs = async () => {
     setLoading(true)
     try {
-      const snap = await getDocs(collection(db, "subject_configs"))
-      setConfigs(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      const { data } = await supabase.from('subject_configs').select('*')
+      setConfigs(data || [])
     } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchConfigs() }, [db])
+  useEffect(() => { fetchConfigs() }, [])
 
   const handleAddOrUpdate = async (name: string, coef: number) => {
-    const configId = `${selectedLevel}_${name}`.replace(/\s/g, '_')
     try {
-      await setDoc(doc(db, "subject_configs", configId), { 
-        level: selectedLevel, 
-        subject: name, 
-        coef: Number(coef) 
-      })
+      const { error } = await supabase.from('subject_configs').upsert({
+        level: selectedLevel,
+        subject: name,
+        coef: Number(coef)
+      }, { onConflict: 'level,subject' })
+      if (error) throw error
       toast({ title: "Configurée !", description: `${name} en ${selectedLevel} : Coef ${coef}` })
       fetchConfigs()
     } catch (e) { toast({ title: "Erreur", variant: "destructive" }) }
   }
 
   const handleDelete = async (id: string) => {
-    await deleteDoc(doc(db, "subject_configs", id))
+    await supabase.from('subject_configs').delete().eq('id', id)
     fetchConfigs()
   }
 
