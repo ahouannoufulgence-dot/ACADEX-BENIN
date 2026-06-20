@@ -26,8 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, doc, updateDoc, deleteDoc, orderBy } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import Link from "next/link"
 import {
   DropdownMenu,
@@ -36,30 +35,34 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/hooks/use-toast"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
 
 export default function TeachersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [directorName, setDirectorName] = useState("le Directeur")
-  const db = useFirestore()
-  
+  const [teachers, setTeachers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
   useEffect(() => {
     const name = localStorage.getItem('acadex_user_name')
     if (name) setDirectorName(name)
   }, [])
 
-  // CLASSEMENT ALPHABÉTIQUE AUTOMATIQUE PAR NOM COMPLET (A-Z)
-  const teachersQuery = useMemo(() => query(collection(db, "teachers"), orderBy("fullName", "asc")), [db])
-  const { data: teachers, loading } = useCollection(teachersQuery)
+  const fetchTeachers = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('teachers').select('*').order('full_name', { ascending: true })
+    setTeachers(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchTeachers() }, [])
 
   const filteredTeachers = useMemo(() => {
     if (!teachers) return []
     return teachers.filter((t: any) => 
-      (t.fullName?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (t.full_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (t.subject?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (t.officialId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (t.official_id?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
   }, [teachers, searchTerm])
 
@@ -71,28 +74,20 @@ export default function TeachersPage() {
     return { total, active, pending, subjects }
   }, [teachers])
 
-  const updateStatus = (teacherId: string, newStatus: string) => {
-    const teacherRef = doc(db, "teachers", teacherId)
-    updateDoc(teacherRef, { status: newStatus })
-      .then(() => toast({ title: "Statut mis à jour", description: `L'enseignant est désormais : ${newStatus}` }))
-      .catch(async () => {
-        const error = new FirestorePermissionError({
-          path: teacherRef.path,
-          operation: 'update',
-          requestResourceData: { status: newStatus }
-        })
-        errorEmitter.emit('permission-error', error)
-      })
+  const updateStatus = async (teacherId: string, newStatus: string) => {
+    const { error } = await supabase.from('teachers').update({ status: newStatus }).eq('id', teacherId)
+    if (!error) {
+      toast({ title: "Statut mis à jour", description: `L'enseignant est désormais : ${newStatus}` })
+      fetchTeachers()
+    }
   }
 
-  const deleteTeacher = (teacherId: string) => {
-    const teacherRef = doc(db, "teachers", teacherId)
-    deleteDoc(teacherRef)
-      .then(() => toast({ title: "Enseignant supprimé" }))
-      .catch(async () => {
-        const error = new FirestorePermissionError({ path: teacherRef.path, operation: 'delete' })
-        errorEmitter.emit('permission-error', error)
-      })
+  const deleteTeacher = async (teacherId: string) => {
+    const { error } = await supabase.from('teachers').delete().eq('id', teacherId)
+    if (!error) {
+      toast({ title: "Enseignant supprimé" })
+      fetchTeachers()
+    }
   }
 
   return (
@@ -181,18 +176,18 @@ export default function TeachersPage() {
                    <div className="flex items-center gap-4 md:gap-8 relative z-10">
                      <Avatar className="size-12 md:size-20 border-4 border-muted group-hover:border-primary/20 transition-all shadow-sm">
                        <AvatarFallback className="font-black text-sm md:text-2xl bg-primary/10 text-primary uppercase">
-                        {(teacher.fullName || "??").substring(0, 2)}
+                        {(teacher.full_name || "??").substring(0, 2)}
                        </AvatarFallback>
                      </Avatar>
                      <div className="min-w-0">
-                       <h4 className="font-black text-sm md:text-2xl text-foreground group-hover:text-primary transition-colors uppercase tracking-tight truncate">{teacher.fullName}</h4>
+                       <h4 className="font-black text-sm md:text-2xl text-foreground group-hover:text-primary transition-colors uppercase tracking-tight truncate">{teacher.full_name}</h4>
                        <div className="flex flex-wrap items-center gap-2 md:gap-5 mt-1.5 md:mt-3">
                          <Badge className="bg-primary text-white border-none font-black text-[7px] md:text-[10px] px-2 md:px-4 py-0.5 md:py-1 uppercase shadow-sm">{teacher.subject}</Badge>
                          <div className="hidden sm:flex items-center gap-2 text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                            <Phone className="size-2.5 md:size-4 text-primary" /> {teacher.phone}
                          </div>
                          <div className="hidden sm:flex items-center gap-2 text-[9px] md:text-[11px] font-black text-muted-foreground/60 uppercase">
-                           ID: {teacher.officialId}
+                           ID: {teacher.official_id}
                          </div>
                          <Badge variant="outline" className={cn(
                            "font-black text-[7px] md:text-[10px] border-2 uppercase px-2 md:px-4 rounded-full",
