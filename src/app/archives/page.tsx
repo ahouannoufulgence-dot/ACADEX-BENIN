@@ -21,8 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useEffect } from "react"
-import { useFirestore } from "@/firebase"
-import { doc, updateDoc, serverTimestamp, arrayUnion, onSnapshot } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -38,34 +37,36 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function AcademicYearsPage() {
-  const db = useFirestore()
   const [activeTab, setActiveTab] = useState("annees")
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [activeYear, setActiveYear] = useState("")
 
+  const fetchConfig = async () => {
+    const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+    if (data) setSchoolConfig(data)
+  }
+
   useEffect(() => {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
-    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) setSchoolConfig(snap.data())
-    })
-    return () => unsub()
-  }, [db])
+    fetchConfig()
+  }, [])
 
   const handleCloseYear = async () => {
     if (!schoolConfig) return
     setLoading(true)
     try {
-      const currentYear = schoolConfig.academicYear
+      const currentYear = schoolConfig.academic_year
       const [start, end] = currentYear.split('-').map(Number)
       const nextYear = `${start + 1}-${end + 1}`
+      const newAvailableYears = [...(schoolConfig.available_years || []), nextYear]
 
-      const configRef = doc(db, "school_settings", "main_config")
-      await updateDoc(configRef, {
-        availableYears: arrayUnion(nextYear),
-        academicYear: nextYear,
-        updatedAt: serverTimestamp()
-      })
+      const { error } = await supabase.from('school_settings').update({
+        available_years: newAvailableYears,
+        academic_year: nextYear,
+      }).eq('id', 'main_config')
+
+      if (error) throw error
 
       localStorage.setItem('acadex_active_year', nextYear)
       toast({ 
@@ -165,7 +166,7 @@ export default function AcademicYearsPage() {
                         <Clock className="text-primary size-4 md:size-8" /> Vault Temporel
                       </h4>
                       <div className="space-y-3 md:space-y-5 relative z-10">
-                         {schoolConfig?.availableYears?.map((year: string) => (
+                         {schoolConfig?.available_years?.map((year: string) => (
                            <div key={year} className={cn(
                              "p-4 md:p-7 rounded-2xl md:rounded-[2rem] border-2 flex items-center justify-between transition-all", 
                              year === activeYear ? "bg-primary/20 border-primary shadow-lg scale-[1.02]" : "bg-white/5 border-white/10 opacity-60"
