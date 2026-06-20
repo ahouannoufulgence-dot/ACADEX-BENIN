@@ -17,15 +17,12 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, orderBy, serverTimestamp, deleteDoc, doc, writeBatch } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 
@@ -37,25 +34,32 @@ const officialClasses = [
 ]
 
 export default function GenIdentifiersPage() {
-  const db = useFirestore()
   const [selectedClass, setSelectedClass] = useState("")
   const [count, setCount] = useState("50")
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [identifiers, setIdentifiers] = useState<any[]>([])
+  const [loadingIds, setLoadingIds] = useState(true)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const idsQuery = useMemo(() => query(collection(db, "registration_ids"), orderBy("matricule", "asc")), [db])
-  const { data: identifiers, loading: loadingIds } = useCollection(idsQuery)
+  const fetchIds = async () => {
+    setLoadingIds(true)
+    const { data } = await supabase.from('registration_ids').select('*').order('matricule', { ascending: true })
+    setIdentifiers(data || [])
+    setLoadingIds(false)
+  }
+
+  useEffect(() => { fetchIds() }, [])
 
   const filteredIds = useMemo(() => {
     if (!identifiers) return []
     return identifiers.filter((id: any) => 
       (id.matricule?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (id.classId?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (id.class_id?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
   }, [identifiers, searchTerm])
 
@@ -73,44 +77,37 @@ export default function GenIdentifiersPage() {
 
     setLoading(true)
     try {
-      const batch = writeBatch(db)
       const classTag = selectedClass.replace(/\s/g, '').toUpperCase()
+      const newIds = []
       
       for (let i = 1; i <= batchSize; i++) {
         const num = Math.floor(10000 + Math.random() * 90000).toString()
         const matricule = `ELV-${classTag}-${num}`
-        const newDocRef = doc(collection(db, "registration_ids"))
-        
-        batch.set(newDocRef, {
+        newIds.push({
           matricule,
-          classId: selectedClass,
-          status: "non utilisé",
-          createdAt: serverTimestamp()
+          class_id: selectedClass,
+          status: "non utilisé"
         })
       }
       
-      await batch.commit()
+      const { error } = await supabase.from('registration_ids').insert(newIds)
+      if (error) throw error
+
       toast({ title: "Génération terminée", description: `${batchSize} identifiants créés pour la classe ${selectedClass}.` })
+      fetchIds()
     } catch (err) {
-      const error = new FirestorePermissionError({
-        path: 'registration_ids',
-        operation: 'write',
-      })
-      errorEmitter.emit('permission-error', error)
       toast({ title: "Erreur de génération", variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDelete = (id: string) => {
-    const idRef = doc(db, "registration_ids", id)
-    deleteDoc(idRef)
-      .then(() => toast({ title: "Identifiant supprimé" }))
-      .catch(async () => {
-        const error = new FirestorePermissionError({ path: idRef.path, operation: 'delete' })
-        errorEmitter.emit('permission-error', error)
-      })
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('registration_ids').delete().eq('id', id)
+    if (!error) {
+      toast({ title: "Identifiant supprimé" })
+      fetchIds()
+    }
   }
 
   const copyToClipboard = (text: string) => {
@@ -129,8 +126,8 @@ export default function GenIdentifiersPage() {
     const docPdf = new jsPDF()
     
     const grouped = filteredIds.reduce((acc: Record<string, any[]>, curr: any) => {
-      if (!acc[curr.classId]) acc[curr.classId] = []
-      acc[curr.classId].push(curr)
+      if (!acc[curr.class_id]) acc[curr.class_id] = []
+      acc[curr.class_id].push(curr)
       return acc
     }, {})
 
@@ -152,7 +149,7 @@ export default function GenIdentifiersPage() {
       autoTable(docPdf, {
         startY: 40,
         head: [['Identifiant Unique', 'Classe', 'Statut Activation']],
-        body: classData.map((id: any) => [id.matricule, id.classId, id.status === 'utilisé' ? 'UTILISÉ' : 'À DISTRIBUER']),
+        body: classData.map((id: any) => [id.matricule, id.class_id, id.status === 'utilisé' ? 'UTILISÉ' : 'À DISTRIBUER']),
         headStyles: { fillColor: [20, 83, 45], halign: 'center' },
         bodyStyles: { fontStyle: 'bold', halign: 'center' },
         columnStyles: { 
@@ -252,7 +249,7 @@ export default function GenIdentifiersPage() {
                           <span className="font-black text-sm md:text-2xl tracking-tighter tabular-nums text-foreground">{id.matricule}</span>
                         </td>
                         <td className="px-5 py-4 md:px-10 md:py-8">
-                           <Badge variant="outline" className="font-black text-[8px] md:text-xs border-primary/20 text-primary px-3">{id.classId}</Badge>
+                           <Badge variant="outline" className="font-black text-[8px] md:text-xs border-primary/20 text-primary px-3">{id.class_id}</Badge>
                         </td>
                         <td className="px-5 py-4 md:px-10 md:py-8 text-center">
                           <Badge className={cn(
