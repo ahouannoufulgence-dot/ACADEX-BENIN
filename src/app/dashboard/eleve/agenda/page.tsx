@@ -6,19 +6,19 @@ import { Calendar, Clock, MapPin, User, BookOpen, ShieldCheck, History, Timer, S
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
 export default function StudentAgendaPage() {
-  const db = useFirestore()
   const [selectedDay, setSelectedDay] = useState("Lundi")
   const [studentClass, setStudentClass] = useState("")
   const [activeYear, setActiveYear] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [allSchedules, setAllSchedules] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const role = localStorage.getItem('acadex_user_role')
@@ -38,22 +38,26 @@ export default function StudentAgendaPage() {
     setMounted(true)
   }, [])
 
-  const schedulesQuery = useMemo(() => {
-    if (!db || !studentClass || !activeYear) return null
-    return query(
-      collection(db, "schedules"), 
-      where("classId", "==", studentClass),
-      where("academicYear", "==", activeYear)
-    )
-  }, [db, studentClass, activeYear])
-
-  const { data: allSchedules, loading } = useCollection(schedulesQuery)
+  useEffect(() => {
+    if (!studentClass || !activeYear) return
+    const fetchSchedules = async () => {
+      setLoading(true)
+      const { data } = await supabase
+        .from('schedules')
+        .select('*')
+        .eq('class_id', studentClass)
+        .eq('academic_year', activeYear)
+      setAllSchedules(data || [])
+      setLoading(false)
+    }
+    fetchSchedules()
+  }, [studentClass, activeYear])
 
   const dayCourses = useMemo(() => {
     if (!allSchedules) return []
     return allSchedules
       .filter((s: any) => s.day === selectedDay)
-      .sort((a: any, b: any) => a.startTime.localeCompare(b.startTime))
+      .sort((a: any, b: any) => a.start_time.localeCompare(b.start_time))
   }, [allSchedules, selectedDay])
 
   if (!mounted) return null
@@ -136,7 +140,7 @@ export default function StudentAgendaPage() {
                       <div className="flex items-center gap-3 md:gap-14 min-w-0">
                          <div className="size-12 md:size-32 bg-muted rounded-lg md:rounded-[3rem] flex flex-col items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shrink-0 shadow-inner group-hover:shadow-primary/20">
                             <Clock className="size-4 md:size-10" />
-                            <span className="text-[7px] md:text-2xl font-black uppercase tracking-tighter mt-0.5 md:mt-3">{course.startTime?.split(':')[0]}H</span>
+                            <span className="text-[7px] md:text-2xl font-black uppercase tracking-tighter mt-0.5 md:mt-3">{course.start_time?.split(':')[0]}H</span>
                          </div>
                          <div className="space-y-0.5 md:space-y-3 truncate">
                            <div className="flex items-center gap-2 md:gap-4 mb-0.5">
@@ -146,7 +150,7 @@ export default function StudentAgendaPage() {
                            <h3 className="text-[11px] md:text-6xl font-black text-foreground uppercase group-hover:text-primary transition-colors truncate tracking-tighter">{course.subject}</h3>
                            <div className="flex flex-wrap gap-2 md:gap-10 text-[6px] md:text-lg font-bold text-muted-foreground uppercase tracking-widest">
                               <span className="flex items-center gap-1 md:gap-3"><MapPin className="size-2.5 md:size-6 text-primary" /> {course.room || '---'}</span>
-                              <span className="flex items-center gap-1 md:gap-3"><User className="size-2.5 md:size-6 text-primary" /> {course.teacherName?.split(' ')[0]}</span>
+                              <span className="flex items-center gap-1 md:gap-3"><User className="size-2.5 md:size-6 text-primary" /> {course.teacher_name?.split(' ')[0]}</span>
                            </div>
                          </div>
                       </div>
