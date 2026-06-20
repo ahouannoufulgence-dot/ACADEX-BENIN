@@ -26,14 +26,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, addDoc, query, where, deleteDoc, doc, serverTimestamp, orderBy } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 
 const days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]
 
 export default function AvailabilityPage() {
-  const db = useFirestore()
   const [teacherId, setTeacherId] = useState("")
   const [teacherName, setTeacherName] = useState("")
   const [teacherSubject, setTeacherSubject] = useState("")
@@ -41,6 +39,8 @@ export default function AvailabilityPage() {
   const [activeYear, setActiveYear] = useState("")
   const [mounted, setMounted] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [mySchedules, setMySchedules] = useState<any[]>([])
+  const [loadingSchedules, setLoadingSchedules] = useState(true)
 
   const [newCourse, setNewCourse] = useState({
     classId: "",
@@ -59,16 +59,15 @@ export default function AvailabilityPage() {
     setMounted(true)
   }, [])
 
-  const schedulesQuery = useMemo(() => {
-    if (!db || !teacherId) return null
-    return query(
-      collection(db, "schedules"), 
-      where("teacherId", "==", teacherId),
-      where("academicYear", "==", activeYear)
-    )
-  }, [db, teacherId, activeYear])
+  const fetchSchedules = async () => {
+    if (!teacherId) return
+    setLoadingSchedules(true)
+    const { data } = await supabase.from('schedules').select('*').eq('teacher_id', teacherId).eq('academic_year', activeYear)
+    setMySchedules(data || [])
+    setLoadingSchedules(false)
+  }
 
-  const { data: mySchedules, loading: loadingSchedules } = useCollection(schedulesQuery)
+  useEffect(() => { fetchSchedules() }, [teacherId, activeYear])
 
   const calculateDuration = (start: string, end: string) => {
     const [startH, startM] = start.split(':').map(Number)
@@ -94,13 +93,13 @@ export default function AvailabilityPage() {
 
     const conflict = mySchedules?.find((s: any) => {
       if (s.day !== newCourse.day) return false
-      return (newCourse.startTime < s.endTime) && (newCourse.endTime > s.startTime)
+      return (newCourse.startTime < s.end_time) && (newCourse.endTime > s.start_time)
     })
 
     if (conflict) {
       toast({ 
         title: "Conflit Horaire Détecté", 
-        description: `Vous avez déjà une séance scellée en ${conflict.classId} sur ce créneau.`,
+        description: `Vous avez déjà une séance scellée en ${conflict.class_id} sur ce créneau.`,
         variant: "destructive" 
       })
       return
@@ -108,17 +107,22 @@ export default function AvailabilityPage() {
 
     setSaving(true)
     try {
-      await addDoc(collection(db, "schedules"), {
-        ...newCourse,
-        teacherId,
-        teacherName,
+      const { error } = await supabase.from('schedules').insert({
+        class_id: newCourse.classId,
+        day: newCourse.day,
+        start_time: newCourse.startTime,
+        end_time: newCourse.endTime,
+        room: newCourse.room,
+        teacher_id: teacherId,
+        teacher_name: teacherName,
         subject: teacherSubject,
         duration: duration.text,
-        academicYear: activeYear,
-        createdAt: serverTimestamp()
+        academic_year: activeYear,
       })
+      if (error) throw error
       toast({ title: "Séance scellée" })
       setNewCourse({ ...newCourse, classId: "", room: "" })
+      fetchSchedules()
     } catch (e) {
       toast({ title: "Erreur de scellage", variant: "destructive" })
     } finally {
@@ -128,8 +132,10 @@ export default function AvailabilityPage() {
 
   const removeCourse = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "schedules", id))
+      const { error } = await supabase.from('schedules').delete().eq('id', id)
+      if (error) throw error
       toast({ title: "Séance retirée" })
+      fetchSchedules()
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     }
@@ -244,7 +250,7 @@ export default function AvailabilityPage() {
                 ) : (
                   <div className="space-y-8 md:space-y-16">
                     {days.map(day => {
-                      const dayCourses = mySchedules.filter((c: any) => c.day === day).sort((a:any, b:any) => a.startTime.localeCompare(b.startTime))
+                      const dayCourses = mySchedules.filter((c: any) => c.day === day).sort((a:any, b:any) => a.start_time.localeCompare(b.start_time))
                       if (dayCourses.length === 0) return null
                       return (
                         <div key={day} className="space-y-4 md:space-y-8 animate-in slide-in-from-bottom-4">
@@ -258,12 +264,12 @@ export default function AvailabilityPage() {
                                    <div className="flex items-center gap-3 md:gap-12 flex-1 min-w-0">
                                       <div className="size-10 md:size-28 bg-white rounded-lg md:rounded-[2.5rem] flex flex-col items-center justify-center shadow-inner group-hover:bg-primary group-hover:text-white transition-all shrink-0 border-2 border-transparent group-hover:border-primary">
                                          <Clock className="size-4 md:size-8" />
-                                         <span className="text-[7px] md:text-xl font-black uppercase tracking-tighter mt-0.5 md:mt-2">{course.startTime?.split(':')[0]}H</span>
+                                         <span className="text-[7px] md:text-xl font-black uppercase tracking-tighter mt-0.5 md:mt-2">{course.start_time?.split(':')[0]}H</span>
                                       </div>
                                       <div className="space-y-0.5 md:space-y-3 truncate">
                                          <div className="flex items-center gap-2 md:gap-4 truncate">
-                                            <Badge className="bg-primary text-white font-black text-[8px] md:text-xl px-1.5 md:px-4 py-0.5 rounded-md shadow-sm shrink-0">{course.classId}</Badge>
-                                            <h4 className="text-[10px] md:text-4xl font-black uppercase tracking-tight truncate group-hover:text-primary">{course.startTime} — {course.endTime}</h4>
+                                            <Badge className="bg-primary text-white font-black text-[8px] md:text-xl px-1.5 md:px-4 py-0.5 rounded-md shadow-sm shrink-0">{course.class_id}</Badge>
+                                            <h4 className="text-[10px] md:text-4xl font-black uppercase tracking-tight truncate group-hover:text-primary">{course.start_time} — {course.end_time}</h4>
                                          </div>
                                          <div className="flex flex-wrap items-center gap-2 md:gap-8 text-[6px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">
                                             <span className="flex items-center gap-1"><MapPin className="size-2.5 md:size-5 text-primary" /> {course.room || '---'}</span>
