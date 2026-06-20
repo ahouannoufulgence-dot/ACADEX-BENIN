@@ -17,16 +17,22 @@ import { Input } from "@/components/ui/input"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { toast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from "@/firebase"
-import { collection, query, orderBy, limit } from "firebase/firestore"
-import { useMemo } from "react"
+import { supabase } from "@/lib/supabase"
+import { useMemo, useState, useEffect } from "react"
 
 export default function RankingPage() {
-  const db = useFirestore()
-  
-  // Requête réelle pour le palmarès
-  const studentsQuery = useMemo(() => query(collection(db, "students")), [db])
-  const { data: students, loading } = useCollection(studentsQuery)
+  const [students, setStudents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      setLoading(true)
+      const { data } = await supabase.from('students').select('*')
+      setStudents(data || [])
+      setLoading(false)
+    }
+    fetchStudents()
+  }, [])
 
   // Dans une version complète, les moyennes seraient pré-calculées
   // Pour le moment, on affiche un état propre sans mocks
@@ -52,7 +58,7 @@ export default function RankingPage() {
       autoTable(doc, {
         startY: 40,
         head: [['Rang', 'Élève', 'Classe', 'Moyenne Générale']],
-        body: topStudents.map((s: any, i) => [i + 1, `${s.lastName} ${s.firstName}`, s.classId, (s.average || "0.00") + "/20"]),
+        body: topStudents.map((s: any, i) => [i + 1, `${s.last_name} ${s.first_name}`, s.class_id, (s.average || "0.00") + "/20"]),
         headStyles: { fillColor: [20, 83, 45] }
       })
 
@@ -99,11 +105,11 @@ export default function RankingPage() {
                     <div className="flex flex-col items-center gap-4">
                       <Avatar className="size-28 border-4 border-white/20 shadow-2xl">
                         <AvatarImage src={`https://picsum.photos/seed/${student.id}/200/200`} />
-                        <AvatarFallback className="text-primary font-black text-2xl"> {student.lastName[0]} </AvatarFallback>
+                        <AvatarFallback className="text-primary font-black text-2xl"> {student.last_name[0]} </AvatarFallback>
                       </Avatar>
                       <div className="space-y-1">
-                        <h3 className="text-2xl font-black">{student.lastName} {student.firstName}</h3>
-                        <p className={`text-sm font-bold ${index === 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{student.classId}</p>
+                        <h3 className="text-2xl font-black">{student.last_name} {student.first_name}</h3>
+                        <p className={`text-sm font-bold ${index === 0 ? 'text-white/70' : 'text-muted-foreground'}`}>{student.class_id}</p>
                       </div>
                       <div className="mt-4 space-y-2 w-full">
                         <p className="text-4xl font-black">{student.average || "0.00"}</p>
@@ -148,12 +154,12 @@ export default function RankingPage() {
                           <td className="px-8 py-6">
                             <div className="flex items-center gap-4">
                               <Avatar className="size-12 shadow-sm border-2 border-white group-hover:border-primary/20 transition-all">
-                                <AvatarFallback>{student.lastName[0]}</AvatarFallback>
+                                <AvatarFallback>{student.last_name[0]}</AvatarFallback>
                               </Avatar>
-                              <span className="font-black text-foreground">{student.lastName} {student.firstName}</span>
+                              <span className="font-black text-foreground">{student.last_name} {student.first_name}</span>
                             </div>
                           </td>
-                          <td className="px-8 py-6 font-bold text-muted-foreground">{student.classId}</td>
+                          <td className="px-8 py-6 font-bold text-muted-foreground">{student.class_id}</td>
                           <td className="px-8 py-6 text-right">
                             <span className="text-lg font-black text-primary">{student.average || "0.00"}</span>
                           </td>
