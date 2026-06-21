@@ -38,23 +38,7 @@ import {
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
-import { useFirestore, useCollection } from "@/firebase"
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  orderBy, 
-  serverTimestamp, 
-  doc, 
-  updateDoc, 
-  limit, 
-  getDocs, 
-  setDoc,
-  increment,
-  onSnapshot,
-  deleteDoc
-} from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -74,7 +58,6 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export default function MessagingPage() {
-  const db = useFirestore()
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [currentUserName, setCurrentUserName] = useState<string>("")
   const [currentUserRole, setCurrentUserRole] = useState<string>("")
@@ -104,67 +87,70 @@ export default function MessagingPage() {
     setUserClasses(JSON.parse(localStorage.getItem('acadex_user_classes') || "[]"))
   }, [])
 
-  // Conversations query
-  const conversationsQuery = useMemo(() => {
-    if (!db || !currentUserId) return null
-    return query(
-      collection(db, "conversations"),
-      where("participants", "array-contains", currentUserId),
-      orderBy("lastMessageTime", "desc")
-    )
-  }, [db, currentUserId])
+  const [conversations, setConversations] = useState<any[]>([])
+  const [messages, setMessages] = useState<any[]>([])
+  const [loadingConvs, setLoadingConvs] = useState(true)
 
-  const { data: conversations, loading: loadingConvs } = useCollection(conversationsQuery)
+  const fetchConversations = async () => {
+    if (!currentUserId) return
+    setLoadingConvs(true)
+    const { data } = await supabase
+      .from('conversations')
+      .select('*')
+      .contains('participants', [currentUserId])
+      .order('last_message_time', { ascending: false })
+    setConversations(data || [])
+    setLoadingConvs(false)
+  }
 
-  // Messages query
-  const messagesQuery = useMemo(() => {
-    if (!db || !selectedChat) return null
-    return query(
-      collection(db, "conversations", selectedChat.id, "messages"),
-      orderBy("timestamp", "asc"),
-      limit(100)
-    )
-  }, [db, selectedChat])
+  useEffect(() => { fetchConversations() }, [currentUserId])
 
-  const { data: messages } = useCollection(messagesQuery)
+  const fetchMessages = async () => {
+    if (!selectedChat) return
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', selectedChat.id)
+      .order('timestamp', { ascending: true })
+      .limit(100)
+    setMessages(data || [])
+  }
 
-  // Typing indicator sync
   useEffect(() => {
-    if (!db || !selectedChat || !currentUserId) return
-    const otherId = selectedChat.participants.find((p: string) => p !== currentUserId)
-    const unsub = onSnapshot(doc(db, "conversations", selectedChat.id), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setOtherPersonTyping(data.typing?.[otherId] || false)
-      }
-    })
-    return () => unsub()
-  }, [db, selectedChat, currentUserId])
+    fetchMessages()
+    if (!selectedChat) return
 
-  // Scroll and read receipts
+    const channel = supabase
+      .channel(`conversation-${selectedChat.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${selectedChat.id}` }, () => {
+        fetchMessages()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [selectedChat])
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-    if (selectedChat && db && currentUserId) {
+    if (selectedChat && currentUserId) {
       const markAsRead = async () => {
-        const convRef = doc(db, "conversations", selectedChat.id)
-        await updateDoc(convRef, { [`unreadCount.${currentUserId}`]: 0 })
+        const unreadCount = { ...(selectedChat.unread_count || {}), [currentUserId]: 0 }
+        await supabase.from('conversations').update({ unread_count: unreadCount }).eq('id', selectedChat.id)
       }
       markAsRead()
     }
-  }, [messages, selectedChat, currentUserId, db])
+  }, [messages, selectedChat, currentUserId])
 
   const handleTyping = async () => {
-    if (!selectedChat || !db || !currentUserId) return
+    if (!selectedChat || !currentUserId) return
     if (!isTyping) {
       setIsTyping(true)
-      await updateDoc(doc(db, "conversations", selectedChat.id), { [`typing.${currentUserId}`]: true })
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     typingTimeoutRef.current = setTimeout(async () => {
       setIsTyping(false)
-      await updateDoc(doc(db, "conversations", selectedChat.id), { [`typing.${currentUserId}`]: false })
     }, 2000)
   }
 
@@ -172,43 +158,46 @@ export default function MessagingPage() {
     if (e) e.preventDefault()
     const textToSend = customText || messageText
     if (!textToSend.trim() && type === 'text') return
-    if (!selectedChat || !currentUserId || !db) return
+    if (!selectedChat || !currentUserId) return
     
     const msgContent = type === 'like' ? '👍' : textToSend
     setMessageText("")
     setIsTyping(false)
 
     try {
-      await addDoc(collection(db, "conversations", selectedChat.id, "messages"), {
-        senderId: currentUserId,
-        senderName: currentUserName,
+      await supabase.from('messages').insert({
+        conversation_id: selectedChat.id,
+        sender_id: currentUserId,
+        sender_name: currentUserName,
         text: msgContent,
-        timestamp: serverTimestamp(),
         type: type,
         seen: false
       })
       
-      const updates: any = { 
-        lastMessage: type === 'image' ? '📷 Photo' : (type === 'like' ? '👍 Like' : msgContent), 
-        lastMessageTime: serverTimestamp(),
-        [`typing.${currentUserId}`]: false
-      }
-      
+      const newUnreadCount = { ...(selectedChat.unread_count || {}) }
       selectedChat.participants.forEach((pId: string) => { 
-        if (pId !== currentUserId) updates[`unreadCount.${pId}`] = increment(1) 
+        if (pId !== currentUserId) newUnreadCount[pId] = (newUnreadCount[pId] || 0) + 1
       })
-      
-      await updateDoc(doc(db, "conversations", selectedChat.id), updates)
+
+      await supabase.from('conversations').update({
+        last_message: type === 'image' ? '📷 Photo' : (type === 'like' ? '👍 Like' : msgContent),
+        last_message_time: new Date().toISOString(),
+        unread_count: newUnreadCount,
+      }).eq('id', selectedChat.id)
+
+      fetchMessages()
+      fetchConversations()
     } catch (e) {
       toast({ title: "Erreur d'envoi", variant: "destructive" })
     }
   }
 
   const handleDeleteMessage = async (msgId: string) => {
-    if (!selectedChat || !db) return
+    if (!selectedChat) return
     try {
-      await deleteDoc(doc(db, "conversations", selectedChat.id, "messages", msgId))
+      await supabase.from('messages').delete().eq('id', msgId)
       toast({ title: "Message retiré" })
+      fetchMessages()
     } catch (e) {
       toast({ title: "Action impossible", variant: "destructive" })
     }
@@ -245,19 +234,23 @@ export default function MessagingPage() {
   const fetchContacts = async () => {
     setLoadingContacts(true)
     try {
-      const teachersSnap = await getDocs(collection(db, "teachers"))
-      const studentsSnap = await getDocs(collection(db, "students"))
+      const [teachersRes, studentsRes] = await Promise.all([
+        supabase.from('teachers').select('*'),
+        supabase.from('students').select('*')
+      ])
+      const teachersData = teachersRes.data || []
+      const studentsData = studentsRes.data || []
       let allContacts: any[] = []
 
       if (currentUserRole === "Directeur") {
         allContacts = [
-          ...teachersSnap.docs.map(d => ({ id: d.data().officialId || d.id, name: d.data().fullName, role: 'Prof', sub: d.data().subject })),
-          ...studentsSnap.docs.map(d => ({ id: d.data().matricule || d.id, name: `${d.data().firstName} ${d.data().lastName}`, role: 'Élève', sub: d.data().classId }))
+          ...teachersData.map((d: any) => ({ id: d.official_id || d.id, name: d.full_name, role: 'Prof', sub: d.subject })),
+          ...studentsData.map((d: any) => ({ id: d.matricule || d.id, name: `${d.first_name} ${d.last_name}`, role: 'Élève', sub: d.class_id }))
         ]
       } else if (currentUserRole === "Enseignant") {
-        const myStudents = studentsSnap.docs
-          .filter(d => userClasses.includes(d.data().classId))
-          .map(d => ({ id: d.data().matricule || d.id, name: `${d.data().firstName} ${d.data().lastName}`, role: 'Élève', sub: d.data().classId }))
+        const myStudents = studentsData
+          .filter((d: any) => userClasses.includes(d.class_id))
+          .map((d: any) => ({ id: d.matricule || d.id, name: `${d.first_name} ${d.last_name}`, role: 'Élève', sub: d.class_id }))
         allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Admin' }, ...myStudents]
       } else {
         allContacts = [{ id: 'DIR-001', name: 'Directeur Acadex', role: 'Direction', sub: 'Admin' }]
@@ -270,25 +263,24 @@ export default function MessagingPage() {
 
   const startConversation = async (contact: any) => {
     const convId = [currentUserId, contact.id].sort().join("_")
-    const convRef = doc(db, "conversations", convId)
-    await setDoc(convRef, {
+    await supabase.from('conversations').upsert({
       id: convId,
       participants: [currentUserId, contact.id],
       type: 'private',
-      participantNames: { [currentUserId]: currentUserName, [contact.id]: contact.name },
-      lastMessage: "Conversation démarrée",
-      lastMessageTime: serverTimestamp(),
-      unreadCount: { [currentUserId]: 0, [contact.id]: 0 },
-      typing: { [currentUserId]: false, [contact.id]: false }
-    }, { merge: true })
+      participant_names: { [currentUserId]: currentUserName, [contact.id]: contact.name },
+      last_message: "Conversation démarrée",
+      last_message_time: new Date().toISOString(),
+      unread_count: { [currentUserId]: 0, [contact.id]: 0 },
+    })
     setSelectedChat({ id: convId, participants: [currentUserId, contact.id], otherName: contact.name })
+    fetchConversations()
   }
 
   const filteredConversations = useMemo(() => {
     if (!conversations) return []
     return conversations.filter(c => {
       const otherId = c.participants.find((p: string) => p !== currentUserId)
-      const name = c.participantNames?.[otherId] || "Utilisateur"
+      const name = c.participant_names?.[otherId] || "Utilisateur"
       return name.toLowerCase().includes(searchTerm.toLowerCase())
     })
   }, [conversations, searchTerm, currentUserId])
@@ -351,8 +343,8 @@ export default function MessagingPage() {
           {loadingConvs ? <div className="flex justify-center p-10"><Loader2 className="size-8 animate-spin text-primary opacity-20" /></div> : 
             filteredConversations.map(chat => {
               const otherId = chat.participants.find((p: string) => p !== currentUserId)
-              const name = chat.participantNames?.[otherId] || "Utilisateur"
-              const unread = chat.unreadCount?.[currentUserId] || 0
+              const name = chat.participant_names?.[otherId] || "Utilisateur"
+              const unread = chat.unread_count?.[currentUserId] || 0
               return (
                 <div key={chat.id} onClick={() => setSelectedChat({ ...chat, otherName: name })} className={cn(
                   "flex items-center gap-3 p-4 rounded-2xl cursor-pointer transition-all mx-1",
@@ -367,11 +359,11 @@ export default function MessagingPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-0.5">
                       <h4 className={cn("truncate text-sm font-black uppercase tracking-tight", unread > 0 ? "text-foreground" : "text-foreground/70")}>{name}</h4>
-                      <span className="text-[10px] font-bold text-muted-foreground">{formatTime(chat.lastMessageTime)}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">{formatTime(chat.last_message_time)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <p className={cn("text-xs truncate max-w-[85%]", unread > 0 ? "font-black text-foreground" : "font-medium text-muted-foreground/60")}>
-                        {chat.lastMessage}
+                        {chat.last_message}
                       </p>
                       {unread > 0 && <Badge className="bg-primary text-white text-[10px] px-1.5 py-0 min-w-[1.4rem] h-5 justify-center rounded-full shadow-lg">{unread}</Badge>}
                     </div>
@@ -424,7 +416,7 @@ export default function MessagingPage() {
             {/* Messages Zone */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 md:p-10 space-y-6 md:space-y-8 no-scrollbar bg-[#F8FAFC]/30 scroll-smooth">
               {messages?.map((msg: any, i: number) => {
-                const isMe = msg.senderId === currentUserId
+                const isMe = msg.sender_id === currentUserId
                 return (
                   <div key={msg.id || i} className={cn("flex items-end gap-2 group animate-in slide-in-from-bottom-2 duration-300", isMe ? "flex-row-reverse" : "flex-row")}>
                     <div className={cn("max-w-[85%] md:max-w-[70%] flex flex-col relative", isMe ? "items-end" : "items-start")}>
