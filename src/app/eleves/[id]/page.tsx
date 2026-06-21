@@ -28,10 +28,7 @@ import Link from "next/link"
 import { useState, useEffect, useMemo } from "react"
 import { toast } from "@/hooks/use-toast"
 import { generateAcademicFeedback, type GenerateAcademicFeedbackOutput } from "@/ai/flows/generate-academic-feedback"
-import { useFirestore, useDoc } from "@/firebase"
-import { doc, updateDoc, deleteDoc } from "firebase/firestore"
-import { errorEmitter } from '@/firebase/error-emitter'
-import { FirestorePermissionError } from '@/firebase/errors'
+import { supabase } from "@/lib/supabase"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
@@ -50,10 +47,8 @@ import {
 export default function StudentDetailPage() {
   const { id } = useParams()
   const router = useRouter()
-  const db = useFirestore()
-  
-  const studentRef = useMemo(() => doc(db, "students", id as string), [db, id])
-  const { data: student, loading: loadingStudent } = useDoc(studentRef)
+  const [student, setStudent] = useState<any>(null)
+  const [loadingStudent, setLoadingStudent] = useState(true)
   
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState({
@@ -67,34 +62,46 @@ export default function StudentDetailPage() {
   const [aiAnalysis, setAiAnalysis] = useState<GenerateAcademicFeedbackOutput | null>(null)
   const [isDirector, setIsDirector] = useState(false)
 
+  const fetchStudent = async () => {
+    setLoadingStudent(true)
+    const { data } = await supabase.from('students').select('*').eq('id', id).single()
+    setStudent(data)
+    setLoadingStudent(false)
+  }
+
   useEffect(() => {
     setIsDirector(localStorage.getItem('acadex_user_role') === "Directeur")
+    fetchStudent()
+  }, [id])
+
+  useEffect(() => {
     if (student) {
       setEditForm({
-        fullName: student.fullName || `${student.lastName} ${student.firstName}`,
+        fullName: `${student.last_name} ${student.first_name}`,
         matricule: student.matricule || "",
-        classId: student.classId || "",
+        classId: student.class_id || "",
         status: student.status || ""
       })
     }
   }, [student])
 
-  const handleUpdate = () => {
-    updateDoc(studentRef, editForm).catch(async () => {
-      const error = new FirestorePermissionError({
-        path: studentRef.path,
-        operation: 'update',
-        requestResourceData: editForm
-      })
-      errorEmitter.emit('permission-error', error)
-    })
+  const handleUpdate = async () => {
+    const [firstName, ...rest] = editForm.fullName.split(' ')
+    await supabase.from('students').update({
+      first_name: firstName,
+      last_name: rest.join(' '),
+      matricule: editForm.matricule,
+      class_id: editForm.classId,
+      status: editForm.status
+    }).eq('id', id)
     setIsEditing(false)
     toast({ title: "Profil mis à jour", description: "Les modifications ont été enregistrées." })
+    fetchStudent()
   }
 
   const handleArchive = async () => {
     try {
-      await updateDoc(studentRef, { status: "Archivé" })
+      await supabase.from('students').update({ status: "Archivé" }).eq('id', id)
       toast({ title: "Élève archivé", description: "Le profil a été déplacé vers le coffre-fort numérique." })
       router.push("/eleves")
     } catch (e) {
@@ -104,21 +111,16 @@ export default function StudentDetailPage() {
 
   const handleRestore = async () => {
     try {
-      await updateDoc(studentRef, { status: "Actif" })
+      await supabase.from('students').update({ status: "Actif" }).eq('id', id)
       toast({ title: "Profil restauré", description: "L'élève est de nouveau actif dans l'école." })
+      fetchStudent()
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     }
   }
 
-  const handleDelete = () => {
-    deleteDoc(studentRef).catch(async () => {
-      const error = new FirestorePermissionError({
-        path: studentRef.path,
-        operation: 'delete'
-      })
-      errorEmitter.emit('permission-error', error)
-    })
+  const handleDelete = async () => {
+    await supabase.from('students').delete().eq('id', id)
     toast({ title: "Élève supprimé" })
     router.push("/eleves")
   }
@@ -128,7 +130,7 @@ export default function StudentDetailPage() {
     setAnalyzing(true)
     try {
       const input = {
-        studentName: student.fullName || `${student.lastName} ${student.firstName}`,
+        studentName: `${student.last_name} ${student.first_name}`,
         grades: [
           { subject: "Mathématiques", grade: 18, maxGrade: 20 },
           { subject: "Français", grade: 12, maxGrade: 20 },
@@ -209,7 +211,7 @@ export default function StudentDetailPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-xl font-black">Supprimer définitivement ?</AlertDialogTitle>
                         <AlertDialogDescription className="font-medium text-sm">
-                          Cette action effacera toutes les données scolaires de l'élève {student.fullName || student.matricule}.
+                          Cette action effacera toutes les données scolaires de l'élève {student.matricule}.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter className="gap-2">
@@ -241,7 +243,7 @@ export default function StudentDetailPage() {
             <div className="absolute -top-10 md:-top-12 left-6 md:left-16">
               <Avatar className="size-24 md:size-40 border-4 md:border-8 border-white shadow-2xl">
                 <AvatarImage src={`https://picsum.photos/seed/${student.id}/400/400`} />
-                <AvatarFallback className="bg-primary text-white text-3xl md:text-5xl font-black">{(student.lastName || "??").substring(0, 2)}</AvatarFallback>
+                <AvatarFallback className="bg-primary text-white text-3xl md:text-5xl font-black">{(student.last_name || "??").substring(0, 2)}</AvatarFallback>
               </Avatar>
               {isArchived && (
                 <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center">
@@ -284,13 +286,13 @@ export default function StudentDetailPage() {
                 ) : (
                   <div className="space-y-2 md:space-y-3">
                     <div className="flex flex-wrap items-center gap-2 md:gap-4">
-                      <h1 className="text-xl md:text-4xl font-black text-foreground uppercase truncate max-w-[200px] md:max-w-none">{student.lastName} {student.firstName}</h1>
+                      <h1 className="text-xl md:text-4xl font-black text-foreground uppercase truncate max-w-[200px] md:max-w-none">{student.last_name} {student.first_name}</h1>
                       <Badge className={cn("px-3 md:px-5 py-0.5 md:py-1 rounded-full font-black text-[10px] md:text-sm", isArchived ? "bg-muted text-muted-foreground" : "bg-primary text-white")}>
-                        {student.classId} {isArchived && "(ARCHIVÉ)"}
+                        {student.class_id} {isArchived && "(ARCHIVÉ)"}
                       </Badge>
                     </div>
                     <p className="text-muted-foreground flex items-center gap-2 md:gap-3 font-semibold text-[10px] md:text-base">
-                      ID: {student.matricule} • {student.academicYear}
+                      ID: {student.matricule} • {student.academic_year}
                     </p>
                   </div>
                 )}
@@ -325,7 +327,7 @@ export default function StudentDetailPage() {
                     <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Statut Compte</p><Badge variant="outline" className={cn("font-bold text-[9px] md:text-xs", isArchived ? "border-amber-200 text-amber-600" : "border-primary/20 text-primary")}>{student.status}</Badge></div>
                     <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Nationalité</p><p className="font-bold">Béninoise</p></div>
                     <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Genre</p><p className="font-bold">{student.gender || '---'}</p></div>
-                    <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Année</p><p className="font-bold">{student.academicYear}</p></div>
+                    <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Année</p><p className="font-bold">{student.academic_year}</p></div>
                   </div>
                 </Card>
                 <Card className="premium-card p-6 md:p-8 space-y-6">
