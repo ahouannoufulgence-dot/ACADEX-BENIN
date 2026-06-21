@@ -23,8 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useState, useEffect, useMemo } from "react"
-import { useFirestore, useDoc } from "@/firebase"
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -45,10 +44,8 @@ const SUBJECTS = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histo
 export default function TeacherDetailPage() {
   const { id } = useParams()
   const router = useRouter()
-  const db = useFirestore()
-  
-  const teacherRef = useMemo(() => doc(db, "teachers", id as string), [db, id])
-  const { data: teacher, loading } = useDoc(teacherRef)
+  const [teacher, setTeacher] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   
   const [activeYear, setActiveYear] = useState("")
   const [isEditing, setIsEditing] = useState(false)
@@ -66,14 +63,22 @@ export default function TeacherDetailPage() {
     subject: ""
   })
 
+  const fetchTeacher = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('teachers').select('*').eq('id', id).single()
+    setTeacher(data)
+    setLoading(false)
+  }
+
   useEffect(() => {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
-  }, [])
+    fetchTeacher()
+  }, [id])
 
   useEffect(() => {
     if (teacher) {
       setEditForm({
-        fullName: teacher.fullName || "",
+        fullName: teacher.full_name || "",
         subject: teacher.subject || "",
         phone: teacher.phone || "",
         status: teacher.status || "En attente"
@@ -89,12 +94,15 @@ export default function TeacherDetailPage() {
 
   const handleUpdateInfo = async () => {
     try {
-      await updateDoc(teacherRef, {
-        ...editForm,
-        updatedAt: serverTimestamp()
-      })
+      await supabase.from('teachers').update({
+        full_name: editForm.fullName,
+        subject: editForm.subject,
+        phone: editForm.phone,
+        status: editForm.status,
+      }).eq('id', id)
       setIsEditing(false)
       toast({ title: "Profil mis à jour" })
+      fetchTeacher()
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     }
@@ -107,17 +115,17 @@ export default function TeacherDetailPage() {
       const assignments = teacher.assignments || {}
       assignments[activeYear] = currentAssignments
 
-      await updateDoc(teacherRef, {
+      await supabase.from('teachers').update({
         assignments,
         classes: currentAssignments.classes,
         subject: currentAssignments.subject,
-        updatedAt: serverTimestamp()
-      })
+      }).eq('id', id)
 
       toast({ 
         title: "Affectations scellées", 
         description: `Mise à jour terminée pour l'année ${activeYear}.` 
       })
+      fetchTeacher()
     } catch (e) {
       toast({ title: "Erreur de scellage", variant: "destructive" })
     } finally {
@@ -136,7 +144,7 @@ export default function TeacherDetailPage() {
 
   const handleArchive = async () => {
     try {
-      await updateDoc(teacherRef, { status: "Archivé" })
+      await supabase.from('teachers').update({ status: "Archivé" }).eq('id', id)
       toast({ title: "Enseignant archivé" })
       router.push("/enseignants")
     } catch (e) {
@@ -146,8 +154,9 @@ export default function TeacherDetailPage() {
 
   const handleRestore = async () => {
     try {
-      await updateDoc(teacherRef, { status: "Actif" })
+      await supabase.from('teachers').update({ status: "Actif" }).eq('id', id)
       toast({ title: "Accès restauré" })
+      fetchTeacher()
     } catch (e) {
       toast({ title: "Erreur", variant: "destructive" })
     }
@@ -209,14 +218,14 @@ export default function TeacherDetailPage() {
             <div className="absolute -bottom-10 md:-bottom-16 left-6 md:left-16 flex items-end gap-6">
               <Avatar className="size-24 md:size-40 border-[6px] md:border-[10px] border-white shadow-2xl">
                 <AvatarFallback className="bg-primary text-white text-2xl md:text-6xl font-black uppercase">
-                  {(teacher.fullName || "??").substring(0, 2)}
+                  {(teacher.full_name || "??").substring(0, 2)}
                 </AvatarFallback>
               </Avatar>
               <div className="mb-4 md:mb-6 space-y-1 hidden md:block">
-                 <h1 className="text-xl md:text-4xl font-black text-white drop-shadow-lg uppercase tracking-tight">{teacher.fullName}</h1>
+                 <h1 className="text-xl md:text-4xl font-black text-white drop-shadow-lg uppercase tracking-tight">{teacher.full_name}</h1>
                  <div className="flex items-center gap-3">
                     <Badge className="bg-white/20 backdrop-blur-md text-white border-none font-bold px-4 py-1 rounded-full text-xs">{teacher.subject}</Badge>
-                    <Badge variant="outline" className="border-white/40 text-white font-black text-[10px]">{teacher.officialId}</Badge>
+                    <Badge variant="outline" className="border-white/40 text-white font-black text-[10px]">{teacher.official_id}</Badge>
                  </div>
               </div>
             </div>
@@ -328,7 +337,7 @@ export default function TeacherDetailPage() {
                            </div>
                            <div className="grid gap-1.5 md:gap-2">
                               <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground px-1">Identifiant Système</Label>
-                              <div className="h-11 md:h-14 rounded-xl bg-muted/30 flex items-center px-4 font-mono text-xs md:text-lg font-black border-2 border-transparent">{teacher.officialId}</div>
+                              <div className="h-11 md:h-14 rounded-xl bg-muted/30 flex items-center px-4 font-mono text-xs md:text-lg font-black border-2 border-transparent">{teacher.official_id}</div>
                            </div>
                         </div>
                      </div>
