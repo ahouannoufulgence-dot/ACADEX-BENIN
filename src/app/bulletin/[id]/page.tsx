@@ -19,8 +19,7 @@ import {
   Info
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { useFirestore, useDoc, useCollection } from "@/firebase"
-import { doc, query, collection, where, onSnapshot } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { useState, useMemo, useEffect } from "react"
 import { generateBulletinPDF, type BulletinData } from "@/lib/bulletin-generator"
 import { cn } from "@/lib/utils"
@@ -28,27 +27,40 @@ import { cn } from "@/lib/utils"
 export default function OfficialBulletinPage() {
   const { id } = useParams()
   const router = useRouter()
-  const db = useFirestore()
   const [activeTerm, setActiveTerm] = useState("T1")
   const [isGenerating, setIsGenerating] = useState(false)
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
-
-  const studentRef = useMemo(() => doc(db, "students", id as string), [db, id])
-  const { data: student, loading: loadingStudent } = useDoc(studentRef)
-
-  const gradesQuery = useMemo(() => {
-    if (!student) return null
-    return query(collection(db, "grades"), where("studentId", "==", student.matricule))
-  }, [db, student])
-
-  const { data: grades, loading: loadingGrades } = useCollection(gradesQuery)
+  const [student, setStudent] = useState<any>(null)
+  const [grades, setGrades] = useState<any[]>([])
+  const [loadingStudent, setLoadingStudent] = useState(true)
+  const [loadingGrades, setLoadingGrades] = useState(true)
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) setSchoolConfig(snap.data())
-    })
-    return () => unsub()
-  }, [db])
+    const fetchStudent = async () => {
+      setLoadingStudent(true)
+      const { data } = await supabase.from('students').select('*').eq('id', id).single()
+      setStudent(data)
+      setLoadingStudent(false)
+    }
+    fetchStudent()
+
+    const fetchConfig = async () => {
+      const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+      if (data) setSchoolConfig(data)
+    }
+    fetchConfig()
+  }, [id])
+
+  useEffect(() => {
+    if (!student) return
+    const fetchGrades = async () => {
+      setLoadingGrades(true)
+      const { data } = await supabase.from('grades').select('*').eq('student_matricule', student.matricule)
+      setGrades(data || [])
+      setLoadingGrades(false)
+    }
+    fetchGrades()
+  }, [student])
 
   const bulletinData = useMemo(() => {
     if (!student || !grades || !schoolConfig) return null
@@ -105,19 +117,19 @@ export default function OfficialBulletinPage() {
 
     return {
       schoolInfo: {
-        name: schoolConfig.schoolName || "ACADEX",
+        name: schoolConfig.school_name || "ACADEX",
         motto: schoolConfig.motto || "Excellence - Travail - Discipline",
         address: schoolConfig.address || "Cotonou, Bénin",
         phone: schoolConfig.phone || "+229 00 00 00 00",
         email: "contact@acadex.bj",
-        academicYear: student.academicYear,
+        academicYear: student.academic_year,
         primaryColor: schoolConfig.primaryColor || "#14532D"
       },
       student: {
         id: student.id,
-        fullName: `${student.lastName} ${student.firstName}`,
+        fullName: `${student.last_name} ${student.first_name}`,
         matricule: student.matricule,
-        classId: student.classId,
+        classId: student.class_id,
         dob: student.dob || "---",
         sex: student.gender || "---",
         rank: 1,
@@ -245,7 +257,7 @@ export default function OfficialBulletinPage() {
                      <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-white rounded-2xl shadow-sm border border-muted">
                            <p className="text-[7px] md:text-[9px] font-black text-muted-foreground uppercase mb-1">Classe</p>
-                           <p className="text-sm md:text-lg font-black">{bulletinData.student.classId}</p>
+                           <p className="text-sm md:text-lg font-black">{bulletinData.student.class_id}</p>
                         </div>
                         <div className="p-4 bg-white rounded-2xl shadow-sm border border-muted">
                            <p className="text-[7px] md:text-[9px] font-black text-muted-foreground uppercase mb-1">Moyenne Gén.</p>
