@@ -20,11 +20,9 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
-import { doc, getDoc, setDoc } from "firebase/firestore"
-import { useFirestore } from "@/firebase"
+import { supabase } from "@/lib/supabase"
 
 export default function PersonalizationPage() {
-  const db = useFirestore()
   const [loading, setLoading] = useState(false)
   const [settings, setSettings] = useState({
     schoolName: "ACADEX ELITE",
@@ -39,17 +37,37 @@ export default function PersonalizationPage() {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const snap = await getDoc(doc(db, "school_settings", "main_config"))
-        if (snap.exists()) setSettings(snap.data() as any)
+        const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+        if (data) {
+          setSettings({
+            schoolName: data.school_name || "ACADEX ELITE",
+            motto: data.motto || "Discipline - Travail - Excellence",
+            address: data.address || "Cotonou, Bénin",
+            phone: data.phone || "+229 00 00 00 00",
+            academicYear: data.academic_year || "2024-2025",
+            logoUrl: data.logo_url || "",
+            primaryColor: data.primary_color || "#14532D"
+          })
+        }
       } catch (e) { console.warn(e) }
     }
     fetch()
-  }, [db])
+  }, [])
 
   const handleSave = async () => {
     setLoading(true)
     try {
-      await setDoc(doc(db, "school_settings", "main_config"), settings)
+      const { error } = await supabase.from('school_settings').upsert({
+        id: 'main_config',
+        school_name: settings.schoolName,
+        motto: settings.motto,
+        address: settings.address,
+        phone: settings.phone,
+        academic_year: settings.academicYear,
+        logo_url: settings.logoUrl,
+        primary_color: settings.primaryColor,
+      })
+      if (error) throw error
       localStorage.setItem('acadex_school_name', settings.schoolName)
       toast({ title: "Identité mise à jour", description: "Votre établissement a été rebrandé avec succès." })
     } catch (e) {
