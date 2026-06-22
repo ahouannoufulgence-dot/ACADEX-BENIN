@@ -125,7 +125,7 @@ export default function DirectorDashboard() {
       })
     }
 
-    const avg = gpaCount > 0 ? (globalSum / gpaCount).toFixed(2) : "14.20"
+    const avg = gpaCount > 0 ? (globalSum / gpaCount).toFixed(2) : "0.00"
     const completionRate = Math.min(100, Math.round((totalGradesEntered / (Math.max(1, totalStudents) * 50)) * 100))
 
     return { totalStudents, totalTeachers, idsCount, revenue, avg, completionRate }
