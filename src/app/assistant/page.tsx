@@ -20,13 +20,11 @@ import {
   Globe
 } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
-import { useFirestore } from "@/firebase"
-import { collection, query, where, getDocs } from "firebase/firestore"
+import { supabase } from "@/lib/supabase"
 import { askAcadexBrain } from "@/ai/flows/acadex-brain"
 import { cn } from "@/lib/utils"
 
 export default function AssistantPage() {
-  const db = useFirestore()
   const [messages, setMessages] = useState<any[]>([
     { role: 'bot', content: "Bienvenue dans l'espace de haute intelligence ACADEX. Je suis votre conseiller personnel, scellé aux registres de l'établissement. Ma vision est nourrie par vos données réelles pour vous offrir une analyse d'une précision absolue. Comment puis-je vous accompagner aujourd'hui ?" }
   ])
@@ -61,12 +59,12 @@ export default function AssistantPage() {
       let contextData: any = { academicYear: activeYear }
       
       if (userRole === 'Élève') {
-        const [gradesSnap, lifeSnap] = await Promise.all([
-               getDocs(query(collection(db, "grades"), where("studentId", "==", userId), where("academicYear", "==", activeYear))),
-               getDocs(query(collection(db, "student_life"), where("studentId", "==", userId), where("academicYear", "==", activeYear)))
+        const [gradesRes, lifeRes] = await Promise.all([
+          supabase.from('grades').select('*').eq('student_matricule', userId).eq('academic_year', activeYear),
+          supabase.from('student_life').select('*').eq('student_id', userId).eq('academic_year', activeYear)
         ])
         
-        const grades = gradesSnap.docs.map(d => d.data())
+        const grades = gradesRes.data || []
         const subjects: Record<string, number[]> = {}
         grades.forEach((g: any) => {
           if (!subjects[g.subject]) subjects[g.subject] = []
@@ -86,22 +84,22 @@ export default function AssistantPage() {
           nom: localStorage.getItem('acadex_user_name'),
           moyennes: averages,
           moyenneGenerale: totalAvg,
-          historiqueVieScolaire: lifeSnap.docs.map(d => ({ motif: d.data().motif, type: d.data().category, impact: d.data().pointsImpact }))
+          historiqueVieScolaire: (lifeRes.data || []).map((d: any) => ({ motif: d.motif, type: d.category, impact: d.points_impact }))
         }
       } else if (userRole === 'Directeur') {
-        const [studentsSnap, gradesSnap, paymentsSnap] = await Promise.all([
-          getDocs(query(collection(db, "students"), where("academicYear", "==", activeYear))),
-          getDocs(query(collection(db, "grades"), where("academicYear", "==", activeYear))),
-          getDocs(query(collection(db, "payments"), where("academicYear", "==", activeYear)))
+        const [studentsRes, gradesRes, paymentsRes] = await Promise.all([
+          supabase.from('students').select('*').eq('academic_year', activeYear),
+          supabase.from('grades').select('*').eq('academic_year', activeYear),
+          supabase.from('payments').select('*').eq('academic_year', activeYear)
         ])
 
-        const students = studentsSnap.docs.map(d => d.data())
-        const grades = gradesSnap.docs.map(d => d.data())
-        const payments = paymentsSnap.docs.map(d => d.data())
+        const students = studentsRes.data || []
+        const grades = gradesRes.data || []
+        const payments = paymentsRes.data || []
 
         const promos: Record<string, { total: number, count: number }> = {}
         grades.forEach(g => {
-          const p = g.classId?.split(' ')[0] || 'Inconnue'
+          const p = g.class_id?.split(' ')[0] || 'Inconnue'
           if (!promos[p]) promos[p] = { total: 0, count: 0 }
           promos[p].total += Number(g.value)
           promos[p].count++
@@ -115,20 +113,20 @@ export default function AssistantPage() {
         contextData = {
           effectifTotal: students.length,
           moyennesParPromotion: promoAvgs,
-          totalRecettes: payments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0),
+          totalRecettes: payments.reduce((acc: number, p: any) => acc + (Number(p.amount_paid) || 0), 0),
           tauxReussiteGlobalEstimation: (grades.filter(g => Number(g.value) >= 10).length / Math.max(1, grades.length) * 100).toFixed(1) + "%"
         }
       } else if (userRole === 'Enseignant') {
         const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
-        const gradesSnap = await getDocs(query(collection(db, "grades"), where("subject", "==", localStorage.getItem('acadex_user_subject')), where("academicYear", "==", activeYear)))
-        const myGrades = gradesSnap.docs.map(d => d.data()).filter(g => classes.includes(g.classId))
+        const { data: gradesData } = await supabase.from('grades').select('*').eq('subject', localStorage.getItem('acadex_user_subject')).eq('academic_year', activeYear)
+        const myGrades = (gradesData || []).filter((g: any) => classes.includes(g.class_id))
 
         contextData = {
           matiere: localStorage.getItem('acadex_user_subject'),
           mesClasses: classes,
           nombreNotesSaisies: myGrades.length,
           moyenneParClasse: classes.map((c: string) => {
-            const cGrades = myGrades.filter(g => g.classId === c)
+            const cGrades = myGrades.filter((g: any) => g.class_id === c)
             const avg = cGrades.length ? (cGrades.reduce((acc, g) => acc + Number(g.value), 0) / cGrades.length).toFixed(2) : "0.00"
             return { classe: c, moyenne: avg }
           })
