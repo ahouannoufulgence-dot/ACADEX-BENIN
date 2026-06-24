@@ -111,10 +111,25 @@ export default function AssistantPage() {
         })
 
         contextData = {
-          effectifTotal: students.length,
-          moyennesParPromotion: promoAvgs,
-          totalRecettes: payments.reduce((acc: number, p: any) => acc + (Number(p.amount_paid) || 0), 0),
-          tauxReussiteGlobalEstimation: (grades.filter(g => Number(g.value) >= 10).length / Math.max(1, grades.length) * 100).toFixed(1) + "%"
+          eleves: students.map((s: any) => ({
+            matricule: s.student_matricule,
+            nom: s.last_name,
+            prenom: s.first_name,
+            classe: s.class_id,
+            promotion: s.promotion
+          })),
+          notes: grades.map((g: any) => ({
+            matricule: g.student_matricule,
+            matiere: g.subject,
+            valeur: g.value,
+            classe: g.class_id,
+            promotion: g.promotion
+          })),
+          paiements: payments.map((p: any) => ({
+            matricule: p.student_matricule,
+            montant: p.amount_paid,
+            statut: p.status
+          }))
         }
       } else if (userRole === 'Enseignant') {
         const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
@@ -124,12 +139,19 @@ export default function AssistantPage() {
         contextData = {
           matiere: localStorage.getItem('acadex_user_subject'),
           mesClasses: classes,
-          nombreNotesSaisies: myGrades.length,
-          moyenneParClasse: classes.map((c: string) => {
-            const cGrades = myGrades.filter((g: any) => g.class_id === c)
-            const avg = cGrades.length ? (cGrades.reduce((acc, g) => acc + Number(g.value), 0) / cGrades.length).toFixed(2) : "0.00"
-            return { classe: c, moyenne: avg }
-          })
+          notes: myGrades.map((g: any) => ({
+            matricule: g.student_matricule,
+            nomEleve: g.student_name,
+            valeur: g.value,
+            classe: g.class_id,
+            trimestre: g.term
+          })),
+          eleves: students.map((s: any) => ({
+            matricule: s.student_matricule,
+            nom: s.last_name,
+            prenom: s.first_name,
+            classe: s.class_id
+          })).filter((s: any) => classes.includes(s.classe))
         }
       }
       
