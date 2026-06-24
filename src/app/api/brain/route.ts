@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
   const { messages } = await req.json();
-  const apiKey = process.env.GROQ_API_KEY || "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";
+  const apiKey = process.env.GROQ_API_KEY || "";
 
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
