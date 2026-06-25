@@ -1,6 +1,9 @@
 export async function callGroq(messages: {role: string, content: string}[]) {
   try {
-    const response = await fetch("/api/brain", {
+    const baseUrl = typeof window === 'undefined'
+      ? (process.env.NEXT_PUBLIC_APP_URL || 'https://acadex-benin.vercel.app')
+      : '';
+    const response = await fetch(`${baseUrl}/api/brain`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages }),
