@@ -87,15 +87,17 @@ export default function AssistantPage() {
           historiqueVieScolaire: (lifeRes.data || []).map((d: any) => ({ motif: d.motif, type: d.category, impact: d.points_impact }))
         }
       } else if (userRole === 'Directeur') {
-        const [studentsRes, gradesRes, paymentsRes] = await Promise.all([
+        const [studentsRes, gradesRes, paymentsRes, teachersRes] = await Promise.all([
           supabase.from('students').select('*').eq('academic_year', activeYear),
           supabase.from('grades').select('*').eq('academic_year', activeYear),
-          supabase.from('payments').select('*').eq('academic_year', activeYear)
+          supabase.from('payments').select('*').eq('academic_year', activeYear),
+          supabase.from('teachers').select('*')
         ])
 
         const students = studentsRes.data || []
         const grades = gradesRes.data || []
         const payments = paymentsRes.data || []
+        const teachers = teachersRes.data || []
 
         const promos: Record<string, { total: number, count: number }> = {}
         grades.forEach(g => {
@@ -124,6 +126,13 @@ export default function AssistantPage() {
             valeur: g.value,
             classe: g.class_id,
             promotion: g.promotion
+          })),
+          enseignants: teachers.map((t: any) => ({
+            code: t.teacher_code,
+            nom: t.last_name,
+            prenom: t.first_name,
+            matiere: t.subject,
+            classes: t.classes
           })),
           paiements: payments.map((p: any) => ({
             matricule: p.student_matricule,
