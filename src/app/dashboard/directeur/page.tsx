@@ -137,26 +137,6 @@ export default function DirectorDashboard() {
   return (
     <DashboardLayout>
       <div className="max-w-6xl mx-auto space-y-5 md:space-y-8 animate-in fade-in duration-500">
-        
-        <div className="flex items-center justify-between gap-4 px-1">
-           <div className="space-y-0.5">
-              <h1 className="text-xl md:text-3xl font-black tracking-tight uppercase truncate">
-                Tableau de <span className="text-primary italic">Bord</span>
-              </h1>
-              <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                 <Clock className="size-3 text-primary" /> {todayStr}
-              </p>
-           </div>
-           <div className="flex items-center gap-2 md:gap-3">
-              <div className="bg-white rounded-xl h-10 md:h-12 px-3 md:px-4 flex items-center gap-2 border border-muted/30 shadow-sm">
-                 <Calendar className="size-3.5 text-primary" />
-                 <span className="font-black text-[10px] md:text-sm text-foreground">{activeYear}</span>
-              </div>
-              <Avatar className="size-10 md:size-12 border-2 border-primary/10 shadow-sm">
-                 <AvatarFallback className="bg-primary text-white font-black text-xs md:text-base uppercase">{directorName[0]}</AvatarFallback>
-              </Avatar>
-           </div>
-        </div>
 
         <Card className="relative h-[200px] md:h-[280px] rounded-[1.8rem] md:rounded-[2.5rem] overflow-hidden border-none shadow-2xl group">
           <Image 
