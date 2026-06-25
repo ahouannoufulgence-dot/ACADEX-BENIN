@@ -142,9 +142,8 @@ export default function AssistantPage() {
             promotion: g.promotion
           })),
           enseignants: teachers.map((t: any) => ({
-            code: t.teacher_code,
-            nom: t.last_name,
-            prenom: t.first_name,
+            code: t.official_id,
+            nom: t.full_name,
             matiere: t.subject,
             classes: t.classes
           })),
@@ -176,7 +175,7 @@ export default function AssistantPage() {
             classe: g.class_id,
             trimestre: g.term
           })),
-          eleves: students.map((s: any) => ({
+          eleves:students.map((s: any) => ({
             matricule: s.student_matricule,
             nom: s.last_name,
             prenom: s.first_name,
