@@ -87,17 +87,31 @@ export default function AssistantPage() {
           historiqueVieScolaire: (lifeRes.data || []).map((d: any) => ({ motif: d.motif, type: d.category, impact: d.points_impact }))
         }
       } else if (userRole === 'Directeur') {
-        const [studentsRes, gradesRes, paymentsRes, teachersRes] = await Promise.all([
+        const [studentsRes, gradesRes, paymentsRes, teachersRes, schedulesRes, expensesRes, settingsRes, lifeRes, contribRes, msgsRes, subjectRes] = await Promise.all([
           supabase.from('students').select('*').eq('academic_year', activeYear),
           supabase.from('grades').select('*').eq('academic_year', activeYear),
           supabase.from('payments').select('*').eq('academic_year', activeYear),
-          supabase.from('teachers').select('*')
+          supabase.from('teachers').select('*'),
+          supabase.from('schedules').select('*').eq('academic_year', activeYear),
+          supabase.from('expenses').select('*').eq('academic_year', activeYear),
+          supabase.from('school_settings').select('*'),
+          supabase.from('student_life').select('*').eq('academic_year', activeYear),
+          supabase.from('class_contributions').select('*').eq('academic_year', activeYear),
+          supabase.from('messages').select('*').eq('academic_year', activeYear),
+          supabase.from('subject_configs').select('*')
         ])
 
         const students = studentsRes.data || []
         const grades = gradesRes.data || []
         const payments = paymentsRes.data || []
         const teachers = teachersRes.data || []
+        const schedules = schedulesRes.data || []
+        const expenses = expensesRes.data || []
+        const settings = settingsRes.data || []
+        const studentLife = lifeRes.data || []
+        const contributions = contribRes.data || []
+        const messages = msgsRes.data || []
+        const subjects = subjectRes.data || []
 
         const promos: Record<string, { total: number, count: number }> = {}
         grades.forEach(g => {
@@ -138,7 +152,14 @@ export default function AssistantPage() {
             matricule: p.student_matricule,
             montant: p.amount_paid,
             statut: p.status
-          }))
+          })),
+          emploiDuTemps: schedules,
+          depenses: expenses,
+          parametresEcole: settings,
+          vieScolaire: studentLife,
+          contributions: contributions,
+          messagerie: messages,
+          configMatieres: subjects
         }
       } else if (userRole === 'Enseignant') {
         const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
