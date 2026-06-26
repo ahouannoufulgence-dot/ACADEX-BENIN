@@ -40,7 +40,7 @@ const levels = [
 ]
 
 export default function PromotionsPage() {
-  const [activeYear, setActiveYear] = useState("")
+  const [activeYear, setActiveYear] = useState(typeof window !== 'undefined' ? localStorage.getItem('acadex_active_year') || '2026-2027' : '2026-2027')
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
   const [students, setStudents] = useState<any[]>([])
