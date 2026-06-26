@@ -185,7 +185,7 @@ export default function TeacherDashboard() {
                 }).filter(Boolean)
                 const effectif = classStudents.length
                 return (
-                  <Link href={`/notes?class=${cls}`} key={cls} className="block group">
+                  <Link href={`/mes-classes/${encodeURIComponent(cls)}`} key={cls} className="block group">
                     <Card className="border-none shadow-sm bg-white hover:shadow-2xl transition-all rounded-[2rem] md:rounded-[2.5rem] overflow-hidden relative cursor-pointer active:scale-95 border-2 border-transparent hover:border-primary/10">
                       {/* Dos du cahier */}
                       <div className="h-3 bg-primary w-full" />
