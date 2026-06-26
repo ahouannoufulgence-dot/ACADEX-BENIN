@@ -62,7 +62,7 @@ export default function PromotionsPage() {
         supabase.from('students').select('*').eq('academic_year', activeYear),
         supabase.from('grades').select('*').eq('academic_year', activeYear)
       ])
-      setStudents(sRes.data || [])
+      console.log("STUDENTS:", sRes.data, "ERROR:", sRes.error); setStudents(sRes.data || [])
       setGrades(gRes.data || [])
       setLoadingStudents(false)
       setLoadingGrades(false)
