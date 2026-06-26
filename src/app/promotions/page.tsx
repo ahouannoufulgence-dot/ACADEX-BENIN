@@ -154,7 +154,7 @@ export default function PromotionsPage() {
     if (!academicData.studentsProcessed || !selectedClass) return []
     return academicData.studentsProcessed
       .filter((s: any) => s.class_id === selectedClass)
-      .sort((a: any, b: any) => (a.lastName || "").localeCompare(b.lastName || ""))
+      .sort((a: any, b: any) => (a.last_name || "").localeCompare(b.last_name || ""))
   }, [academicData, selectedClass])
 
   return (
