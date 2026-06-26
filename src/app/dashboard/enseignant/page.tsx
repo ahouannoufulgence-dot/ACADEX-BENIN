@@ -156,56 +156,116 @@ export default function TeacherDashboard() {
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
-           <div className="lg:col-span-8 space-y-6 md:space-y-10">
-              <Card className="border-none shadow-sm bg-white/95 rounded-[2rem] md:rounded-[3.5rem] overflow-hidden p-8 md:p-20 flex flex-col items-center justify-center text-center space-y-6 md:space-y-10">
-                 <div className="size-20 md:size-32 bg-muted/40 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-center shadow-inner group">
-                    <Calendar className="size-10 md:size-16 text-muted-foreground opacity-30 group-hover:scale-110 transition-transform group-hover:text-primary group-hover:opacity-100" />
-                 </div>
-                 <div className="space-y-3 md:space-y-5">
-                    <h3 className="text-xl md:text-4xl font-black tracking-tight text-foreground">Mon Emploi du Temps</h3>
-                    <p className="text-sm md:text-xl font-medium text-muted-foreground max-w-sm mx-auto leading-relaxed">Consultez votre programme officiel scellé pour l'année {activeYear}.</p>
-                 </div>
-                 <Button asChild variant="outline" className="rounded-xl md:rounded-2xl font-black h-12 md:h-16 px-8 md:px-16 border-2 text-xs md:text-base hover:bg-primary hover:text-white hover:border-primary transition-all active:scale-95">
-                    <Link href="/disponibilites">Ouvrir le Planning</Link>
-                 </Button>
-              </Card>
-           </div>
+        {/* Module Mes Classes — Registres */}
+        <div className="space-y-6 md:space-y-10">
+          <div className="flex items-center justify-between px-1">
+            <div className="space-y-1">
+              <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight">Mes <span className="text-primary italic">Registres</span></h2>
+              <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">{teacherSubject} • {activeYear}</p>
+            </div>
+            <Button asChild variant="outline" className="rounded-xl border-2 font-black h-10 md:h-12 px-5 text-xs">
+              <Link href="/notes"><PenTool className="mr-2 size-3.5" />Saisir Notes</Link>
+            </Button>
+          </div>
 
-           <div className="lg:col-span-4 space-y-6 md:space-y-10">
-              <Link href="/eleves" className="block group">
-                <Card className="p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] bg-white/95 border-none shadow-sm hover:shadow-2xl transition-all relative overflow-hidden h-full border-2 border-transparent hover:border-primary/10">
-                   <div className="flex items-center justify-between mb-8 md:mb-14">
-                      <div className="size-12 md:size-16 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm">
-                        <Users className="size-6 md:size-8" />
-                      </div>
-                      <div className="size-9 md:size-12 rounded-xl flex items-center justify-center bg-muted/30 opacity-40 group-hover:opacity-100 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                        <ChevronRight className="size-5 md:size-6" />
-                      </div>
-                   </div>
-                   <h3 className="text-xl md:text-3xl font-black mb-2 text-foreground tracking-tight">Répertoire Élèves</h3>
-                   <p className="text-xs md:text-lg font-medium text-muted-foreground">Accès rapide aux fiches pédagogiques de vos classes.</p>
-                </Card>
-              </Link>
+          {loadingStudents ? (
+            <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary size-10 opacity-30" /></div>
+          ) : teacherClasses.length === 0 ? (
+            <Card className="p-16 text-center border-4 border-dashed rounded-[2rem] bg-white/50 opacity-40">
+              <BookMarked className="size-12 mx-auto text-muted-foreground opacity-20 mb-4" />
+              <p className="font-black uppercase text-muted-foreground">Aucune classe assignée</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
+              {teacherClasses.map((cls) => {
+                const classStudents = students.filter(s => s.class_id === cls)
+                const classGrades = classStudents.map(s => {
+                  const gradeKey = `grade_${s.student_matricule}`
+                  return null
+                }).filter(Boolean)
+                const effectif = classStudents.length
+                return (
+                  <Link href={`/notes?class=${cls}`} key={cls} className="block group">
+                    <Card className="border-none shadow-sm bg-white hover:shadow-2xl transition-all rounded-[2rem] md:rounded-[2.5rem] overflow-hidden relative cursor-pointer active:scale-95 border-2 border-transparent hover:border-primary/10">
+                      {/* Dos du cahier */}
+                      <div className="h-3 bg-primary w-full" />
+                      <div className="p-6 md:p-10 space-y-6 md:space-y-8">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-[0.2em]">Registre</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-foreground group-hover:text-primary transition-colors">{cls}</h3>
+                            <p className="text-[9px] md:text-xs font-bold text-primary uppercase">{teacherSubject}</p>
+                          </div>
+                          <div className="size-10 md:size-14 bg-primary/5 rounded-xl md:rounded-2xl flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                            <BookMarked className="size-5 md:size-7 text-primary group-hover:text-white transition-colors" />
+                          </div>
+                        </div>
 
-              <Card className="p-8 md:p-12 rounded-[2rem] md:rounded-[3rem] border-2 border-dashed border-primary/20 bg-primary/5 group hover:bg-primary/10 transition-all relative overflow-hidden">
-                <div className="flex items-center gap-4 mb-8 md:mb-10 relative z-10">
-                  <div className="size-10 md:size-14 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-primary/5 animate-pulse">
-                    <Sparkles className="size-5 md:size-8 text-primary fill-primary/10" />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-lg md:text-2xl text-foreground">Assistant IA</h4>
-                    <p className="text-[8px] md:text-[11px] font-black text-primary uppercase tracking-widest">Soutien Pédagogique</p>
-                  </div>
-                </div>
-                <p className="text-xs md:text-base font-medium text-muted-foreground italic leading-relaxed mb-8 md:mb-12 relative z-10">
-                  "Générez automatiquement les observations de fin de trimestre en analysant la progression réelle de vos élèves."
-                </p>
-                <Button asChild className="w-full bg-white text-primary hover:bg-white/90 border border-primary/10 rounded-xl md:rounded-2xl font-black h-11 md:h-16 shadow-sm active:scale-95 transition-all relative z-10">
-                  <Link href="/assistant">Lancer l'Analyse IA</Link>
-                </Button>
-              </Card>
-           </div>
+                        {/* Ligne séparatrice style cahier */}
+                        <div className="space-y-2">
+                          <div className="h-px bg-primary/10 w-full" />
+                          <div className="h-px bg-primary/5 w-full" />
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="text-center p-3 md:p-5 bg-muted/30 rounded-xl md:rounded-2xl">
+                            <p className="text-lg md:text-3xl font-black text-foreground">{effectif}</p>
+                            <p className="text-[7px] md:text-[9px] font-black uppercase text-muted-foreground mt-1">Élèves</p>
+                          </div>
+                          <div className="text-center p-3 md:p-5 bg-emerald-50 rounded-xl md:rounded-2xl">
+                            <p className="text-lg md:text-3xl font-black text-emerald-600">--</p>
+                            <p className="text-[7px] md:text-[9px] font-black uppercase text-emerald-600/60 mt-1">Moy. max</p>
+                          </div>
+                          <div className="text-center p-3 md:p-5 bg-red-50 rounded-xl md:rounded-2xl">
+                            <p className="text-lg md:text-3xl font-black text-red-500">--</p>
+                            <p className="text-[7px] md:text-[9px] font-black uppercase text-red-500/60 mt-1">Moy. min</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <Badge className="bg-primary/5 text-primary border-none font-black text-[8px] md:text-[10px] uppercase px-3 py-1">
+                            <ShieldCheck className="size-3 mr-1.5" />{activeYear}
+                          </Badge>
+                          <div className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-black text-primary opacity-0 group-hover:opacity-100 transition-all uppercase tracking-widest">
+                            Ouvrir <ChevronRight className="size-3" />
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Raccourcis bas */}
+        <div className="grid sm:grid-cols-2 gap-5 md:gap-8">
+          <Link href="/disponibilites" className="block group">
+            <Card className="p-6 md:p-10 rounded-[2rem] bg-white border-none shadow-sm hover:shadow-xl transition-all flex items-center gap-5">
+              <div className="size-12 md:size-16 bg-blue-50 text-blue-600 rounded-xl md:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0">
+                <Calendar className="size-6 md:size-8" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-black text-base md:text-xl uppercase truncate">Mon Planning</h3>
+                <p className="text-[9px] md:text-xs font-medium text-muted-foreground">Emploi du temps {activeYear}</p>
+              </div>
+              <ChevronRight className="size-5 text-muted-foreground/30 group-hover:text-primary ml-auto shrink-0" />
+            </Card>
+          </Link>
+          <Link href="/assistant" className="block group">
+            <Card className="p-6 md:p-10 rounded-[2rem] bg-primary/5 border-2 border-dashed border-primary/20 hover:bg-primary/10 transition-all flex items-center gap-5">
+              <div className="size-12 md:size-16 bg-white rounded-xl md:rounded-2xl flex items-center justify-center shadow-sm animate-pulse shrink-0">
+                <Sparkles className="size-6 md:size-8 text-primary fill-primary/10" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="font-black text-base md:text-xl uppercase truncate">Assistant IA</h3>
+                <p className="text-[9px] md:text-xs font-medium text-muted-foreground">Analyse pédagogique</p>
+              </div>
+              <ChevronRight className="size-5 text-primary/30 group-hover:text-primary ml-auto shrink-0" />
+            </Card>
+          </Link>
         </div>
       </div>
     </DashboardLayout>
