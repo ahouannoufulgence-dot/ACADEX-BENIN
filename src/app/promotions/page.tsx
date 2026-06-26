@@ -59,7 +59,7 @@ export default function PromotionsPage() {
       setLoadingStudents(true)
       setLoadingGrades(true)
       const [sRes, gRes] = await Promise.all([
-        supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
+        supabase.from('students').select('*').eq('academic_year', activeYear),
         supabase.from('grades').select('*').eq('academic_year', activeYear)
       ])
       setStudents(sRes.data || [])
@@ -82,7 +82,7 @@ export default function PromotionsPage() {
     })
 
     const studentsProcessed = students.map((student: any) => {
-      const studentGrades = grades?.filter((g: any) => g.student_matricule === student.matricule) || []
+      const studentGrades = grades?.filter((g: any) => g.student_matricule === student.student_matricule) || []
       const subjects: Record<string, any> = {}
       
       studentGrades.forEach((g: any) => {
@@ -298,7 +298,7 @@ export default function PromotionsPage() {
                                <div className="flex items-center gap-4">
                                   <div className={cn("size-9 md:size-11 rounded-xl items-center justify-center font-black shadow-sm flex shrink-0", s.rank === 1 ? "bg-amber-100 text-amber-700" : "bg-muted text-foreground")}>{s.rank}</div>
                                   <div>
-                                     <p className="font-black text-base md:text-xl text-foreground uppercase tracking-tight group-hover:text-primary">{s.lastName} {s.firstName}</p>
+                                     <p className="font-black text-base md:text-xl text-foreground uppercase tracking-tight group-hover:text-primary">{s.last_name} {s.first_name}</p>
                                      <Badge variant="outline" className="text-[6px] md:text-[8px] font-black uppercase mt-1 h-4">ID: {s.matricule}</Badge>
                                   </div>
                                </div>
