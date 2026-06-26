@@ -61,16 +61,34 @@ export default function StudentDetailPage() {
   const [analyzing, setAnalyzing] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState<GenerateAcademicFeedbackOutput | null>(null)
   const [isDirector, setIsDirector] = useState(false)
+  const [grades, setGrades] = useState<any[]>([])
+  const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
+  const [activeYear, setActiveYear] = useState("2026-2027")
 
   const fetchStudent = async () => {
     setLoadingStudent(true)
     const { data } = await supabase.from('students').select('*').eq('id', id).single()
     setStudent(data)
+    if (data?.student_matricule || data?.matricule) {
+      await fetchGrades(data.student_matricule || data.matricule)
+    }
     setLoadingStudent(false)
+  }
+
+  const fetchGrades = async (studentMatricule: string) => {
+    const year = localStorage.getItem('acadex_active_year') || "2026-2027"
+    setActiveYear(year)
+    const { data } = await supabase
+      .from('grades')
+      .select('*')
+      .eq('student_matricule', studentMatricule)
+      .eq('academic_year', year)
+    setGrades(data || [])
   }
 
   useEffect(() => {
     setIsDirector(localStorage.getItem('acadex_user_role') === "Directeur")
+    setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
     fetchStudent()
   }, [id])
 
@@ -300,7 +318,11 @@ export default function StudentDetailPage() {
               <div className="flex gap-2 md:gap-4 w-full md:w-auto">
                 <div className="flex-1 md:flex-none text-center px-4 md:px-6 py-2 md:py-3 bg-muted/50 rounded-2xl md:rounded-3xl border border-muted">
                   <p className="text-[8px] md:text-[10px] uppercase font-black text-muted-foreground mb-1">Moyenne</p>
-                  <p className="text-lg md:text-2xl font-black text-primary">{student.average || "0.00"}</p>
+                  <p className="text-lg md:text-2xl font-black text-primary">
+                    {grades.filter(g => g.term === selectedTrimestre).length > 0
+                      ? (grades.filter(g => g.term === selectedTrimestre).reduce((acc: number, g: any) => acc + Number(g.value), 0) / grades.filter(g => g.term === selectedTrimestre).length).toFixed(2)
+                      : "0.00"}
+                  </p>
                 </div>
                 <div className="flex-1 md:flex-none text-center px-4 md:px-6 py-2 md:py-3 bg-muted/50 rounded-2xl md:rounded-3xl border border-muted">
                   <p className="text-[8px] md:text-[10px] uppercase font-black text-muted-foreground mb-1">Rang</p>
@@ -348,10 +370,79 @@ export default function StudentDetailPage() {
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
-            <Card className="premium-card p-12 md:p-20 text-center border-4 border-dashed bg-muted/10">
-              <FileText className="size-12 md:size-16 text-muted-foreground mx-auto mb-6 opacity-30" />
-              <h3 className="text-xl md:text-2xl font-black">Consulter les Archives</h3>
-              <p className="text-muted-foreground font-medium max-w-sm mx-auto text-xs md:text-base">Les relevés de notes scellés sont consultables par trimestre.</p>
+            {/* Sélecteur trimestre */}
+            <div className="flex gap-2">
+              {["T1","T2","T3"].map(t => (
+                <button key={t} onClick={() => setSelectedTrimestre(t)}
+                  className={`h-10 px-6 rounded-xl font-black text-xs uppercase transition-all border-2 ${selectedTrimestre === t ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-muted hover:border-primary/30"}`}>
+                  {t === "T1" ? "1er Trimestre" : t === "T2" ? "2ème Trimestre" : "3ème Trimestre"}
+                </button>
+              ))}
+            </div>
+
+            {/* Tableau des notes */}
+            <Card className="border-none shadow-sm bg-white rounded-[1.5rem] overflow-hidden">
+              {(() => {
+                const trimGrades = grades.filter(g => g.term === selectedTrimestre)
+                const subjects = [...new Set(trimGrades.map(g => g.subject))]
+                if (subjects.length === 0) return (
+                  <div className="p-16 text-center">
+                    <FileText className="size-10 text-muted-foreground mx-auto mb-4 opacity-20" />
+                    <p className="font-black text-muted-foreground uppercase text-xs">Aucune note pour ce trimestre</p>
+                  </div>
+                )
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-separate border-spacing-0">
+                      <thead className="bg-primary text-white text-[9px] md:text-[10px] font-black uppercase">
+                        <tr>
+                          <th className="px-5 py-4 md:px-8 md:py-5">Matière</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center">INT 1</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center">INT 2</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center">INT 3</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center">DEV 1</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center">DEV 2</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center bg-white/20">Moyenne</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center bg-white/10">Coef</th>
+                          <th className="px-4 py-4 md:px-6 md:py-5 text-center bg-white/20">Moy×Coef</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-muted/10">
+                        {subjects.map(subject => {
+                          const sg = trimGrades.filter(g => g.subject === subject)
+                          const get = (type: string) => sg.find(g => g.type === type)?.value ?? null
+                          const i1 = get("int1"), i2 = get("int2"), i3 = get("int3")
+                          const d1 = get("dev1"), d2 = get("dev2")
+                          const coef = sg[0]?.coefficient || 1
+                          const interros = [i1,i2,i3].filter(v => v !== null) as number[]
+                          const avgInt = interros.length ? interros.reduce((a,b) => a+b,0)/interros.length : null
+                          const blocks = [...(avgInt !== null ? [avgInt] : []), ...(d1 !== null ? [d1] : []), ...(d2 !== null ? [d2] : [])]
+                          const moy = blocks.length ? blocks.reduce((a,b) => a+b,0)/blocks.length : null
+                          const moyCoef = moy !== null ? moy * coef : null
+                          const fmt = (v: number | null) => v !== null ? v.toFixed(2) : "--"
+                          return (
+                            <tr key={subject} className="hover:bg-muted/5 transition-all">
+                              <td className="px-5 py-4 md:px-8 md:py-5 font-black text-xs md:text-sm uppercase">{subject}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center font-bold tabular-nums text-sm">{fmt(i1)}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center font-bold tabular-nums text-sm">{fmt(i2)}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center font-bold tabular-nums text-sm">{fmt(i3)}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center font-bold tabular-nums text-sm">{fmt(d1)}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center font-bold tabular-nums text-sm">{fmt(d2)}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center">
+                                <span className={`px-3 py-1 rounded-lg font-black text-sm ${moy === null ? "text-muted-foreground" : moy >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}>{fmt(moy)}</span>
+                              </td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center font-bold text-sm text-muted-foreground">{coef}</td>
+                              <td className="px-4 py-4 md:px-6 md:py-5 text-center">
+                                <span className="px-3 py-1 rounded-lg font-black text-sm bg-primary/5 text-primary">{fmt(moyCoef)}</span>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
             </Card>
           </TabsContent>
         </Tabs>
