@@ -68,30 +68,24 @@ export default function StudentDashboard() {
       const total = (payData || []).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
       setTotalPaid(total)
       if (classId) {
-        const { data: classGrades } = await supabase.from("grades").select("*").eq("class_id", classId).eq("academic_year", activeYear)
-        if (classGrades) {
-          const avgs: Record<string, number[]> = {}
-          classGrades.forEach((g: any) => {
-            if (!avgs[g.student_matricule]) avgs[g.student_matricule] = []
-            avgs[g.student_matricule].push(Number(g.value))
-          })
-          const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
-          const r = sorted.findIndex(s => s.mat === studentId) + 1
-          setRank(r > 0 ? r+"/"+sorted.length : "---")
+        const { data: classMates } = await supabase.from("students").select("matricule").eq("class_id", classId).eq("academic_year", activeYear)
+        if (classMates && classMates.length > 0) {
+          const matricules = classMates.map((s: any) => s.matricule)
+          const { data: classGrades } = await supabase.from("grades").select("*").eq("academic_year", activeYear).in("student_matricule", matricules)
+          if (classGrades) {
+            const avgs: Record<string, number[]> = {}
+            classGrades.forEach((g: any) => {
+              if (!avgs[g.student_matricule]) avgs[g.student_matricule] = []
+              avgs[g.student_matricule].push(Number(g.value))
+            })
+            const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
+            const r = sorted.findIndex(s => s.mat === studentId) + 1
+            setRank(r > 0 ? r+"/"+sorted.length : "---")
+          }
         }
       }
       if (classId) {
-        const { data: classGrades } = await supabase.from("grades").select("*").eq("class_id", classId).eq("academic_year", activeYear)
-        if (classGrades) {
-          const avgs: Record<string, number[]> = {}
-          classGrades.forEach((g: any) => {
-            if (!avgs[g.student_matricule]) avgs[g.student_matricule] = []
-            avgs[g.student_matricule].push(Number(g.value))
-          })
-          const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
-          const r = sorted.findIndex(s => s.mat === studentId) + 1
-          setRank(r > 0 ? r+"/"+sorted.length : "---")
-        }
+        
       }
     }
     fetchPayments()
