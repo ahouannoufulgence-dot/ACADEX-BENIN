@@ -143,14 +143,16 @@ export default function TreasuryModule() {
     setLoading(true)
     try {
       const student = students?.find((s: any) => s.matricule === formData.studentId)
-      await addDoc(collection(db, "payments"), {
-        ...formData,
-        amountPaid: Number(formData.amountPaid),
-        studentName: student ? `${student.last_name} ${student.first_name}` : "Inconnu",
-        academicYear: activeYear,
-        createdAt: serverTimestamp(),
-        author: localStorage.getItem('acadex_user_name') || "Direction"
+      const { error } = await supabase.from('payments').insert({
+        student_matricule: formData.studentId,
+        student_name: student ? `${student.last_name} ${student.first_name}` : 'Inconnu',
+        amount_paid: Number(formData.amountPaid),
+        description: formData.description,
+        date: formData.date,
+        academic_year: activeYear,
+        author: localStorage.getItem('acadex_user_name') || 'Direction'
       })
+      if (error) throw error
       toast({ title: "Encaissement scellé" })
       setIsAdding(false)
       setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche", date: new Date().toISOString().split('T')[0] })
@@ -303,7 +305,7 @@ export default function TreasuryModule() {
                     ) : (
                       <div className="grid gap-2 md:gap-4">
                         {[...(payments || []), ...(expenses || [])]
-                          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                           .slice(0, 6)
                           .map((tx: any, idx) => {
                             const isExpense = !!tx.category
