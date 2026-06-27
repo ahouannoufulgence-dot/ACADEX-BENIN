@@ -93,10 +93,10 @@ export default function TreasuryModule() {
   const fetchAll = async () => {
     setLoadingPayments(true)
     const [pRes, eRes, sRes, fRes] = await Promise.all([
-      supabase.from('payments').select('*').eq('academic_year', activeYear).order('date', { ascending: false }),
+      supabase.from('payments').select('*').eq('academic_year', activeYear).order('payment_date', { ascending: false }),
       supabase.from('expenses').select('*').eq('academic_year', activeYear).order('date', { ascending: false }),
       supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
-      supabase.from('class_contributions').select('*').eq('academic_year', activeYear)
+      supabase.from('class_fees').select('*').eq('academic_year', activeYear)
     ])
     setPayments(pRes.data || [])
     setExpenses(eRes.data || [])
@@ -148,7 +148,7 @@ export default function TreasuryModule() {
         student_name: student ? `${student.last_name} ${student.first_name}` : 'Inconnu',
         amount_paid: Number(formData.amountPaid),
         description: formData.description,
-        date: formData.date,
+        payment_date: new Date().toISOString(),
         academic_year: activeYear,
         author: localStorage.getItem('acadex_user_name') || 'Direction'
       })
@@ -168,7 +168,7 @@ export default function TreasuryModule() {
         amount: Number(feesData[classId]) || 150000,
         academic_year: activeYear,
       }))
-      const { error } = await supabase.from('class_contributions').upsert(rows, { onConflict: 'class_id,academic_year' })
+      const { error } = await supabase.from('class_fees').upsert(rows, { onConflict: 'class_id,academic_year' })
       if (error) throw error
       toast({ title: "Tarifs scellés" })
       fetchAll()
@@ -305,7 +305,7 @@ export default function TreasuryModule() {
                     ) : (
                       <div className="grid gap-2 md:gap-4">
                         {[...(payments || []), ...(expenses || [])]
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
                           .slice(0, 6)
                           .map((tx: any, idx) => {
                             const isExpense = !!tx.category
@@ -328,7 +328,7 @@ export default function TreasuryModule() {
                                    <p className={cn("font-black text-xs md:text-2xl tabular-nums", isExpense ? "text-red-600" : "text-emerald-600")}>
                                      {isExpense ? '-' : '+'}{Number(isExpense ? tx.amount : tx.amount_paid).toLocaleString()}
                                    </p>
-                                   <span className="text-[6px] md:text-[10px] font-bold text-muted-foreground/40 uppercase">{new Date(tx.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+                                   <span className="text-[6px] md:text-[10px] font-bold text-muted-foreground/40 uppercase">{new Date(tx.payment_date || tx.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
                                 </div>
                               </div>
                             )
@@ -384,7 +384,7 @@ export default function TreasuryModule() {
                              <p className="font-black text-xs md:text-xl text-foreground uppercase tracking-tight truncate">{p.studentName}</p>
                              <div className="flex items-center gap-2">
                                <Badge variant="outline" className="border-primary/20 text-primary font-black uppercase text-[7px] md:text-[9px] px-2 py-0.5 rounded-full">{p.description}</Badge>
-                               <span className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase hidden sm:inline-block">Le {new Date(p.date).toLocaleDateString('fr-FR')}</span>
+                               <span className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase hidden sm:inline-block">Le {new Date(p.payment_date).toLocaleDateString('fr-FR')}</span>
                              </div>
                            </div>
                         </div>
