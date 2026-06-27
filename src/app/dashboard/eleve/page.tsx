@@ -42,6 +42,8 @@ export default function StudentDashboard() {
   const [grades, setGrades] = useState<any[]>([])
   const [loadingGrades, setLoadingGrades] = useState(true)
   const [totalPaid, setTotalPaid] = useState(0)
+  const [rank, setRank] = useState("---")
+  const [rank, setRank] = useState("---")
   const [expectedFee, setExpectedFee] = useState(150000)
 
   useEffect(() => {
@@ -66,6 +68,32 @@ export default function StudentDashboard() {
       const { data: payData } = await supabase.from("payments").select("amount_paid").eq("student_matricule", studentId).eq("academic_year", activeYear)
       const total = (payData || []).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
       setTotalPaid(total)
+      if (classId) {
+        const { data: classGrades } = await supabase.from("grades").select("*").eq("class_id", classId).eq("academic_year", activeYear)
+        if (classGrades) {
+          const avgs: Record<string, number[]> = {}
+          classGrades.forEach((g: any) => {
+            if (!avgs[g.student_matricule]) avgs[g.student_matricule] = []
+            avgs[g.student_matricule].push(Number(g.value))
+          })
+          const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
+          const r = sorted.findIndex(s => s.mat === studentId) + 1
+          setRank(r > 0 ? r+"/"+sorted.length : "---")
+        }
+      }
+      if (classId) {
+        const { data: classGrades } = await supabase.from("grades").select("*").eq("class_id", classId).eq("academic_year", activeYear)
+        if (classGrades) {
+          const avgs: Record<string, number[]> = {}
+          classGrades.forEach((g: any) => {
+            if (!avgs[g.student_matricule]) avgs[g.student_matricule] = []
+            avgs[g.student_matricule].push(Number(g.value))
+          })
+          const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
+          const r = sorted.findIndex(s => s.mat === studentId) + 1
+          setRank(r > 0 ? r+"/"+sorted.length : "---")
+        }
+      }
     }
     fetchPayments()
   }, [studentId, activeYear])
@@ -73,7 +101,7 @@ export default function StudentDashboard() {
   const stats = useMemo(() => {
     if (!mounted || !grades) return [
       { title: "Ma Moyenne", value: "0.00", label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
-      { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
+      { title: "Mon Rang", value: rank, label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
       { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
@@ -99,7 +127,7 @@ export default function StudentDashboard() {
 
     return [
       { title: "Ma Moyenne", value: avg, label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
-      { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
+      { title: "Mon Rang", value: rank, label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
       { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
