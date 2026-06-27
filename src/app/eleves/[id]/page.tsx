@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useParams, useRouter } from "next/navigation"
@@ -44,14 +43,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-
 function FinanceTab({ studentMatricule, activeYear }: { studentMatricule: string, activeYear: string }) {
   const [payments, setPayments] = useState<any[]>([])
   const [expectedFee, setExpectedFee] = useState(150000)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchFinance = async () => {
       setLoading(true)
       const { data: studentData } = await supabase.from('students').select('class_id').eq('matricule', studentMatricule).single()
       if (studentData?.class_id) {
@@ -62,7 +60,7 @@ function FinanceTab({ studentMatricule, activeYear }: { studentMatricule: string
       setPayments(payData || [])
       setLoading(false)
     }
-    if (studentMatricule) fetch()
+    if (studentMatricule) fetchFinance()
   }, [studentMatricule, activeYear])
 
   const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0)
@@ -73,18 +71,18 @@ function FinanceTab({ studentMatricule, activeYear }: { studentMatricule: string
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-white">
-          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Total Versé</p>
+          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest mb-2">Total Versé</p>
           <p className="text-2xl font-black text-emerald-600">{totalPaid.toLocaleString()} F</p>
         </Card>
-        <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-white">
-          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Reste à payer</p>
+        <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-white border-l-4 border-amber-500">
+          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest mb-2">Reste à payer</p>
           <p className="text-2xl font-black text-amber-600">{remaining.toLocaleString()} F</p>
         </Card>
         <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-foreground text-white">
-          <p className="text-[8px] font-black uppercase text-white/40 tracking-widest">Taux</p>
+          <p className="text-[8px] font-black uppercase text-white/40 tracking-widest mb-2">Progression</p>
           <p className="text-2xl font-black">{percent.toFixed(1)}%</p>
           <div className="w-full bg-white/10 h-2 rounded-full mt-2">
-            <div className="h-full bg-primary rounded-full" style={{ width: `${percent}%` }} />
+            <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${percent}%` }} />
           </div>
         </Card>
       </div>
@@ -95,14 +93,18 @@ function FinanceTab({ studentMatricule, activeYear }: { studentMatricule: string
         {loading ? (
           <div className="p-12 text-center"><Loader2 className="animate-spin text-primary size-6 mx-auto" /></div>
         ) : payments.length === 0 ? (
-          <div className="p-16 text-center opacity-30"><p className="font-black text-xs uppercase">Aucun versement enregistré</p></div>
+          <div className="p-16 text-center opacity-30">
+            <p className="font-black text-xs uppercase">Aucun versement enregistré</p>
+          </div>
         ) : (
           <div className="divide-y divide-muted/20">
             {payments.map((p, i) => (
-              <div key={i} className="p-5 flex items-center justify-between">
+              <div key={i} className="p-5 flex items-center justify-between hover:bg-muted/5">
                 <div>
                   <p className="font-black text-sm">{Number(p.amount_paid).toLocaleString()} F</p>
-                  <p className="text-[9px] font-bold text-muted-foreground uppercase">{p.note || 'Scolarité'} • {p.payment_date ? new Date(p.payment_date).toLocaleDateString('fr-FR') : ''}</p>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase">
+                    {p.note || 'Scolarité'} • {p.payment_date ? new Date(p.payment_date).toLocaleDateString('fr-FR') : ''}
+                  </p>
                 </div>
                 <Badge className="bg-emerald-50 text-emerald-700 border-none font-black text-[9px]">Validé</Badge>
               </div>
@@ -324,7 +326,6 @@ export default function StudentDetailPage() {
           </div>
         </div>
 
-        {/* Hero Card */}
         <Card className={cn("border-none shadow-sm bg-white overflow-hidden rounded-[2.5rem]", isArchived && "grayscale")}>
           <div className={cn("h-24 md:h-32 relative", isArchived ? "bg-muted" : "bg-primary")} />
           <CardContent className="pt-12 md:pt-16 pb-8 md:pb-10 px-6 md:px-16">
@@ -412,35 +413,34 @@ export default function StudentDetailPage() {
           </TabsList>
 
           <TabsContent value="informations" className="space-y-6 animate-in slide-in-from-right-4">
-             <div className="grid md:grid-cols-2 gap-6 md:gap-8">
-                <Card className="premium-card p-6 md:p-8 space-y-6">
-                  <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><Info className="text-primary size-4 md:size-5" /> Détails Officiels</h3>
-                  <div className="grid grid-cols-2 gap-y-6 text-xs md:text-sm">
-                    <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Statut Compte</p><Badge variant="outline" className={cn("font-bold text-[9px] md:text-xs", isArchived ? "border-amber-200 text-amber-600" : "border-primary/20 text-primary")}>{student.status}</Badge></div>
-                    <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Nationalité</p><p className="font-bold">Béninoise</p></div>
-                    <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Genre</p><p className="font-bold">{student.gender || '---'}</p></div>
-                    <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Année</p><p className="font-bold">{student.academic_year}</p></div>
-                  </div>
-                </Card>
-                <Card className="premium-card p-6 md:p-8 space-y-6">
-                  <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><ShieldCheck className="text-primary size-4 md:size-5" /> Sécurité</h3>
-                  <div className="space-y-4">
-                    <p className="text-[10px] md:text-sm font-medium text-muted-foreground leading-relaxed">
-                      L'historique de cet élève est scellé. Toute modification est journalisée dans l'audit.
-                    </p>
-                    <div className="p-4 md:p-6 bg-muted/30 rounded-2xl md:rounded-3xl border-2 border-dashed border-muted-foreground/10 text-center">
-                       <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-2">Code archives</p>
-                       <div className="font-mono text-[8px] md:text-xs text-muted-foreground break-all">
-                         ACADEX_VAULT_{student.matricule}
-                       </div>
+            <div className="grid md:grid-cols-2 gap-6 md:gap-8">
+              <Card className="premium-card p-6 md:p-8 space-y-6">
+                <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><Info className="text-primary size-4 md:size-5" /> Détails Officiels</h3>
+                <div className="grid grid-cols-2 gap-y-6 text-xs md:text-sm">
+                  <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Statut Compte</p><Badge variant="outline" className={cn("font-bold text-[9px] md:text-xs", isArchived ? "border-amber-200 text-amber-600" : "border-primary/20 text-primary")}>{student.status}</Badge></div>
+                  <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Nationalité</p><p className="font-bold">Béninoise</p></div>
+                  <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Genre</p><p className="font-bold">{student.gender || '---'}</p></div>
+                  <div><p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-1">Année</p><p className="font-bold">{student.academic_year}</p></div>
+                </div>
+              </Card>
+              <Card className="premium-card p-6 md:p-8 space-y-6">
+                <h3 className="text-lg md:text-xl font-black flex items-center gap-3"><ShieldCheck className="text-primary size-4 md:size-5" /> Sécurité</h3>
+                <div className="space-y-4">
+                  <p className="text-[10px] md:text-sm font-medium text-muted-foreground leading-relaxed">
+                    L'historique de cet élève est scellé. Toute modification est journalisée dans l'audit.
+                  </p>
+                  <div className="p-4 md:p-6 bg-muted/30 rounded-2xl md:rounded-3xl border-2 border-dashed border-muted-foreground/10 text-center">
+                    <p className="text-[8px] md:text-[10px] font-black text-muted-foreground uppercase mb-2">Code archives</p>
+                    <div className="font-mono text-[8px] md:text-xs text-muted-foreground break-all">
+                      ACADEX_VAULT_{student.matricule}
                     </div>
                   </div>
-                </Card>
-             </div>
+                </div>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="notes" className="space-y-6">
-            {/* Sélecteur trimestre */}
             <div className="flex gap-2">
               {["T1","T2","T3"].map(t => (
                 <button key={t} onClick={() => setSelectedTrimestre(t)}
@@ -449,8 +449,6 @@ export default function StudentDetailPage() {
                 </button>
               ))}
             </div>
-
-            {/* Tableau des notes */}
             <Card className="border-none shadow-sm bg-white rounded-[1.5rem] overflow-hidden">
               {(() => {
                 const trimGrades = grades.filter(g => g.term === selectedTrimestre)
@@ -515,6 +513,17 @@ export default function StudentDetailPage() {
               })()}
             </Card>
           </TabsContent>
+
+          <TabsContent value="absences" className="space-y-6 animate-in slide-in-from-right-4">
+            <Card className="p-16 text-center border-none shadow-sm bg-white rounded-[1.5rem]">
+              <p className="font-black text-muted-foreground uppercase text-xs opacity-30">Module absences à venir</p>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="finance" className="space-y-6 animate-in slide-in-from-right-4">
+            <FinanceTab studentMatricule={student.matricule} activeYear={activeYear} />
+          </TabsContent>
+
         </Tabs>
       </div>
     </DashboardLayout>
