@@ -146,11 +146,12 @@ export default function TreasuryModule() {
       const { error } = await supabase.from('payments').insert({
         student_matricule: formData.studentId,
         student_name: student ? `${student.last_name} ${student.first_name}` : 'Inconnu',
+        class_id: student?.class_id || '',
         amount_paid: Number(formData.amountPaid),
-        description: formData.description,
         payment_date: new Date().toISOString(),
         academic_year: activeYear,
-        author: localStorage.getItem('acadex_user_name') || 'Direction'
+        note: formData.description,
+        status: 'En attente'
       })
       if (error) throw error
       toast({ title: "Encaissement scellé" })
