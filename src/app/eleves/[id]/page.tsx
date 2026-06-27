@@ -44,6 +44,76 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+
+function FinanceTab({ studentMatricule, activeYear }: { studentMatricule: string, activeYear: string }) {
+  const [payments, setPayments] = useState<any[]>([])
+  const [expectedFee, setExpectedFee] = useState(150000)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetch = async () => {
+      setLoading(true)
+      const { data: studentData } = await supabase.from('students').select('class_id').eq('matricule', studentMatricule).single()
+      if (studentData?.class_id) {
+        const { data: feeData } = await supabase.from('class_fees').select('amount').eq('class_id', studentData.class_id).eq('academic_year', activeYear).single()
+        if (feeData) setExpectedFee(Number(feeData.amount))
+      }
+      const { data: payData } = await supabase.from('payments').select('*').eq('student_matricule', studentMatricule).eq('academic_year', activeYear).order('payment_date', { ascending: false })
+      setPayments(payData || [])
+      setLoading(false)
+    }
+    if (studentMatricule) fetch()
+  }, [studentMatricule, activeYear])
+
+  const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0)
+  const remaining = expectedFee - totalPaid
+  const percent = Math.min(100, (totalPaid / expectedFee) * 100)
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-white">
+          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Total Versé</p>
+          <p className="text-2xl font-black text-emerald-600">{totalPaid.toLocaleString()} F</p>
+        </Card>
+        <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-white">
+          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Reste à payer</p>
+          <p className="text-2xl font-black text-amber-600">{remaining.toLocaleString()} F</p>
+        </Card>
+        <Card className="p-6 rounded-[1.5rem] border-none shadow-sm bg-foreground text-white">
+          <p className="text-[8px] font-black uppercase text-white/40 tracking-widest">Taux</p>
+          <p className="text-2xl font-black">{percent.toFixed(1)}%</p>
+          <div className="w-full bg-white/10 h-2 rounded-full mt-2">
+            <div className="h-full bg-primary rounded-full" style={{ width: `${percent}%` }} />
+          </div>
+        </Card>
+      </div>
+      <Card className="border-none shadow-sm bg-white rounded-[1.5rem] overflow-hidden">
+        <div className="p-5 border-b bg-muted/5">
+          <h3 className="font-black text-base uppercase">Historique des versements</h3>
+        </div>
+        {loading ? (
+          <div className="p-12 text-center"><Loader2 className="animate-spin text-primary size-6 mx-auto" /></div>
+        ) : payments.length === 0 ? (
+          <div className="p-16 text-center opacity-30"><p className="font-black text-xs uppercase">Aucun versement enregistré</p></div>
+        ) : (
+          <div className="divide-y divide-muted/20">
+            {payments.map((p, i) => (
+              <div key={i} className="p-5 flex items-center justify-between">
+                <div>
+                  <p className="font-black text-sm">{Number(p.amount_paid).toLocaleString()} F</p>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase">{p.note || 'Scolarité'} • {p.payment_date ? new Date(p.payment_date).toLocaleDateString('fr-FR') : ''}</p>
+                </div>
+                <Badge className="bg-emerald-50 text-emerald-700 border-none font-black text-[9px]">Validé</Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 export default function StudentDetailPage() {
   const { id } = useParams()
   const router = useRouter()
