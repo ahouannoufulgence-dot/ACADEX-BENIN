@@ -116,7 +116,7 @@ export default function StudentLifePage() {
       .select('*')
       .eq('student_matricule', currentTargetId)
       .eq('academic_year', activeYear)
-      .order('created_at', { ascending: false })
+      .order('date', { ascending: false })
     setEvents(data || [])
     setLoadingEvents(false)
   }
@@ -126,13 +126,26 @@ export default function StudentLifePage() {
   const stats = useMemo(() => {
     if (!events) return { presence: 0, absence: 0, retards: 0, discipline: 0, conductGrade: 20 }
     let conductGrade = 20
-    events.forEach((e: any) => { if (e.points_impact) conductGrade += Number(e.points_impact) })
+    events.forEach((e: any) => {
+      if (e.type === 'Absent') conductGrade -= 1
+      if (e.type === 'Retard') conductGrade -= 0.5
+      if (e.type?.includes('Avertissement')) conductGrade -= 2
+      if (e.type?.includes('Punition')) conductGrade -= 1
+      if (e.type === 'Bonus') {
+        const pts = parseFloat((e.description || "").match(/[+-]?\d+\.?\d*/)?.[0] || "0")
+        conductGrade += pts
+      }
+      if (e.type === 'Malus') {
+        const pts = parseFloat((e.description || "").match(/[+-]?\d+\.?\d*/)?.[0] || "0")
+        conductGrade += pts
+      }
+    })
     
     return {
-      presence: events.filter((e: any) => e.category === 'presence' && e.status === 'Présent').length,
-      absence: events.filter((e: any) => e.category === 'presence' && e.status === 'Absent').length,
-      retards: events.filter((e: any) => e.category === 'presence' && e.status === 'Retard').length,
-      discipline: events.filter((e: any) => e.category === 'discipline').length,
+      presence: events.filter((e: any) => e.type === 'Présent').length,
+      absence: events.filter((e: any) => e.type === 'Absent').length,
+      retards: events.filter((e: any) => e.type === 'Retard').length,
+      discipline: events.filter((e: any) => e.type?.includes('Avertissement') || e.type?.includes('Punition')).length,
       conductGrade: Math.max(0, Math.min(20, conductGrade))
     }
   }, [events])
@@ -141,31 +154,31 @@ export default function StudentLifePage() {
     if (!currentTargetId) return
     setLoading(true)
     try {
-      let pointsImpact = 0
-      const data: any = {
-        category,
-        student_matricule: currentTargetId,
-        student_name: userRole === "Élève" ? localStorage.getItem('acadex_user_name') : `${selectedStudent.first_name} ${selectedStudent.last_name}`,
-        academic_year: activeYear,
-        author_name: localStorage.getItem('acadex_user_name'),
-        date: new Date().toISOString().split('T')[0]
-      }
-
-      const rules = schoolConfig?.conduct_rules || { tardy: -0.5, absence: -1, warning: -2, exclusion: -5 }
+      let typeLabel = ""
+      let description = ""
 
       if (category === 'presence') {
-        Object.assign(data, presenceForm)
-        if (presenceForm.status === 'Retard') pointsImpact = rules.tardy
-        if (presenceForm.status === 'Absent') pointsImpact = rules.absence
+        typeLabel = presenceForm.status
+        description = `${presenceForm.status} à ${presenceForm.time}${presenceForm.motif ? " — " + presenceForm.motif : ""}`
       } else if (category === 'discipline') {
-        Object.assign(data, disciplineForm)
-        pointsImpact = disciplineForm.type.includes('Exclusion') ? rules.exclusion : rules.warning
+        typeLabel = disciplineForm.type
+        description = disciplineForm.motif || disciplineForm.type
       } else if (category === 'conduite') {
-        Object.assign(data, { points_impact: bonusForm.points, motif: bonusForm.motif, status: bonusForm.points > 0 ? 'Bonus' : 'Malus' })
-        pointsImpact = bonusForm.points
+        typeLabel = bonusForm.points > 0 ? 'Bonus' : 'Malus'
+        description = `${bonusForm.points > 0 ? "+" : ""}${bonusForm.points} pts — ${bonusForm.motif || "Sans motif"}`
       }
 
-      data.points_impact = pointsImpact
+      const data: any = {
+        student_matricule: currentTargetId,
+        student_name: userRole === "Élève" ? localStorage.getItem('acadex_user_name') : `${selectedStudent.last_name} ${selectedStudent.first_name}`,
+        class_id: userRole === "Élève" ? "" : (selectedStudent.class_id || ""),
+        type: typeLabel,
+        description,
+        date: new Date().toISOString(),
+        academic_year: activeYear,
+        created_by: localStorage.getItem('acadex_user_name') || ""
+      }
+
       const { error } = await supabase.from('student_life').insert(data)
       if (error) throw error
 
@@ -404,12 +417,8 @@ export default function StudentLifePage() {
                                 <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
                                    <div className="space-y-0.5 w-full">
                                       <h4 className="font-black text-xs md:text-2xl text-foreground uppercase tracking-tight flex items-center gap-2">
-                                        <span className="truncate">{event.status || event.type}</span>
-                                        {event.points_impact !== undefined && (
-                                          <Badge className={cn("rounded-md md:rounded-xl font-black h-5 md:h-10 px-1.5 md:px-5 text-[7px] md:text-sm shadow-sm shrink-0", event.points_impact > 0 ? "bg-emerald-500 text-white" : "bg-destructive text-white")}>
-                                            {event.points_impact > 0 ? `+${event.points_impact}` : event.points_impact} PTS
-                                          </Badge>
-                                        )}
+                                        <span className="truncate">{event.type}</span>
+
                                       </h4>
                                       <div className="flex items-center gap-2 text-[7px] md:text-[11px] font-black text-muted-foreground uppercase tracking-widest truncate">
                                         <Calendar className="size-2.5 md:size-4 text-primary" /> {new Date(event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
