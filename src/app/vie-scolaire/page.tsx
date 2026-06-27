@@ -46,6 +46,7 @@ export default function StudentLifePage() {
   const [activeYear, setActiveYear] = useState("")
   const [activeTab, setActiveTab] = useState("presence")
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedClass, setSelectedClass] = useState<string | null>(null)
   const [selectedStudent, setSelectedStudent] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
@@ -113,7 +114,7 @@ export default function StudentLifePage() {
     const { data } = await supabase
       .from('student_life')
       .select('*')
-      .eq('student_id', currentTargetId)
+      .eq('student_matricule', currentTargetId)
       .eq('academic_year', activeYear)
       .order('created_at', { ascending: false })
     setEvents(data || [])
@@ -143,7 +144,7 @@ export default function StudentLifePage() {
       let pointsImpact = 0
       const data: any = {
         category,
-        student_id: currentTargetId,
+        student_matricule: currentTargetId,
         student_name: userRole === "Élève" ? localStorage.getItem('acadex_user_name') : `${selectedStudent.first_name} ${selectedStudent.last_name}`,
         academic_year: activeYear,
         author_name: localStorage.getItem('acadex_user_name'),
@@ -209,46 +210,60 @@ export default function StudentLifePage() {
 
         <div className="grid lg:grid-cols-12 gap-6 md:gap-10">
           {isStaff && (
-            <div className={cn("lg:col-span-4 space-y-6", selectedStudent && "hidden lg:block")}>
-              <Card className="p-4 md:p-8 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm h-fit">
-                <div className="relative group mb-4 md:mb-6">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <Input placeholder="Chercher un élève..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-11 h-11 md:h-14 rounded-2xl bg-muted/30 border-none font-bold text-xs md:text-sm shadow-inner" />
-                </div>
-                <ScrollArea className="h-[350px] md:h-[500px] pr-2 no-scrollbar">
-                  <div className="space-y-2 md:space-y-3">
-                    {loadingStudents ? (
-                      <div className="flex flex-col items-center justify-center py-20 gap-3 opacity-30">
-                        <Loader2 className="animate-spin text-primary size-7" />
-                        <p className="text-[8px] font-black text-muted-foreground uppercase">Chargement...</p>
-                      </div>
-                    ) : filteredStudents.length === 0 ? (
-                      <div className="py-10 text-center opacity-40 text-[10px] font-black uppercase tracking-widest">Aucun élève autorisé</div>
-                    ) : filteredStudents.map((s: any) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedStudent(s)}
-                        className={cn(
-                          "w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl transition-all border-2 group",
-                          selectedStudent?.id === s.id ? "bg-primary text-white border-primary shadow-lg scale-[1.02]" : "bg-white border-transparent hover:bg-muted/5"
-                        )}
-                      >
-                        <Avatar className={cn("size-9 md:size-12 border-2 transition-all", selectedStudent?.id === s.id ? "border-white/20" : "border-muted/20")}>
-                          <AvatarFallback className={cn("font-black text-[10px] md:text-sm", selectedStudent?.id === s.id ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>
-                            {s.last_name[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="text-left min-w-0 flex-1">
-                          <p className="font-black text-xs md:text-base truncate uppercase tracking-tight">{s.last_name} {s.first_name}</p>
-                          <div className="flex items-center justify-between mt-0.5">
-                            <span className={cn("text-[7px] md:text-[9px] font-black uppercase", selectedStudent?.id === s.id ? "text-white/60" : "text-primary/60")}>{s.class_id}</span>
-                            <span className={cn("text-[7px] md:text-[8px] font-bold uppercase", selectedStudent?.id === s.id ? "text-white/40" : "text-muted-foreground/40")}>{s.matricule}</span>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+            <div className={cn("lg:col-span-4 space-y-4", selectedStudent && "hidden lg:block")}>
+              <Card className="p-4 md:p-6 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm h-fit">
+                {/* Sélecteur classe */}
+                {!selectedClass ? (
+                  <div className="space-y-3">
+                    <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest px-1">Choisir une classe</p>
+                    <div className="grid grid-cols-2 gap-2 md:gap-3">
+                      {[...new Set(students.map((s: any) => s.class_id))].sort().map((cls: any) => (
+                        <button key={cls} onClick={() => setSelectedClass(cls)}
+                          className="p-3 md:p-5 rounded-xl md:rounded-2xl bg-muted/30 hover:bg-primary hover:text-white font-black text-[9px] md:text-sm uppercase transition-all border-2 border-transparent hover:border-primary shadow-sm active:scale-95">
+                          {cls}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </ScrollArea>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 mb-3">
+                      <button onClick={() => { setSelectedClass(null); setSelectedStudent(null) }}
+                        className="flex items-center gap-1.5 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground hover:text-primary transition-colors">
+                        <ChevronLeft className="size-3" /> Classes
+                      </button>
+                      <span className="text-[8px] md:text-[10px] font-black text-primary uppercase">{selectedClass}</span>
+                    </div>
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3 text-muted-foreground" />
+                      <Input placeholder="Chercher..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-9 md:h-11 rounded-xl bg-muted/30 border-none font-bold text-xs shadow-inner" />
+                    </div>
+                    <ScrollArea className="h-[350px] md:h-[500px] pr-2 no-scrollbar">
+                      <div className="space-y-2">
+                        {loadingStudents ? (
+                          <div className="flex justify-center py-10 opacity-30"><Loader2 className="animate-spin text-primary size-6" /></div>
+                        ) : students.filter((s: any) => s.class_id === selectedClass && `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 ? (
+                          <div className="py-10 text-center opacity-40 text-[10px] font-black uppercase">Aucun élève</div>
+                        ) : students.filter((s: any) => s.class_id === selectedClass && `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())).map((s: any) => (
+                          <button key={s.id} onClick={() => setSelectedStudent(s)}
+                            className={cn("w-full flex items-center gap-3 p-3 md:p-4 rounded-xl md:rounded-2xl transition-all border-2",
+                              selectedStudent?.id === s.id ? "bg-primary text-white border-primary shadow-lg" : "bg-white border-transparent hover:bg-muted/5"
+                            )}>
+                            <Avatar className="size-8 md:size-10 border-2 border-muted/20">
+                              <AvatarFallback className={cn("font-black text-[9px]", selectedStudent?.id === s.id ? "bg-white/10 text-white" : "bg-primary/5 text-primary")}>
+                                {s.last_name[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="text-left min-w-0 flex-1">
+                              <p className="font-black text-[10px] md:text-sm truncate uppercase">{s.last_name} {s.first_name}</p>
+                              <span className={cn("text-[7px] font-bold uppercase", selectedStudent?.id === s.id ? "text-white/60" : "text-muted-foreground/40")}>{s.matricule}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                )}
               </Card>
             </div>
           )}
