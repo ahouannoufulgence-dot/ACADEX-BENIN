@@ -43,8 +43,7 @@ export default function StudentDashboard() {
   const [loadingGrades, setLoadingGrades] = useState(true)
   const [totalPaid, setTotalPaid] = useState(0)
   const [rank, setRank] = useState("---")
-  const [rank, setRank] = useState("---")
-  const [expectedFee, setExpectedFee] = useState(150000)
+    const [expectedFee, setExpectedFee] = useState(150000)
 
   useEffect(() => {
     const fetchGrades = async () => {
