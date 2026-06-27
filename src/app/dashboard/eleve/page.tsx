@@ -80,7 +80,7 @@ export default function StudentDashboard() {
             })
             const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
             const r = sorted.findIndex(s => s.mat === studentId) + 1
-            setRank(r > 0 ? r+"/"+sorted.length : "---")
+            console.log("RANK DEBUG:", {r, sorted, studentId, classMates}); setRank(r > 0 ? r+"/"+sorted.length : "---")
           }
         }
       }
