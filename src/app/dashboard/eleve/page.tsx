@@ -41,6 +41,8 @@ export default function StudentDashboard() {
 
   const [grades, setGrades] = useState<any[]>([])
   const [loadingGrades, setLoadingGrades] = useState(true)
+  const [totalPaid, setTotalPaid] = useState(0)
+  const [expectedFee, setExpectedFee] = useState(150000)
 
   useEffect(() => {
     const fetchGrades = async () => {
@@ -52,12 +54,28 @@ export default function StudentDashboard() {
     fetchGrades()
   }, [studentId, activeYear])
 
+  useEffect(() => {
+    const fetchPayments = async () => {
+      if (!studentId || !activeYear) return
+      const { data: studentData } = await supabase.from("students").select("class_id").eq("matricule", studentId).single()
+      const classId = studentData?.class_id || ""
+      if (classId) {
+        const { data: feeData } = await supabase.from("class_fees").select("amount").eq("class_id", classId).eq("academic_year", activeYear).single()
+        if (feeData) setExpectedFee(Number(feeData.amount))
+      }
+      const { data: payData } = await supabase.from("payments").select("amount_paid").eq("student_matricule", studentId).eq("academic_year", activeYear)
+      const total = (payData || []).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
+      setTotalPaid(total)
+    }
+    fetchPayments()
+  }, [studentId, activeYear])
+
   const stats = useMemo(() => {
     if (!mounted || !grades) return [
       { title: "Ma Moyenne", value: "0.00", label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
       { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
       { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
-      { title: "Scolarité", value: "---", label: "Statut", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
+      { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
     
     const subjects: Record<string, any> = {}
@@ -83,9 +101,9 @@ export default function StudentDashboard() {
       { title: "Ma Moyenne", value: avg, label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
       { title: "Mon Rang", value: "---", label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
       { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
-      { title: "Scolarité", value: "---", label: "Statut", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
+      { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
-  }, [grades, mounted])
+  }, [grades, mounted, totalPaid, expectedFee])
 
   if (!mounted) return null
 
