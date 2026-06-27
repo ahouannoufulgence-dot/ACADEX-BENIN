@@ -49,7 +49,7 @@ export default function ClassRegisterPage() {
 
   const register = useMemo(() => {
     return students.map(s => {
-      const sg = grades.filter(g => g.student_matricule === s.student_matricule && g.subject === subject)
+      const sg = grades.filter(g => g.student_matricule === (s.student_matricule || s.matricule) && g.subject === subject)
       const get = (type: string) => sg.find(g => g.type === type)?.value ?? null
       const i1 = get("int1"), i2 = get("int2"), i3 = get("int3")
       const d1 = get("dev1"), d2 = get("dev2")
