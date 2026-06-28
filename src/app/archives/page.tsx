@@ -59,10 +59,10 @@ export default function AcademicYearsPage() {
       const currentYear = schoolConfig.academic_year
       const [start, end] = currentYear.split('-').map(Number)
       const nextYear = `${start + 1}-${end + 1}`
-      const newAvailableYears = [...(schoolConfig.available_years || []), nextYear]
+      const newAvailableYears = [...(schoolConfig.academic_years || []), nextYear]
 
       const { error } = await supabase.from('school_settings').update({
-        available_years: newAvailableYears,
+        academic_years: newAvailableYears,
         academic_year: nextYear,
       }).eq('id', 'main_config')
 
@@ -166,7 +166,7 @@ export default function AcademicYearsPage() {
                         <Clock className="text-primary size-4 md:size-8" /> Vault Temporel
                       </h4>
                       <div className="space-y-3 md:space-y-5 relative z-10">
-                         {schoolConfig?.available_years?.map((year: string) => (
+                         {schoolConfig?.academic_years?.map((year: string) => (
                            <div key={year} className={cn(
                              "p-4 md:p-7 rounded-2xl md:rounded-[2rem] border-2 flex items-center justify-between transition-all", 
                              year === activeYear ? "bg-primary/20 border-primary shadow-lg scale-[1.02]" : "bg-white/5 border-white/10 opacity-60"
