@@ -18,6 +18,8 @@ import {
   Save,
   Trash2,
   Archive,
+  UserCheck,
+  ShieldAlert,
   RefreshCw
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -136,6 +138,9 @@ export default function StudentDetailPage() {
   const [grades, setGrades] = useState<any[]>([])
   const [selectedTrimestre, setSelectedTrimestre] = useState("T1")
   const [activeYear, setActiveYear] = useState("2026-2027")
+  const [presences, setPresences] = useState<any[]>([])
+  const [sanctions, setSanctions] = useState<any[]>([])
+  const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20 })
 
   const fetchStudent = async () => {
     setLoadingStudent(true)
@@ -150,12 +155,16 @@ export default function StudentDetailPage() {
   const fetchGrades = async (studentMatricule: string) => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     setActiveYear(year)
-    const { data } = await supabase
-      .from('grades')
-      .select('*')
-      .eq('student_matricule', studentMatricule)
-      .eq('academic_year', year)
-    setGrades(data || [])
+    const [gradesRes, presRes, sanctRes, configRes] = await Promise.all([
+      supabase.from('grades').select('*').eq('student_matricule', studentMatricule).eq('academic_year', year),
+      supabase.from('presences').select('*').eq('student_matricule', studentMatricule).eq('academic_year', year).order('date', { ascending: false }),
+      supabase.from('sanctions').select('*').eq('student_matricule', studentMatricule).eq('academic_year', year).order('date', { ascending: false }),
+      supabase.from('conduct_config').select('*').eq('id', 'main').single()
+    ])
+    setGrades(gradesRes.data || [])
+    setPresences(presRes.data || [])
+    setSanctions(sanctRes.data || [])
+    if (configRes.data) setConductConfig(configRes.data)
   }
 
   useEffect(() => {

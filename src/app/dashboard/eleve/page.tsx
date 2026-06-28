@@ -44,6 +44,7 @@ export default function StudentDashboard() {
   const [totalPaid, setTotalPaid] = useState(0)
   const [rank, setRank] = useState("---")
     const [expectedFee, setExpectedFee] = useState(150000)
+  const [totalAbsences, setTotalAbsences] = useState(0)
 
   useEffect(() => {
     const fetchGrades = async () => {
@@ -91,11 +92,29 @@ export default function StudentDashboard() {
     fetchPayments()
   }, [studentId, activeYear])
 
+  useEffect(() => {
+    const fetchAbsences = async () => {
+      if (!studentId || !activeYear) return
+      const { data } = await supabase.from("presences").select("id").eq("student_matricule", studentId).eq("academic_year", activeYear).eq("statut", "Absent")
+      setTotalAbsences((data || []).length)
+    }
+    fetchAbsences()
+  }, [studentId, activeYear])
+
+  useEffect(() => {
+    const fetchAbsences = async () => {
+      if (!studentId || !activeYear) return
+      const { data } = await supabase.from("presences").select("id").eq("student_matricule", studentId).eq("academic_year", activeYear).eq("statut", "Absent")
+      setTotalAbsences((data || []).length)
+    }
+    fetchAbsences()
+  }, [studentId, activeYear])
+
   const stats = useMemo(() => {
     if (!mounted || !grades) return [
       { title: "Ma Moyenne", value: "0.00", label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
       { title: "Mon Rang", value: rank, label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
-      { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
+      { title: "Absences", value: totalAbsences.toString(), label: "Cette année", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
     
@@ -121,7 +140,7 @@ export default function StudentDashboard() {
     return [
       { title: "Ma Moyenne", value: avg, label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
       { title: "Mon Rang", value: rank, label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
-      { title: "Absences", value: "0", label: "Sessions", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
+      { title: "Absences", value: totalAbsences.toString(), label: "Cette année", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
   }, [grades, mounted, totalPaid, expectedFee])
