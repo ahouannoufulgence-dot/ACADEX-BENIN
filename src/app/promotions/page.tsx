@@ -36,7 +36,7 @@ const levels = [
   { id: "3EME", label: "3EME", desc: "Premier Cycle" },
   { id: "2NDE", label: "2NDE", desc: "Second Cycle" },
   { id: "1ERE", label: "1ERE", desc: "Second Cycle" },
-  { id: "TERMINALE", label: "TERMINALE", desc: "Second Cycle" }
+  { id: "TLE", label: "TERMINALE", desc: "Second Cycle" }
 ]
 
 export default function PromotionsPage() {
