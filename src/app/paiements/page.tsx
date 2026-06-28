@@ -90,6 +90,70 @@ export default function TreasuryModule() {
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
   }, [])
 
+  const generatePDF = () => {
+    const doc = new jsPDF()
+    const title = 'Rapport Trésorerie — ' + activeYear
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text(title, 14, 20)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Généré le ' + new Date().toLocaleDateString('fr-FR'), 14, 28)
+
+    // Statistiques
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Résumé Financier', 14, 42)
+    autoTable(doc, {
+      startY: 46,
+      head: [['Indicateur', 'Montant (FCFA)']],
+      body: [
+        ['Total Reçu', stats.totalReceived.toLocaleString() + ' F'],
+        ['Total Dépenses', stats.totalExpenses.toLocaleString() + ' F'],
+        ['Solde Net', stats.balance.toLocaleString() + ' F'],
+        ['Taux Recouvrement', stats.percent.toFixed(1) + '%'],
+      ],
+      styles: { fontSize: 10, font: 'helvetica' },
+      headStyles: { fillColor: [20, 83, 45] },
+    })
+
+    // Encaissements
+    const finalY1 = (doc as any).lastAutoTable.finalY + 10
+    doc.setFont('helvetica', 'bold')
+    doc.text('Journal des Encaissements', 14, finalY1)
+    autoTable(doc, {
+      startY: finalY1 + 4,
+      head: [['Élève', 'Montant', 'Motif', 'Date']],
+      body: payments.map((p: any) => [
+        p.student_name || '---',
+        Number(p.amount_paid).toLocaleString() + ' F',
+        p.note || 'Scolarité',
+        p.payment_date ? new Date(p.payment_date).toLocaleDateString('fr-FR') : '---'
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [20, 83, 45] },
+    })
+
+    // Dépenses
+    const finalY2 = (doc as any).lastAutoTable.finalY + 10
+    doc.setFont('helvetica', 'bold')
+    doc.text('Journal des Dépenses', 14, finalY2)
+    autoTable(doc, {
+      startY: finalY2 + 4,
+      head: [['Motif', 'Catégorie', 'Montant', 'Date']],
+      body: expenses.map((e: any) => [
+        e.motif || '---',
+        e.category || '---',
+        Number(e.amount).toLocaleString() + ' F',
+        e.date ? new Date(e.date).toLocaleDateString('fr-FR') : '---'
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [185, 28, 28] },
+    })
+
+    doc.save('rapport-tresorerie-' + activeYear + '.pdf')
+  }
+
   const fetchAll = async () => {
     setLoadingPayments(true)
     const [pRes, eRes, sRes, fRes] = await Promise.all([
@@ -192,7 +256,7 @@ export default function TreasuryModule() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1 md:flex-none h-11 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm shadow-sm active:scale-95 transition-all">
+            <Button variant="outline" onClick={generatePDF} className="flex-1 md:flex-none h-11 md:h-14 px-4 md:px-8 rounded-xl md:rounded-2xl border-2 font-black bg-white text-[10px] md:text-sm shadow-sm active:scale-95 transition-all">
               <FileDown className="mr-1.5 md:mr-2 size-3.5 md:size-4" /> Rapport
             </Button>
             <Dialog open={isAdding} onOpenChange={setIsAdding}>
