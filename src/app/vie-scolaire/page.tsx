@@ -47,6 +47,7 @@ export default function VieScolairePage() {
   const [sanctions, setSanctions] = useState<any[]>([])
   const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20, seuil_absences: 3, bareme: {} })
   const [loading, setLoading] = useState(false)
+  const [studentMatricule, setStudentMatricule] = useState("")
 
   // Formulaires
   const [presenceForm, setPresenceForm] = useState({ statut: "Absent", heure: "08:00", matiere: "", justifiee: false, motif: "" })
@@ -58,10 +59,12 @@ export default function VieScolairePage() {
     const name = localStorage.getItem("acadex_user_name") || ""
     const subject = localStorage.getItem("acadex_user_subject") || ""
     const year = localStorage.getItem("acadex_active_year") || "2026-2027"
+    const matricule = localStorage.getItem("acadex_user_id") || ""
     setUserRole(role)
     setUserName(name)
     setUserSubject(subject)
     setActiveYear(year)
+    setStudentMatricule(matricule)
     setMounted(true)
   }, [])
 
@@ -202,6 +205,119 @@ export default function VieScolairePage() {
 
   if (!mounted) return null
   const isDirector = userRole === "Directeur"
+
+  // Vue élève — lecture seule
+  if (userRole === "Élève") {
+    const myPresences = presences.filter(p => p.student_matricule === studentMatricule)
+    const mySanctions = sanctions.filter(s => s.student_matricule === studentMatricule)
+    const absNonJust = myPresences.filter(p => p.statut === "Absent" && !p.justifiee).length
+    const absJust = myPresences.filter(p => p.statut === "Absent" && p.justifiee).length
+    const retards = myPresences.filter(p => p.statut === "Retard").length
+    const totalPoints = mySanctions.reduce((acc, s) => acc + Number(s.points_retranches || 0), 0)
+    const noteConduite = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
+
+    return (
+      <DashboardLayout>
+        <div className="space-y-6 md:space-y-10 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1">
+              <h1 className="text-2xl md:text-5xl font-black uppercase tracking-tight">Mon Cahier de <span className="text-primary italic">Vie</span></h1>
+              <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <ShieldCheck className="size-3 text-emerald-500" /> {activeYear} • Lecture seule
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {["T1","T2","T3"].map(t => (
+                <button key={t} onClick={() => setTrimestre(t)}
+                  className={cn("h-10 px-5 rounded-xl font-black text-xs uppercase transition-all border-2",
+                    trimestre === t ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-muted"
+                  )}>{t}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: "Abs. non just.", value: absNonJust, color: absNonJust >= (conductConfig.seuil_absences||3) ? "text-red-600" : "text-foreground", bg: absNonJust >= (conductConfig.seuil_absences||3) ? "bg-red-50" : "bg-white" },
+              { label: "Abs. justifiées", value: absJust, color: "text-blue-600", bg: "bg-blue-50" },
+              { label: "Retards", value: retards, color: "text-amber-600", bg: "bg-amber-50" },
+              { label: "Sanctions", value: mySanctions.length, color: "text-red-600", bg: "bg-red-50" },
+            ].map(st => (
+              <Card key={st.label} className={cn("p-5 md:p-8 rounded-[1.5rem] border-none shadow-sm text-center", st.bg)}>
+                <p className={cn("text-3xl md:text-4xl font-black", st.color)}>{st.value}</p>
+                <p className="text-[8px] font-black uppercase text-muted-foreground mt-2 tracking-widest">{st.label}</p>
+              </Card>
+            ))}
+          </div>
+
+          {/* Note de conduite */}
+          <Card className={cn("p-6 md:p-10 rounded-[2rem] border-none shadow-sm text-center", noteConduite >= 10 ? "bg-emerald-50" : "bg-red-50")}>
+            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-2">Note de Conduite — {trimestre}</p>
+            <p className={cn("text-5xl md:text-7xl font-black", noteConduite >= 10 ? "text-emerald-600" : "text-red-600")}>
+              {noteConduite.toFixed(1)}<span className="text-lg opacity-40">/20</span>
+            </p>
+          </Card>
+
+          {/* Journaux */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-none shadow-sm bg-white rounded-[1.8rem] overflow-hidden">
+              <div className="p-4 border-b bg-muted/5 flex items-center justify-between">
+                <h3 className="font-black text-sm flex items-center gap-2"><UserCheck className="size-4 text-primary" /> Présences</h3>
+                <Badge className="bg-primary/10 text-primary font-black text-[8px]">{myPresences.length}</Badge>
+              </div>
+              <ScrollArea className="h-[300px]">
+                {myPresences.length === 0 ? (
+                  <div className="p-10 text-center opacity-30"><p className="font-black uppercase text-xs">Aucune entrée</p></div>
+                ) : myPresences.map((p, i) => (
+                  <div key={i} className="p-4 border-b border-muted/10 flex items-center gap-3">
+                    <div className={cn("size-8 rounded-lg flex items-center justify-center shrink-0", p.statut === "Absent" ? "bg-red-50 text-red-600" : p.statut === "Retard" ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600")}>
+                      <UserCheck className="size-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge className={cn("text-[6px] font-black px-1.5 h-4 rounded-md", p.statut === "Absent" ? "bg-red-100 text-red-700" : p.statut === "Retard" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700")}>{p.statut}</Badge>
+                        <span className="text-[7px] font-bold text-muted-foreground">{p.matiere}</span>
+                        {p.justifiee && <Badge className="text-[6px] font-black px-1.5 h-4 rounded-md bg-blue-100 text-blue-700">Justifiée</Badge>}
+                      </div>
+                      {p.motif && <p className="text-[7px] text-muted-foreground mt-0.5 italic">{p.motif}</p>}
+                    </div>
+                    <span className="text-[7px] font-bold text-muted-foreground shrink-0">{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                  </div>
+                ))}
+              </ScrollArea>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white rounded-[1.8rem] overflow-hidden">
+              <div className="p-4 border-b bg-muted/5 flex items-center justify-between">
+                <h3 className="font-black text-sm flex items-center gap-2"><ShieldAlert className="size-4 text-red-500" /> Sanctions</h3>
+                <Badge className="bg-red-50 text-red-600 font-black text-[8px]">{mySanctions.length}</Badge>
+              </div>
+              <ScrollArea className="h-[300px]">
+                {mySanctions.length === 0 ? (
+                  <div className="p-10 text-center opacity-30"><p className="font-black uppercase text-xs">Conduite exemplaire</p></div>
+                ) : mySanctions.map((s, i) => (
+                  <div key={i} className="p-4 border-b border-muted/10 flex items-center gap-3">
+                    <div className="size-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="size-3.5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <Badge className="text-[6px] font-black px-1.5 h-4 rounded-md bg-red-100 text-red-700">{s.sanction}</Badge>
+                        <Badge className="text-[6px] font-black px-1.5 h-4 rounded-md bg-foreground text-white">-{s.points_retranches} pts</Badge>
+                      </div>
+                      <p className="text-[7px] text-muted-foreground mt-0.5">{s.type_faute}{s.motif ? " — " + s.motif : ""}</p>
+                    </div>
+                    <span className="text-[7px] font-bold text-muted-foreground shrink-0">{new Date(s.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                  </div>
+                ))}
+              </ScrollArea>
+            </Card>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
