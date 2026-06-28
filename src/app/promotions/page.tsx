@@ -82,7 +82,7 @@ export default function PromotionsPage() {
     })
 
     const studentsProcessed = students.map((student: any) => {
-      const studentGrades = grades?.filter((g: any) => g.student_matricule === student.student_matricule) || []
+      const studentGrades = grades?.filter((g: any) => g.student_matricule === (student.student_matricule || student.matricule)) || []
       const subjects: Record<string, any> = {}
       
       studentGrades.forEach((g: any) => {
