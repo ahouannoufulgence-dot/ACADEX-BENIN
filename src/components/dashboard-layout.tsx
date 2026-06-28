@@ -76,7 +76,7 @@ const navigationConfig = {
   Enseignant: [
     { name: "Dashboard", href: "/dashboard/enseignant", icon: LayoutDashboard },
     { name: "Vie Scolaire", href: "/vie-scolaire", icon: ClipboardList },
-    { name: "Mon Planning", href: "/disponibilites", icon: CalendarDays },
+    { name: "Mon Planning", href: "/dashboard/enseignant/agenda", icon: CalendarDays },
     { name: "Mes Classes", href: "/eleves", icon: Users },
     { name: "Saisie Notes", href: "/notes", icon: PenTool },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
