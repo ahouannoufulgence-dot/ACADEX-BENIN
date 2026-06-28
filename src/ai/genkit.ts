@@ -5,7 +5,8 @@ export async function callGroq(messages: {role: string, content: string}[]) {
       : '';
     const response = await fetch(`${baseUrl}/api/brain`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json",
+      "x-acadex-token": process.env.NEXT_PUBLIC_ACADEX_TOKEN || "acadex_secret_2024" },
       body: JSON.stringify({ messages }),
     });
     if (!response.ok) {
