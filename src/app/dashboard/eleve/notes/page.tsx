@@ -37,8 +37,7 @@ export default function StudentGradesPage() {
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
   const [mySanctions, setMySanctions] = useState<any[]>([])
-  const [mySanctions, setMySanctions] = useState<any[]>([])
-  const [loadingMyGrades, setLoadingMyGrades] = useState(true)
+    const [loadingMyGrades, setLoadingMyGrades] = useState(true)
 
   useEffect(() => {
     const matricule = localStorage.getItem('acadex_user_id') || ""
