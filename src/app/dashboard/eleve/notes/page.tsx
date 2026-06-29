@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -37,7 +36,7 @@ export default function StudentGradesPage() {
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
   const [mySanctions, setMySanctions] = useState<any[]>([])
-    const [loadingMyGrades, setLoadingMyGrades] = useState(true)
+  const [loadingMyGrades, setLoadingMyGrades] = useState(true)
 
   useEffect(() => {
     const matricule = localStorage.getItem('acadex_user_id') || ""
@@ -55,18 +54,14 @@ export default function StudentGradesPage() {
     if (!studentId) return
     const fetchData = async () => {
       setLoadingMyGrades(true)
-      const [gRes, eRes] = await Promise.all([
+      const [gRes, eRes, sanRes] = await Promise.all([
         supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
         supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear),
-        supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
         supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
-      const sanRes = await supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
       setMySanctions(sanRes.data || [])
-      const { data: sanData } = await supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
-      setMySanctions(sanData || [])
       setLoadingMyGrades(false)
     }
     fetchData()
@@ -77,6 +72,7 @@ export default function StudentGradesPage() {
     
     const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
 
+    // Conduite calculée depuis les vraies sanctions
     const totalPointsRetires = mySanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retires) || 0), 0)
     const conductValue = Math.max(0, Math.min(20, 20 - totalPointsRetires))
 
@@ -150,10 +146,28 @@ export default function StudentGradesPage() {
                     <p className="text-[7px] md:text-[10px] font-black uppercase text-white/40 tracking-widest">Moyenne Provisoire</p>
                     <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
                 </div>
-                <div className="size-9 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0"><TrendingUp className="size-4 md:size-10" /></div>
+                <div className="size-9 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0">
+                  <TrendingUp className="size-4 md:size-10" />
+                </div>
              </div>
           </div>
         </div>
+
+        {/* Note de conduite */}
+        {analysis && (
+          <div className="flex items-center gap-3 p-4 md:p-6 bg-white rounded-2xl shadow-sm border-l-4 border-primary">
+            <Award className="size-5 md:size-6 text-primary shrink-0" />
+            <div>
+              <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Note de Conduite</p>
+              <p className={cn("text-lg md:text-2xl font-black", analysis.conductValue >= 14 ? "text-emerald-600" : analysis.conductValue >= 10 ? "text-amber-500" : "text-red-600")}>
+                {analysis.conductValue.toFixed(1)}/20
+                <span className="text-[8px] font-normal text-muted-foreground ml-2">
+                  ({mySanctions.length} sanction{mySanctions.length > 1 ? 's' : ''} — {mySanctions.reduce((acc, s) => acc + (Number(s.points_retires) || 0), 0)} pts retirés)
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
 
         <Tabs value={activeTerm} onValueChange={setActiveTab} className="space-y-6 md:space-y-12">
           <TabsList className="bg-white border-2 border-primary/5 rounded-[1.2rem] md:rounded-[2.5rem] h-11 md:h-20 p-1 flex w-full md:w-fit shadow-md overflow-x-auto no-scrollbar scroll-smooth">
