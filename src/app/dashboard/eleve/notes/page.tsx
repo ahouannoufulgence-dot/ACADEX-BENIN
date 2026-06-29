@@ -37,6 +37,7 @@ export default function StudentGradesPage() {
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
   const [mySanctions, setMySanctions] = useState<any[]>([])
+  const [mySanctions, setMySanctions] = useState<any[]>([])
   const [loadingMyGrades, setLoadingMyGrades] = useState(true)
 
   useEffect(() => {
@@ -58,10 +59,13 @@ export default function StudentGradesPage() {
       const [gRes, eRes] = await Promise.all([
         supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
         supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear),
+        supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
         supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
+      const sanRes = await supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
+      setMySanctions(sanRes.data || [])
       const { data: sanData } = await supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
       setMySanctions(sanData || [])
       setLoadingMyGrades(false)
