@@ -36,6 +36,7 @@ export default function StudentGradesPage() {
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
   const [mySanctions, setMySanctions] = useState<any[]>([])
+  const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20, seuil_absences: 3, bareme: {} })
   const [loadingMyGrades, setLoadingMyGrades] = useState(true)
 
   useEffect(() => {
@@ -54,18 +55,20 @@ export default function StudentGradesPage() {
     if (!studentId) return
     const fetchData = async () => {
       setLoadingMyGrades(true)
-      const [gRes, eRes, sanRes] = await Promise.all([
+      const [gRes, eRes, sanRes, configRes] = await Promise.all([
         supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
         supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear),
-        supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
+        supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear).eq('trimestre', activeTerm),
+        supabase.from('conduct_config').select('*').eq('id', 'main').single()
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
       setMySanctions(sanRes.data || [])
+      if (configRes.data) setConductConfig(configRes.data)
       setLoadingMyGrades(false)
     }
     fetchData()
-  }, [studentId, activeYear])
+  }, [studentId, activeYear, activeTerm])
 
   const analysis = useMemo(() => {
     if (!myGrades) return null
@@ -74,7 +77,7 @@ export default function StudentGradesPage() {
 
     // Conduite calculée depuis les vraies sanctions
     const totalPointsRetires = mySanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retires) || 0), 0)
-    const conductValue = Math.max(0, Math.min(20, 20 - totalPointsRetires))
+    const conductValue = Math.max(0, (conductConfig.note_depart || 20) - totalPointsRetires)
 
     const subjects: Record<string, any> = {}
     termGrades.forEach((g: any) => {
@@ -115,7 +118,7 @@ export default function StudentGradesPage() {
     const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
 
     return { generalAvg, subjects: subjectList, conductValue }
-  }, [myGrades, myLifeEvents, mySanctions, activeTerm])
+  }, [myGrades, myLifeEvents, mySanctions, conductConfig, activeTerm])
 
   return (
     <DashboardLayout>
