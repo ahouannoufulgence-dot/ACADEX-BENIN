@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
       messages,
-      temperature: 0.4,
-      max_completion_tokens: 1500,
+      temperature: 0.1,
+      max_completion_tokens: 4096,
     }),
   });
 
