@@ -36,6 +36,7 @@ export default function StudentGradesPage() {
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
+  const [mySanctions, setMySanctions] = useState<any[]>([])
   const [loadingMyGrades, setLoadingMyGrades] = useState(true)
 
   useEffect(() => {
@@ -56,10 +57,13 @@ export default function StudentGradesPage() {
       setLoadingMyGrades(true)
       const [gRes, eRes] = await Promise.all([
         supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
-        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear)
+        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear),
+        supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
+      const { data: sanData } = await supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear)
+      setMySanctions(sanData || [])
       setLoadingMyGrades(false)
     }
     fetchData()
@@ -70,11 +74,8 @@ export default function StudentGradesPage() {
     
     const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
 
-    let conductValue = 20
-    if (myLifeEvents) {
-      myLifeEvents.forEach((e: any) => { if (e.points_impact) conductValue += Number(e.points_impact) })
-    }
-    conductValue = Math.max(0, Math.min(20, conductValue))
+    const totalPointsRetires = mySanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retires) || 0), 0)
+    const conductValue = Math.max(0, Math.min(20, 20 - totalPointsRetires))
 
     const subjects: Record<string, any> = {}
     termGrades.forEach((g: any) => {
@@ -115,7 +116,7 @@ export default function StudentGradesPage() {
     const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
 
     return { generalAvg, subjects: subjectList, conductValue }
-  }, [myGrades, myLifeEvents, activeTerm])
+  }, [myGrades, myLifeEvents, mySanctions, activeTerm])
 
   return (
     <DashboardLayout>
