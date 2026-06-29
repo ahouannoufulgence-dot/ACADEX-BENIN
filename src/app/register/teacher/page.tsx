@@ -31,7 +31,7 @@ export default function RegisterTeacherPage() {
   });
 
   const regImage = placeholderData.placeholderImages.find(img => img.id === "registration-green");
-  const subjects = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"];
+  const subjects = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS", "Communication", "Lecture"];
   
   const availableClasses = [
     "6EME A", "6EME B", "5EME A", "5EME B", "4EME A", "4EME B", "3EME D1", "3EME D2",

@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils"
 
 const TYPES_FAUTE = ["Bavardage", "Tenue incorrecte", "Absence répétée", "Fraude/Examen", "Violence", "Manque de respect", "Téléphone en classe", "Autre"]
 const TYPES_SANCTION = ["Avertissement oral", "Avertissement écrit", "Retenue", "Exclusion temporaire", "Convocation parents"]
-const MATIERES = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"]
+const MATIERES = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS", "Communication", "Lecture"]
 
 export default function VieScolairePage() {
   const [userRole, setUserRole] = useState("")

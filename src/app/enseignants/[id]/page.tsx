@@ -39,7 +39,7 @@ const OFFICIAL_CLASSES = [
   "TLE A", "TLE B", "TLE C", "TLE D"
 ]
 
-const SUBJECTS = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"]
+const SUBJECTS = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS", "Communication", "Lecture"]
 
 export default function TeacherDetailPage() {
   const { id } = useParams()

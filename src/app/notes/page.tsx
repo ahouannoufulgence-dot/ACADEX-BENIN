@@ -59,6 +59,8 @@ const OFFICIAL_CLASSES = [
 const PROMOTIONS = ["6EME", "5EME", "4EME", "3EME", "2NDE", "1ERE", "TLE"]
 
 const MATIERES = ["Mathématiques", "Français", "Anglais", "PCT", "SVT", "Histoire-Géo", "Philosophie", "Allemand", "Espagnol", "Économie", "Informatique", "EPS"]
+const MATIERES_PREMIER_CYCLE = ["Communication", "Lecture"]
+const PREMIER_CYCLE = ["6EME", "5EME", "4EME", "3EME"]
 
 export default function GradesPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
