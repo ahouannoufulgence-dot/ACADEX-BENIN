@@ -30,12 +30,20 @@ export default function StudentDashboard() {
   const [studentId, setStudentId] = useState("")
   const [studentName, setStudentName] = useState("Élève")
   const [mounted, setMounted] = useState(false)
+  const [promotionBanner, setPromotionBanner] = useState<any>(null)
   const [activeYear, setActiveYear] = useState("2026-2027")
 
   useEffect(() => {
     setStudentId(localStorage.getItem('acadex_user_id') || "")
     setStudentName(localStorage.getItem('acadex_user_name') || "Élève")
     setActiveYear(localStorage.getItem('acadex_active_year') || "2026-2027")
+    const bannerData = localStorage.getItem("acadex_show_promotion_banner")
+    if (bannerData) {
+      try {
+        setPromotionBanner(JSON.parse(bannerData))
+      } catch (e) {}
+      localStorage.removeItem("acadex_show_promotion_banner")
+    }
     setMounted(true)
   }, [])
 
@@ -182,6 +190,25 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+
+        {promotionBanner && (
+          <div className="bg-emerald-500 text-white rounded-[1.5rem] md:rounded-[2.5rem] p-5 md:p-8 shadow-xl flex items-center gap-4 md:gap-6 animate-in slide-in-from-top-4 duration-500">
+            <div className="size-10 md:size-14 bg-white/20 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0">
+              <Trophy className="size-5 md:size-7" />
+            </div>
+            <div className="flex-1">
+              <p className="font-black text-sm md:text-xl uppercase tracking-tight">
+                {promotionBanner.newClass === promotionBanner.previousClass ? "Vous redoublez votre classe" : "Felicitations pour votre passage"}
+              </p>
+              <p className="text-[10px] md:text-sm font-medium text-white/80 mt-0.5">
+                {promotionBanner.newClass === promotionBanner.previousClass
+                  ? `Vous repartez en ${promotionBanner.newClass} pour l'annee ${promotionBanner.newYear}.`
+                  : `Vous etes maintenant en ${promotionBanner.newClass} pour l'annee ${promotionBanner.newYear}.`}
+              </p>
+            </div>
+            <button onClick={() => setPromotionBanner(null)} className="text-white/60 hover:text-white text-xs font-bold uppercase shrink-0">Fermer</button>
+          </div>
+        )}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
           {stats.map((stat, i) => (
             <Link key={stat.title} href={stat.href}>
