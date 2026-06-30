@@ -20,7 +20,8 @@ import {
   Clock,
   FileText,
   AlertTriangle,
-  Star
+  Star,
+  ArrowUpCircle
 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
@@ -28,6 +29,18 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { toast } from "@/hooks/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const levels = [
   { id: "6EME", label: "6EME", desc: "Premier Cycle" },
@@ -39,6 +52,25 @@ const levels = [
   { id: "TLE", label: "TERMINALE", desc: "Second Cycle" }
 ]
 
+// Règle de promotion par niveau. "NEXT" signifie même lettre, niveau supérieur.
+// "SPECIAL_2NDE" signifie 3ème -> 2NDE - A AFFECTER (le directeur choisit la série ensuite).
+// "SORTANT" signifie l'élève quitte le système (status: Sorti), pas de redoublement possible.
+const promotionRules: Record<string, { nextLevel: string | null, mode: "NEXT" | "SPECIAL_2NDE" | "SORTANT" }> = {
+  "6EME": { nextLevel: "5EME", mode: "NEXT" },
+  "5EME": { nextLevel: "4EME", mode: "NEXT" },
+  "4EME": { nextLevel: "3EME", mode: "NEXT" },
+  "3EME": { nextLevel: "2NDE", mode: "SPECIAL_2NDE" },
+  "2NDE": { nextLevel: "1ERE", mode: "NEXT" },
+  "1ERE": { nextLevel: "TLE", mode: "NEXT" },
+  "TLE": { nextLevel: null, mode: "SORTANT" },
+}
+
+function getNextAcademicYear(year: string): string {
+  const parts = year.split('-').map(Number)
+  if (parts.length !== 2 || parts.some(isNaN)) return year
+  return `${parts[0] + 1}-${parts[1] + 1}`
+}
+
 export default function PromotionsPage() {
   const [activeYear, setActiveYear] = useState(typeof window !== 'undefined' ? localStorage.getItem('acadex_active_year') || '2026-2027' : '2026-2027')
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
@@ -47,10 +79,20 @@ export default function PromotionsPage() {
   const [grades, setGrades] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [loadingGrades, setLoadingGrades] = useState(true)
+  const [promoting, setPromoting] = useState(false)
+  const [schoolConfig, setSchoolConfig] = useState<any>(null)
 
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     setActiveYear(year)
+  }, [])
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+      if (data) setSchoolConfig(data)
+    }
+    fetchConfig()
   }, [])
 
   useEffect(() => {
@@ -62,13 +104,16 @@ export default function PromotionsPage() {
         supabase.from('students').select('*').eq('academic_year', activeYear),
         supabase.from('grades').select('*').eq('academic_year', activeYear)
       ])
-      console.log("STUDENTS:", sRes.data, "ERROR:", sRes.error); setStudents(sRes.data || [])
+      setStudents(sRes.data || [])
       setGrades(gRes.data || [])
       setLoadingStudents(false)
       setLoadingGrades(false)
     }
     fetchData()
   }, [activeYear])
+
+  // L'année consultée est-elle l'année active de l'école ? Sinon, promotion désactivée (déjà fait ou archive).
+  const isCurrentActiveYear = schoolConfig ? schoolConfig.academic_year === activeYear : false
 
   const academicData = useMemo(() => {
     const defaultData = { levelsMap: {}, classStats: {}, studentsProcessed: [] }
@@ -125,7 +170,7 @@ export default function PromotionsPage() {
       
       const avgs = classGroups[cid].map(s => s.generalAvg)
       const totalGrades = classGroups[cid].reduce((acc, s) => acc + s.gradesCount, 0)
-      const expectedGrades = classGroups[cid].length * 50 // Estimation 10 sujets * 5 notes
+      const expectedGrades = classGroups[cid].length * 50
 
       classStats[cid] = {
         avg: avgs.length > 0 ? Number((avgs.reduce((a, b) => a + b, 0) / avgs.length).toFixed(2)) : 0,
@@ -156,6 +201,88 @@ export default function PromotionsPage() {
       .filter((s: any) => s.class_id === selectedClass)
       .sort((a: any, b: any) => (a.last_name || "").localeCompare(b.last_name || ""))
   }, [academicData, selectedClass])
+
+  // Calcule, pour le niveau sélectionné, le plan de promotion complet (sans rien écrire en base).
+  const promotionPlan = useMemo(() => {
+    if (!selectedLevel) return null
+    const rule = promotionRules[selectedLevel]
+    if (!rule) return null
+
+    const levelStudents = academicData.levelsMap[selectedLevel]?.students || []
+    const nextYear = getNextAcademicYear(activeYear)
+
+    const plan = levelStudents.map((s: any) => {
+      const admitted = s.generalAvg >= 10
+
+      if (rule.mode === "SORTANT") {
+        return { student: s, outcome: "SORTANT", newClassId: s.class_id, newAcademicYear: activeYear, newStatus: "Sorti" }
+      }
+
+      if (rule.mode === "SPECIAL_2NDE") {
+        if (admitted) {
+          return { student: s, outcome: "ADMIS_2NDE", newClassId: "2NDE - A AFFECTER", newAcademicYear: nextYear, newStatus: "Actif" }
+        }
+        return { student: s, outcome: "REDOUBLE", newClassId: s.class_id, newAcademicYear: nextYear, newStatus: "Actif" }
+      }
+
+      // mode NEXT
+      if (admitted) {
+        const lettre = s.class_id?.replace(selectedLevel, "").trim() || ""
+        const newClassId = `${rule.nextLevel} ${lettre}`.trim()
+        return { student: s, outcome: "ADMIS", newClassId, newAcademicYear: nextYear, newStatus: "Actif" }
+      }
+      return { student: s, outcome: "REDOUBLE", newClassId: s.class_id, newAcademicYear: nextYear, newStatus: "Actif" }
+    })
+
+    const summary = {
+      total: plan.length,
+      admis: plan.filter((p: any) => p.outcome === "ADMIS" || p.outcome === "ADMIS_2NDE").length,
+      redouble: plan.filter((p: any) => p.outcome === "REDOUBLE").length,
+      sortant: plan.filter((p: any) => p.outcome === "SORTANT").length,
+    }
+
+    return { rule, plan, summary, nextYear }
+  }, [selectedLevel, academicData, activeYear])
+
+  const handleExecutePromotion = async () => {
+    if (!promotionPlan) return
+    setPromoting(true)
+    try {
+      const updates = promotionPlan.plan.map((p: any) =>
+        supabase.from('students').update({
+          class_id: p.newClassId,
+          academic_year: p.newAcademicYear,
+          status: p.newStatus,
+        }).eq('id', p.student.id)
+      )
+
+      const results = await Promise.all(updates)
+      const failed = results.filter(r => r.error)
+
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} élève(s) n'ont pas pu être promus.`)
+      }
+
+      toast({
+        title: "Promotion réalisée",
+        description: `${promotionPlan.summary.admis} admis, ${promotionPlan.summary.redouble} redoublant(s), ${promotionPlan.summary.sortant} sortant(s).`
+      })
+
+      setSelectedLevel(null)
+      setSelectedClass(null)
+      // Rafraîchir les données du niveau actuel
+      const [sRes, gRes] = await Promise.all([
+        supabase.from('students').select('*').eq('academic_year', activeYear),
+        supabase.from('grades').select('*').eq('academic_year', activeYear)
+      ])
+      setStudents(sRes.data || [])
+      setGrades(gRes.data || [])
+    } catch (e: any) {
+      toast({ title: "Erreur de promotion", description: e?.message || "Une erreur est survenue.", variant: "destructive" })
+    } finally {
+      setPromoting(false)
+    }
+  }
 
   return (
     <DashboardLayout>
@@ -227,28 +354,78 @@ export default function PromotionsPage() {
         ) : null}
 
         {selectedLevel && !selectedClass && (
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in slide-in-from-right-4">
-              {Array.from(academicData.levelsMap[selectedLevel]?.classes || []).sort().map((cid: any) => (
-                <Card 
-                  key={cid} 
-                  onClick={() => setSelectedClass(cid)}
-                  className="p-6 md:p-10 rounded-[2.2rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group border-l-[10px] border-primary active:scale-95"
-                >
-                   <div className="flex items-center justify-between mb-6">
-                      <h3 className="text-2xl md:text-4xl font-black text-foreground">{cid}</h3>
-                      <ChevronRight className="size-6 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                   </div>
-                   <div className="space-y-3">
-                      <div className="flex justify-between items-center text-[10px] md:text-xs font-bold uppercase text-muted-foreground">
-                         <span>Moyenne Classe</span>
-                         <span className="text-primary font-black">{academicData.classStats[cid]?.avg}/20</span>
+           <div className="space-y-6 animate-in slide-in-from-right-4">
+              {isCurrentActiveYear && promotionPlan && promotionPlan.summary.total > 0 && (
+                <Card className="p-6 md:p-10 rounded-[2.2rem] border-none shadow-sm bg-primary/5 border-2 border-primary/20 flex flex-col md:flex-row items-center justify-between gap-6">
+                   <div className="flex items-center gap-4 md:gap-6">
+                      <div className="size-12 md:size-16 bg-primary text-white rounded-2xl flex items-center justify-center shrink-0">
+                         <ArrowUpCircle className="size-6 md:size-8" />
                       </div>
-                      <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
-                         <div className="bg-primary h-full transition-all" style={{ width: `${academicData.classStats[cid]?.completion}%` }} />
+                      <div>
+                         <h3 className="font-black text-base md:text-2xl uppercase tracking-tight">Promotion {selectedLevel} → {promotionPlan.rule.mode === "SORTANT" ? "Sortie" : promotionPlan.rule.nextLevel}</h3>
+                         <p className="text-[10px] md:text-sm font-bold text-muted-foreground uppercase tracking-widest">{promotionPlan.summary.total} élève(s) concerné(s)</p>
                       </div>
                    </div>
+                   <AlertDialog>
+                     <AlertDialogTrigger asChild>
+                       <Button disabled={promoting} className="w-full md:w-auto bg-primary hover:bg-primary/90 rounded-xl md:rounded-2xl h-12 md:h-16 px-8 font-black text-xs md:text-base shadow-lg shadow-primary/20">
+                          {promoting ? <Loader2 className="animate-spin mr-2 size-5" /> : <ArrowUpCircle className="mr-2 size-5" />}
+                          Lancer la Promotion {selectedLevel}
+                       </Button>
+                     </AlertDialogTrigger>
+                     <AlertDialogContent className="rounded-[2rem] md:rounded-[3rem] border-none shadow-2xl w-[95%] p-0 overflow-hidden">
+                        <div className="p-6 md:p-10 bg-destructive text-white">
+                          <AlertDialogTitle className="text-lg md:text-2xl font-black flex items-center gap-3">
+                            <AlertTriangle className="size-6 md:size-8" /> Confirmation de Promotion
+                          </AlertDialogTitle>
+                          <p className="text-white/60 text-[8px] md:text-sm font-bold uppercase tracking-widest mt-1">Action irréversible — Niveau {selectedLevel}</p>
+                        </div>
+                        <div className="p-6 md:p-10 space-y-4 bg-white">
+                          <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-sm md:text-base font-medium text-foreground/80">
+                              <div className="flex justify-between border-b pb-2"><span>Admis (passent en {promotionPlan.rule.mode === "SORTANT" ? "sortie" : promotionPlan.rule.nextLevel})</span><b className="text-primary">{promotionPlan.summary.admis}</b></div>
+                              <div className="flex justify-between border-b pb-2"><span>Redoublants (restent en {selectedLevel})</span><b className="text-amber-600">{promotionPlan.summary.redouble}</b></div>
+                              {promotionPlan.summary.sortant > 0 && (
+                                <div className="flex justify-between border-b pb-2"><span>Sortants (quittent l'établissement)</span><b className="text-destructive">{promotionPlan.summary.sortant}</b></div>
+                              )}
+                              <p className="text-xs text-muted-foreground pt-2">Cette action met à jour tous les élèves du niveau {selectedLevel} vers l'année {promotionPlan.nextYear}. Vérifiez les chiffres avant de valider.</p>
+                            </div>
+                          </AlertDialogDescription>
+                        </div>
+                        <div className="p-6 md:p-10 bg-muted/20 flex gap-3">
+                          <AlertDialogCancel className="flex-1 rounded-xl h-12 md:h-14 font-bold border-2 text-[10px] md:text-sm">Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleExecutePromotion} className="flex-2 bg-primary hover:bg-primary/90 rounded-xl h-12 md:h-14 px-10 font-black text-[10px] md:text-sm">
+                            Confirmer la Promotion
+                          </AlertDialogAction>
+                        </div>
+                     </AlertDialogContent>
+                   </AlertDialog>
                 </Card>
-              ))}
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {Array.from(academicData.levelsMap[selectedLevel]?.classes || []).sort().map((cid: any) => (
+                  <Card 
+                    key={cid} 
+                    onClick={() => setSelectedClass(cid)}
+                    className="p-6 md:p-10 rounded-[2.2rem] border-none shadow-sm bg-white hover:shadow-2xl transition-all cursor-pointer group border-l-[10px] border-primary active:scale-95"
+                  >
+                     <div className="flex items-center justify-between mb-6">
+                        <h3 className="text-2xl md:text-4xl font-black text-foreground">{cid}</h3>
+                        <ChevronRight className="size-6 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                     </div>
+                     <div className="space-y-3">
+                        <div className="flex justify-between items-center text-[10px] md:text-xs font-bold uppercase text-muted-foreground">
+                           <span>Moyenne Classe</span>
+                           <span className="text-primary font-black">{academicData.classStats[cid]?.avg}/20</span>
+                        </div>
+                        <div className="w-full bg-muted/30 h-1.5 rounded-full overflow-hidden">
+                           <div className="bg-primary h-full transition-all" style={{ width: `${academicData.classStats[cid]?.completion}%` }} />
+                        </div>
+                     </div>
+                  </Card>
+                ))}
+             </div>
            </div>
         )}
 
