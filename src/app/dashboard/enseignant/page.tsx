@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { Award } from "lucide-react"
 
 export default function TeacherDashboard() {
   const [teacherName, setTeacherName] = useState("Monsieur")
@@ -32,6 +33,11 @@ export default function TeacherDashboard() {
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [students, setStudents] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
+  const [isMainTeacher, setIsMainTeacher] = useState(false)
+  const [mainTeacherClass, setMainTeacherClass] = useState("")
+  const [mainClassStudents, setMainClassStudents] = useState<any[]>([])
+  const [mainClassGrades, setMainClassGrades] = useState<any[]>([])
+  const [loadingMainClass, setLoadingMainClass] = useState(true)
 
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
@@ -52,6 +58,8 @@ export default function TeacherDashboard() {
         setTeacherName(data.full_name || "Monsieur")
         setTeacherClasses(data.classes || [])
         setTeacherSubject(data.subject || "")
+        setIsMainTeacher(data.is_main_teacher || false)
+        setMainTeacherClass(data.main_teacher_class || "")
         localStorage.setItem('acadex_user_name', data.full_name || "Monsieur")
         localStorage.setItem('acadex_user_classes', JSON.stringify(data.classes || []))
         localStorage.setItem('acadex_user_subject', data.subject || "")
@@ -79,6 +87,21 @@ export default function TeacherDashboard() {
     }
     fetchStudents()
   }, [teacherClasses, activeYear])
+
+  useEffect(() => {
+    const fetchMainClassData = async () => {
+      if (!isMainTeacher || !mainTeacherClass) { setLoadingMainClass(false); return }
+      setLoadingMainClass(true)
+      const [studentsRes, gradesRes] = await Promise.all([
+        supabase.from('students').select('*').eq('class_id', mainTeacherClass).eq('academic_year', activeYear).eq('status', 'Actif').order('last_name', { ascending: true }),
+        supabase.from('grades').select('*').eq('class_id', mainTeacherClass).eq('academic_year', activeYear)
+      ])
+      setMainClassStudents(studentsRes.data || [])
+      setMainClassGrades(gradesRes.data || [])
+      setLoadingMainClass(false)
+    }
+    fetchMainClassData()
+  }, [isMainTeacher, mainTeacherClass, activeYear])
 
   const stats = useMemo(() => {
     if (!mounted) return []
@@ -239,6 +262,84 @@ export default function TeacherDashboard() {
             </div>
           )}
         </div>
+
+        {/* Module Registre Professeur Principal */}
+        {isMainTeacher && mainTeacherClass && (
+          <div className="space-y-6 md:space-y-10">
+            <div className="flex items-center justify-between px-1">
+              <div className="space-y-1">
+                <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tight flex items-center gap-3">
+                  <Award className="text-primary size-6 md:size-8" /> Registre <span className="text-primary italic">Professeur Principal</span>
+                </h2>
+                <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Classe {mainTeacherClass} • Toutes matières • {activeYear}</p>
+              </div>
+            </div>
+
+            {loadingMainClass ? (
+              <div className="flex justify-center p-20"><Loader2 className="animate-spin text-primary size-10 opacity-30" /></div>
+            ) : mainClassStudents.length === 0 ? (
+              <Card className="p-16 text-center border-4 border-dashed rounded-[2rem] bg-white/50 opacity-40">
+                <Users className="size-12 mx-auto text-muted-foreground opacity-20 mb-4" />
+                <p className="font-black uppercase text-muted-foreground">Aucun élève dans cette classe</p>
+              </Card>
+            ) : (
+              <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[3rem] overflow-hidden">
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left">
+                    <thead className="bg-muted/30 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground border-b">
+                      <tr>
+                        <th className="px-5 py-4 md:px-8 md:py-6">Élève</th>
+                        <th className="px-5 py-4 md:px-8 md:py-6">Matière</th>
+                        <th className="px-3 py-4 text-center">Int1</th>
+                        <th className="px-3 py-4 text-center">Int2</th>
+                        <th className="px-3 py-4 text-center">Int3</th>
+                        <th className="px-3 py-4 text-center">Dev1</th>
+                        <th className="px-3 py-4 text-center">Dev2</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-muted/10">
+                      {mainClassStudents.map((student: any) => {
+                        const studentGrades = mainClassGrades.filter((g: any) => g.student_matricule === student.matricule)
+                        const subjectsMap: Record<string, any> = {}
+                        studentGrades.forEach((g: any) => {
+                          if (!subjectsMap[g.subject]) subjectsMap[g.subject] = {}
+                          subjectsMap[g.subject][g.type] = g.value
+                        })
+                        const subjectEntries = Object.entries(subjectsMap)
+                        if (subjectEntries.length === 0) {
+                          return (
+                            <tr key={student.id}>
+                              <td className="px-5 py-4 md:px-8 md:py-6 font-black text-xs md:text-base uppercase">{student.last_name} {student.first_name}</td>
+                              <td colSpan={6} className="px-5 py-4 text-center text-muted-foreground italic text-xs">Aucune note saisie</td>
+                            </tr>
+                          )
+                        }
+                        return subjectEntries.map(([subject, vals]: any, idx: number) => (
+                          <tr key={`${student.id}-${subject}`} className="hover:bg-muted/5">
+                            {idx === 0 && (
+                              <td className="px-5 py-4 md:px-8 md:py-6 font-black text-xs md:text-base uppercase align-top" rowSpan={subjectEntries.length}>
+                                {student.last_name} {student.first_name}
+                                <div className="text-[8px] font-bold text-muted-foreground/50 normal-case">{student.matricule}</div>
+                              </td>
+                            )}
+                            <td className="px-5 py-4 md:px-8 md:py-6">
+                              <Badge className="bg-primary/5 text-primary border-none font-black text-[9px] md:text-xs uppercase">{subject}</Badge>
+                            </td>
+                            <td className="px-3 py-4 text-center font-bold text-xs md:text-sm">{vals.int1 ?? "--"}</td>
+                            <td className="px-3 py-4 text-center font-bold text-xs md:text-sm">{vals.int2 ?? "--"}</td>
+                            <td className="px-3 py-4 text-center font-bold text-xs md:text-sm">{vals.int3 ?? "--"}</td>
+                            <td className="px-3 py-4 text-center font-bold text-xs md:text-sm">{vals.dev1 ?? "--"}</td>
+                            <td className="px-3 py-4 text-center font-bold text-xs md:text-sm">{vals.dev2 ?? "--"}</td>
+                          </tr>
+                        ))
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Raccourcis bas */}
         <div className="grid sm:grid-cols-2 gap-5 md:gap-8">
