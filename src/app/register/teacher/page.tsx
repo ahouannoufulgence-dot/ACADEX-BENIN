@@ -27,7 +27,9 @@ export default function RegisterTeacherPage() {
     subject: "",
     classes: [] as string[],
     password: "",
-    confirmPassword: ""
+    confirmPassword: "",
+    isMainTeacher: false,
+    mainTeacherClass: ""
   });
 
   const regImage = placeholderData.placeholderImages.find(img => img.id === "registration-green");
@@ -58,7 +60,26 @@ export default function RegisterTeacherPage() {
       return;
     }
 
+    if (form.isMainTeacher && !form.mainTeacherClass) {
+      toast({ title: "Erreur", description: "Veuillez choisir la classe dont vous êtes titulaire.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
+
+    if (form.isMainTeacher) {
+      const { data: existing } = await supabase
+        .from('teachers')
+        .select('id, full_name')
+        .eq('main_teacher_class', form.mainTeacherClass)
+        .maybeSingle();
+
+      if (existing) {
+        toast({ title: "Classe déjà attribuée", description: `${existing.full_name} est déjà professeur principal de cette classe.`, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+    }
 
     const subjectPrefix = form.subject.substring(0, 3).toUpperCase() || "ENS";
     const randomId = Math.floor(100 + Math.random() * 900);
@@ -72,6 +93,8 @@ export default function RegisterTeacherPage() {
       subject: form.subject,
       classes: form.classes,
       password: form.password,
+      is_main_teacher: form.isMainTeacher,
+      main_teacher_class: form.isMainTeacher ? form.mainTeacherClass : null,
     };
 
     const { error } = await supabase.from('teachers').insert(teacherData);
@@ -194,6 +217,31 @@ export default function RegisterTeacherPage() {
                       </div>
                     ))}
                   </div>
+                </div>
+                <div className="space-y-3 p-4 rounded-xl bg-muted/30 border-2 border-dashed border-muted-foreground/20">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="isMainTeacher"
+                      checked={form.isMainTeacher}
+                      onChange={e => setForm({...form, isMainTeacher: e.target.checked, mainTeacherClass: e.target.checked ? form.mainTeacherClass : ""})}
+                      className="size-5 rounded accent-foreground"
+                    />
+                    <Label htmlFor="isMainTeacher" className="font-bold text-xs md:text-sm cursor-pointer">Je suis professeur principal</Label>
+                  </div>
+                  {form.isMainTeacher && (
+                    <div className="space-y-1.5 pl-8">
+                      <Label className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground">Classe dont je suis titulaire</Label>
+                      <Select value={form.mainTeacherClass} onValueChange={v => setForm({...form, mainTeacherClass: v})}>
+                        <SelectTrigger className="h-11 md:h-12 rounded-xl text-sm font-bold">
+                          <SelectValue placeholder="Choisir la classe" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-2 p-1 max-h-[250px]">
+                          {availableClasses.map(c => <SelectItem key={c} value={c} className="font-bold p-2.5 rounded-lg text-xs">{c}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="p-6 md:p-10 bg-muted/30 flex justify-between gap-3">
