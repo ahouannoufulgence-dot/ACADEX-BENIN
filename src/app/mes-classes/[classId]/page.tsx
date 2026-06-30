@@ -22,6 +22,10 @@ export default function ClassRegisterPage() {
   const [grades, setGrades] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [coefficient, setCoefficient] = useState(2)
+  const [isMainTeacher, setIsMainTeacher] = useState(false)
+  const [mainTeacherClass, setMainTeacherClass] = useState("")
+  const [selectedSubject, setSelectedSubject] = useState("ALL")
+  const [allSubjects, setAllSubjects] = useState<string[]>([])
 
   useEffect(() => {
     const year = localStorage.getItem("acadex_active_year") || "2026-2027"
@@ -29,7 +33,20 @@ export default function ClassRegisterPage() {
     setActiveYear(year)
     setSubject(sub)
     setMounted(true)
+
+    const userId = localStorage.getItem('acadex_user_id')
+    if (userId) {
+      supabase.from('teachers').select('is_main_teacher, main_teacher_class').eq('official_id', userId).single().then(({ data }) => {
+        if (data) {
+          setIsMainTeacher(data.is_main_teacher || false)
+          setMainTeacherClass(data.main_teacher_class || "")
+        }
+      })
+    }
   }, [])
+
+  const isPPViewingOwnClass = isMainTeacher && mainTeacherClass === cls
+  const effectiveSubject = isPPViewingOwnClass && selectedSubject !== "ALL" ? selectedSubject : (isPPViewingOwnClass ? "ALL" : subject)
 
   useEffect(() => {
     if (!mounted || !cls) return
@@ -41,26 +58,43 @@ export default function ClassRegisterPage() {
       ])
       setStudents(studRes.data || [])
       setGrades(gradeRes.data || [])
+      setAllSubjects(Array.from(new Set((gradeRes.data || []).map((g: any) => g.subject))).sort())
       if ((gradeRes.data || []).length > 0) setCoefficient(gradeRes.data![0].coefficient || 2)
       setLoading(false)
     }
     fetch()
   }, [mounted, cls, activeYear, trimestre])
 
+  const computeRow = (s: any, sub: string, coef: number) => {
+    const sg = grades.filter(g => g.student_matricule === (s.student_matricule || s.matricule) && g.subject === sub)
+    const get = (type: string) => sg.find(g => g.type === type)?.value ?? null
+    const i1 = get("int1"), i2 = get("int2"), i3 = get("int3")
+    const d1 = get("dev1"), d2 = get("dev2")
+    const interros = [i1, i2, i3].filter(v => v !== null) as number[]
+    const avgInt = interros.length ? interros.reduce((a, b) => a + b, 0) / interros.length : null
+    const blocks = [...(avgInt !== null ? [avgInt] : []), ...(d1 !== null ? [d1] : []), ...(d2 !== null ? [d2] : [])]
+    const moy = blocks.length ? blocks.reduce((a, b) => a + b, 0) / blocks.length : null
+    const c = sg.length > 0 ? (sg[0].coefficient || coef) : coef
+    const moyCoef = moy !== null ? moy * c : null
+    return { ...s, subject: sub, i1, i2, i3, d1, d2, moy, moyCoef }
+  }
+
   const register = useMemo(() => {
-    return students.map(s => {
-      const sg = grades.filter(g => g.student_matricule === (s.student_matricule || s.matricule) && g.subject === subject)
-      const get = (type: string) => sg.find(g => g.type === type)?.value ?? null
-      const i1 = get("int1"), i2 = get("int2"), i3 = get("int3")
-      const d1 = get("dev1"), d2 = get("dev2")
-      const interros = [i1, i2, i3].filter(v => v !== null) as number[]
-      const avgInt = interros.length ? interros.reduce((a, b) => a + b, 0) / interros.length : null
-      const blocks = [...(avgInt !== null ? [avgInt] : []), ...(d1 !== null ? [d1] : []), ...(d2 !== null ? [d2] : [])]
-      const moy = blocks.length ? blocks.reduce((a, b) => a + b, 0) / blocks.length : null
-      const moyCoef = moy !== null ? moy * coefficient : null
-      return { ...s, i1, i2, i3, d1, d2, moy, moyCoef }
-    })
-  }, [students, grades, subject, coefficient])
+    if (isPPViewingOwnClass && selectedSubject === "ALL") {
+      const rows: any[] = []
+      students.forEach(s => {
+        allSubjects.forEach(sub => {
+          const row = computeRow(s, sub, coefficient)
+          if (row.i1 !== null || row.i2 !== null || row.i3 !== null || row.d1 !== null || row.d2 !== null) {
+            rows.push(row)
+          }
+        })
+      })
+      return rows
+    }
+    const sub = isPPViewingOwnClass ? selectedSubject : subject
+    return students.map(s => computeRow(s, sub, coefficient))
+  }, [students, grades, subject, coefficient, isPPViewingOwnClass, selectedSubject, allSubjects])
 
   const classAvg = useMemo(() => {
     const avgs = register.map(r => r.moy).filter(v => v !== null) as number[]
@@ -92,9 +126,19 @@ export default function ClassRegisterPage() {
               <ChevronLeft className="size-4" /> Retour au dashboard
             </Link>
             <h1 className="text-2xl md:text-5xl font-black uppercase tracking-tight">Registre <span className="text-primary italic">{cls}</span></h1>
-            <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">{subject} • {activeYear}</p>
+            <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">{isPPViewingOwnClass ? "Professeur Principal" : subject} • {activeYear}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {isPPViewingOwnClass && (
+              <select
+                value={selectedSubject}
+                onChange={e => setSelectedSubject(e.target.value)}
+                className="h-10 md:h-12 px-4 rounded-xl font-black text-xs md:text-sm uppercase border-2 bg-white border-muted"
+              >
+                <option value="ALL">Toutes les matières</option>
+                {allSubjects.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
             {["T1","T2","T3"].map(t => (
               <button key={t} onClick={() => setTrimestre(t)}
                 className={cn("h-10 md:h-12 px-5 md:px-8 rounded-xl font-black text-xs md:text-sm uppercase transition-all border-2",
