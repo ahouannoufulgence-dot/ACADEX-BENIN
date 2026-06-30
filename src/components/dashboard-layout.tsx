@@ -46,8 +46,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useEffect, useState, useMemo } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { doc, onSnapshot } from "firebase/firestore"
-import { useFirestore } from "@/firebase"
+import { supabase } from "@/lib/supabase"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,7 +96,6 @@ const navigationConfig = {
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const db = useFirestore()
   const [userName, setUserName] = useState("Directeur")
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userId, setUserId] = useState("")
@@ -137,16 +135,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setUserId(id || "INV-000")
     setActiveYear(savedYear || "2026-2027")
     setMounted(true)
-
-    const unsub = onSnapshot(doc(db, "school_settings", "main_config"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data()
-        setSchoolInfo({ name: data.schoolName || "ACADEX", logo: data.logoUrl || "" })
-        if (data.availableYears) setAvailableYears(data.availableYears)
+    const fetchSchoolData = async () => {
+      const { data } = await supabase.from("school_settings").select("*").eq("id", "main_config").single()
+      if (data) {
+        setSchoolInfo({ name: data.school_name || "ACADEX", logo: data.logo_url || "" })
+        if (Array.isArray(data.academic_years) && data.academic_years.length > 0) setAvailableYears(data.academic_years)
       }
-    })
-    return () => unsub()
-  }, [router, db, pathname])
+    }
+    fetchSchoolData()
+  }, [router, pathname])
 
   const handleYearChange = (year: string) => {
     setActiveYear(year)
