@@ -129,11 +129,27 @@ export default function LoginPage() {
           return;
         }
 
-        localStorage.setItem('acadex_user_id', upperId);
-        localStorage.setItem('acadex_user_role', 'Élève');
-        localStorage.setItem('acadex_user_name', `${studentData.first_name} ${studentData.last_name}`);
-        router.push('/dashboard/eleve');
-        return;
+          // Détection de promotion : on compare la dernière année/classe vue par cet élève
+          // avec sa véritable academic_year/class_id actuelle en base.
+          const lastSeenYear = localStorage.getItem(`acadex_last_year_${upperId}`);
+          const lastSeenClass = localStorage.getItem(`acadex_last_class_${upperId}`);
+          if (lastSeenYear && (lastSeenYear !== studentData.academic_year || lastSeenClass !== studentData.class_id)) {
+            localStorage.setItem("acadex_show_promotion_banner", JSON.stringify({
+              previousYear: lastSeenYear,
+              previousClass: lastSeenClass || "",
+              newYear: studentData.academic_year,
+              newClass: studentData.class_id,
+            }));
+          }
+          localStorage.setItem(`acadex_last_year_${upperId}`, studentData.academic_year || "");
+          localStorage.setItem(`acadex_last_class_${upperId}`, studentData.class_id || "");
+
+          localStorage.setItem("acadex_user_id", upperId);
+          localStorage.setItem("acadex_user_role", "Élève");
+          localStorage.setItem("acadex_user_name", `${studentData.first_name} ${studentData.last_name}`);
+          localStorage.setItem("acadex_active_year", studentData.academic_year || "2026-2027");
+          router.push("/dashboard/eleve");
+          return;
       }
 
       // ── IDENTIFIANT SANS PRÉFIXE RECONNU ──────────────────────

@@ -1,34 +1,16 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
-  Users, 
-  GraduationCap, 
-  FileDown,
-  Activity,
-  UserCheck,
-  ShieldCheck,
-  Wallet,
-  TrendingUp,
-  BarChart3,
-  Loader2,
-  Sparkles,
-  Zap,
-  Clock,
-  AlertTriangle,
-  CheckCircle2
+  Users, GraduationCap, FileDown, Activity, UserCheck, ShieldCheck,
+  Wallet, TrendingUp, BarChart3, Loader2, Sparkles, Zap, Clock,
+  AlertTriangle, CheckCircle2, BookOpen, Award
 } from "lucide-react"
 import {
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  AreaChart,
-  Area
+  CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  AreaChart, Area, BarChart, Bar, Legend
 } from "recharts"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { supabase } from "@/lib/supabase"
@@ -36,14 +18,12 @@ import { useMemo, useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
 
 const LEVELS = [
-  { id: "6EME", label: "6EME" },
-  { id: "5EME", label: "5EME" },
-  { id: "4EME", label: "4EME" },
-  { id: "3EME", label: "3EME" },
-  { id: "2NDE", label: "2NDE" },
-  { id: "1ERE", label: "1ERE" },
+  { id: "6EME", label: "6EME" },{ id: "5EME", label: "5EME" },{ id: "4EME", label: "4EME" },
+  { id: "3EME", label: "3EME" },{ id: "2NDE", label: "2NDE" },{ id: "1ERE", label: "1ERE" },
   { id: "TLE", label: "TERMINALE" }
 ]
 
@@ -54,6 +34,8 @@ export default function StatisticsModule() {
   const [students, setStudents] = useState<any[]>([])
   const [grades, setGrades] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
+  const [classFees, setClassFees] = useState<any[]>([])
+  const [schoolConfig, setSchoolConfig] = useState<any>(null)
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [loadingGrades, setLoadingGrades] = useState(true)
 
@@ -67,14 +49,18 @@ export default function StatisticsModule() {
     const fetchData = async () => {
       setLoadingStudents(true)
       setLoadingGrades(true)
-      const [sRes, gRes, pRes] = await Promise.all([
+      const [sRes, gRes, pRes, fRes, cRes] = await Promise.all([
         supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
         supabase.from('grades').select('*').eq('academic_year', activeYear),
-        supabase.from('payments').select('*').eq('academic_year', activeYear)
+        supabase.from('payments').select('*').eq('academic_year', activeYear),
+        supabase.from('class_fees').select('*').eq('academic_year', activeYear),
+        supabase.from('school_settings').select('*').eq('id', 'main_config').single()
       ])
       setStudents(sRes.data || [])
       setGrades(gRes.data || [])
       setPayments(pRes.data || [])
+      setClassFees(fRes.data || [])
+      if (cRes.data) setSchoolConfig(cRes.data)
       setLoadingStudents(false)
       setLoadingGrades(false)
     }
@@ -84,32 +70,30 @@ export default function StatisticsModule() {
   const analysis = useMemo(() => {
     if (!students || !grades) return { 
       totalStudents: 0, globalGPA: "0.00", revenue: 0, payRate: 0, promoData: [], 
-      isProvisional: true, completionRate: 0, advancedClasses: [], lateClasses: [] 
+      isProvisional: true, completionRate: 0, advancedClasses: [], lateClasses: [],
+      subjectStats: [], expectedRevenue: 0
     }
 
     const classStats: Record<string, { totalGrades: number, expectedGrades: number, sumGPA: number, count: number }> = {}
+    const subjectAverages: Record<string, number[]> = {}
     
     const studentAverages = students.map((s: any) => {
       const sGrades = grades.filter(g => g.student_matricule === s.matricule)
       const subjects: Record<string, any> = {}
       
       sGrades.forEach(g => {
+        if (!g.type) return
         if (!subjects[g.subject]) {
-          subjects[g.subject] = { 
-            ints: [], 
-            devs: [], 
-            coef: Number(g.coefficient) || 2 
-          }
+          subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
         }
         if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
         if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
       })
 
       let totalWeighted = 0, totalCoef = 0
-      Object.values(subjects).forEach((sub: any) => {
+      Object.entries(subjects).forEach(([subName, sub]: [string, any]) => {
         let subAvg = 0
         const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length : null
-        
         const blocks = []
         if (avgInt !== null) blocks.push(avgInt)
         sub.devs.forEach((d: number) => blocks.push(d))
@@ -118,6 +102,8 @@ export default function StatisticsModule() {
           subAvg = blocks.reduce((a, b) => a + b, 0) / blocks.length
           totalWeighted += subAvg * sub.coef
           totalCoef += sub.coef
+          if (!subjectAverages[subName]) subjectAverages[subName] = []
+          subjectAverages[subName].push(subAvg)
         }
       })
 
@@ -151,6 +137,12 @@ export default function StatisticsModule() {
       avg: promoMap[l.id]?.count > 0 ? Number((promoMap[l.id].total / promoMap[l.id].count).toFixed(2)) : 0
     }))
 
+    const subjectStats = Object.entries(subjectAverages).map(([name, vals]) => ({
+      name,
+      avg: Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2)),
+      count: vals.length
+    })).sort((a, b) => b.avg - a.avg)
+
     const classesList = Object.entries(classStats).map(([id, s]) => ({
       id,
       completion: Math.min(100, Math.round((s.totalGrades / s.expectedGrades) * 100)),
@@ -161,18 +153,88 @@ export default function StatisticsModule() {
     const lateClasses = [...classesList].sort((a, b) => a.completion - b.completion).slice(0, 3)
     const overallCompletion = classesList.length > 0 ? classesList.reduce((a, b) => a + b.completion, 0) / classesList.length : 0
 
+    // Revenu réel basé sur les vrais tarifs par classe
+    const expectedRevenue = students.reduce((acc, s) => {
+      const fee = classFees.find(f => f.class_id === s.class_id)?.amount || 150000
+      return acc + Number(fee)
+    }, 0)
+    const totalReceived = payments?.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0) || 0
+
     return { 
       totalStudents: students.length, 
       globalGPA, 
-      revenue: payments?.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0) || 0,
-      payRate: (students.length > 0 ? (payments?.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0) || 0) / (students.length * 150000) * 100 : 0),
+      revenue: totalReceived,
+      expectedRevenue,
+      payRate: expectedRevenue > 0 ? (totalReceived / expectedRevenue) * 100 : 0,
       promoData,
       isProvisional: overallCompletion < 95,
       completionRate: Math.round(overallCompletion),
       advancedClasses,
-      lateClasses
+      lateClasses,
+      subjectStats
     }
-  }, [students, grades, payments])
+  }, [students, grades, payments, classFees])
+
+  const exportPDF = () => {
+    const doc = new jsPDF()
+    const schoolName = schoolConfig?.school_name || "ACADEX"
+    const primaryColor: [number, number, number] = [20, 83, 45]
+    const W = 210
+
+    doc.setFillColor(...primaryColor)
+    doc.rect(0, 0, W, 42, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text(schoolName.toUpperCase(), 14, 20)
+    doc.setFontSize(11)
+    doc.text('BILAN STATISTIQUE GLOBAL', 14, 30)
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Année : ${activeYear} • Édité le ${new Date().toLocaleDateString('fr-FR')}`, W - 14, 30, { align: 'right' })
+
+    // KPIs
+    autoTable(doc, {
+      startY: 50,
+      head: [['Indicateur', 'Valeur']],
+      body: [
+        ['Moyenne École', `${analysis.globalGPA}/20`],
+        ['Effectif Actif', `${analysis.totalStudents} élèves`],
+        ['Taux de Saisie des Notes', `${analysis.completionRate}%`],
+        ['Taux de Recouvrement Financier', `${analysis.payRate.toFixed(1)}%`],
+        ['Total Reçu', `${analysis.revenue.toLocaleString()} FCFA`],
+        ['Total Attendu', `${analysis.expectedRevenue.toLocaleString()} FCFA`],
+      ],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: primaryColor },
+    })
+
+    const y1 = (doc as any).lastAutoTable.finalY + 10
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.text('Performance par Promotion', 14, y1)
+    autoTable(doc, {
+      startY: y1 + 4,
+      head: [['Niveau', 'Moyenne /20']],
+      body: analysis.promoData.map(p => [p.name, p.avg.toFixed(2)]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: primaryColor },
+    })
+
+    const y2 = (doc as any).lastAutoTable.finalY + 10
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.text('Performance par Matière', 14, y2)
+    autoTable(doc, {
+      startY: y2 + 4,
+      head: [['Matière', 'Moyenne /20', 'Nb Élèves Notés']],
+      body: analysis.subjectStats.map(s => [s.name, s.avg.toFixed(2), s.count]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: primaryColor },
+    })
+
+    doc.save(`bilan-statistique-${activeYear}.pdf`)
+  }
 
   if (!mounted) return null
 
@@ -201,7 +263,7 @@ export default function StatisticsModule() {
               <ShieldCheck className="size-3 md:size-4 text-emerald-500" /> Audit Certifié • {activeYear}
             </div>
           </div>
-          <Button className="w-full md:w-auto bg-primary hover:bg-primary/90 h-11 md:h-16 px-6 md:px-12 rounded-xl md:rounded-2xl font-black text-[10px] md:text-lg shadow-xl active:scale-95 transition-all">
+          <Button onClick={exportPDF} className="w-full md:w-auto bg-primary hover:bg-primary/90 h-11 md:h-16 px-6 md:px-12 rounded-xl md:rounded-2xl font-black text-[10px] md:text-lg shadow-xl active:scale-95 transition-all">
              <FileDown className="mr-2 size-4 md:size-5" /> Exporter Bilan
           </Button>
         </div>
@@ -220,6 +282,7 @@ export default function StatisticsModule() {
             ))}
           </TabsList>
 
+          {/* ── SYNTHÈSE ── */}
           <TabsContent value="synthèse" className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
               {[
@@ -231,7 +294,7 @@ export default function StatisticsModule() {
                 <Card key={i} className="p-4 md:p-9 rounded-[1.5rem] md:rounded-[3rem] border-none shadow-sm bg-white group hover:shadow-xl transition-all relative overflow-hidden h-28 md:h-48 flex flex-col justify-between">
                   <div className={cn("absolute -top-4 -right-4 size-14 md:size-24 rounded-full opacity-[0.04]", kpi.bg)} />
                   <div className="flex items-center justify-between relative z-10">
-                    <div className={cn("p-2 md:p-3.5 rounded-xl md:rounded-2xl shadow-sm transition-all group-hover:bg-primary group-hover:text-white shadow-sm", kpi.bg, kpi.color)}>
+                    <div className={cn("p-2 md:p-3.5 rounded-xl md:rounded-2xl shadow-sm transition-all group-hover:bg-primary group-hover:text-white", kpi.bg, kpi.color)}>
                       <kpi.icon className="size-3.5 md:size-5" />
                     </div>
                   </div>
@@ -278,7 +341,7 @@ export default function StatisticsModule() {
                     <div className="space-y-4">
                       <h3 className="text-xl md:text-2xl font-black tracking-tight leading-tight uppercase">Cerveau <span className="text-primary italic">ACADEX</span></h3>
                       <p className="text-white/60 text-[10px] md:text-sm font-medium leading-relaxed italic border-l-3 border-primary pl-4">
-                        "L'analyse des registres montre une progression stable. {analysis.completionRate}% des notes sont déjà scellées, permettant une vision de pilotage fiable."
+                        "L'analyse des registres montre une progression {analysis.globalGPA >= "10" ? "positive" : "à surveiller"}. {analysis.completionRate}% des notes sont déjà scellées."
                       </p>
                     </div>
                   </div>
@@ -288,6 +351,49 @@ export default function StatisticsModule() {
             </div>
           </TabsContent>
 
+          {/* ── ACADÉMIQUE / NOTES ── */}
+          <TabsContent value="académique" className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-4">
+            <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[3.5rem] p-5 md:p-14">
+              <h3 className="text-base md:text-3xl font-black mb-8 md:mb-14 flex items-center gap-3">
+                <BookOpen className="text-primary size-4 md:size-7" /> Performance par Matière
+              </h3>
+              {analysis.subjectStats.length === 0 ? (
+                <div className="py-20 text-center opacity-30">
+                  <BookOpen className="size-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="font-black uppercase text-sm">Aucune note saisie pour le moment</p>
+                </div>
+              ) : (
+                <>
+                  <div className="h-[300px] md:h-[400px] w-full mb-10">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={analysis.subjectStats}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 8, fontWeight: '700'}} angle={-20} textAnchor="end" height={60} />
+                        <YAxis domain={[0, 20]} axisLine={false} tickLine={false} tick={{fontSize: 8}} />
+                        <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', fontSize: '10px' }} />
+                        <Bar dataKey="avg" name="Moyenne" fill="#14532d" radius={[8, 8, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="space-y-2">
+                    {analysis.subjectStats.map((s, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-muted/10 rounded-2xl">
+                        <span className="font-black text-sm uppercase">{s.name}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[9px] font-bold text-muted-foreground">{s.count} notes</span>
+                          <Badge className={cn("font-black", s.avg >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>
+                            {s.avg.toFixed(2)}/20
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </Card>
+          </TabsContent>
+
+          {/* ── AUDIT SAISIE ── */}
           <TabsContent value="audit" className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-4">
              <div className="grid lg:grid-cols-2 gap-6 md:gap-10">
                 <Card className="p-6 md:p-14 rounded-[2rem] md:rounded-[3.5rem] bg-white border-none shadow-sm">
@@ -296,7 +402,9 @@ export default function StatisticsModule() {
                       <h3 className="text-lg md:text-2xl font-black uppercase">Classes Avancées</h3>
                    </div>
                    <div className="space-y-4">
-                      {analysis.advancedClasses.map((c, i) => (
+                      {analysis.advancedClasses.length === 0 ? (
+                        <p className="text-center py-10 opacity-30 font-black text-xs uppercase">Aucune donnée</p>
+                      ) : analysis.advancedClasses.map((c, i) => (
                         <div key={i} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-emerald-100 transition-all">
                            <div className="flex items-center gap-4">
                               <span className="font-black text-xl text-primary">{c.id}</span>
@@ -318,7 +426,9 @@ export default function StatisticsModule() {
                       <h3 className="text-lg md:text-2xl font-black uppercase">Classes en Retard</h3>
                    </div>
                    <div className="space-y-4">
-                      {analysis.lateClasses.map((c, i) => (
+                      {analysis.lateClasses.length === 0 ? (
+                        <p className="text-center py-10 opacity-30 font-black text-xs uppercase">Aucune donnée</p>
+                      ) : analysis.lateClasses.map((c, i) => (
                         <div key={i} className="flex items-center justify-between p-4 bg-muted/20 rounded-2xl border border-transparent hover:border-red-100 transition-all">
                            <div className="flex items-center gap-4">
                               <span className="font-black text-xl text-foreground">{c.id}</span>
@@ -334,6 +444,40 @@ export default function StatisticsModule() {
                    </div>
                 </Card>
              </div>
+          </TabsContent>
+
+          {/* ── FINANCES ── */}
+          <TabsContent value="finance" className="space-y-6 md:space-y-10 animate-in slide-in-from-bottom-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+              {[
+                { label: "Total Reçu", value: analysis.revenue.toLocaleString(), suffix: " F", icon: Wallet, color: "text-emerald-600", bg: "bg-emerald-50" },
+                { label: "Total Attendu", value: analysis.expectedRevenue.toLocaleString(), suffix: " F", icon: Award, color: "text-blue-600", bg: "bg-blue-50" },
+                { label: "Taux Recouvrement", value: analysis.payRate.toFixed(1), suffix: "%", icon: TrendingUp, color: "text-amber-600", bg: "bg-amber-50" },
+                { label: "Reste à Percevoir", value: Math.max(0, analysis.expectedRevenue - analysis.revenue).toLocaleString(), suffix: " F", icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
+              ].map((kpi, i) => (
+                <Card key={i} className="p-5 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border-none shadow-sm bg-white">
+                  <div className={cn("p-2.5 rounded-xl w-fit mb-4", kpi.bg, kpi.color)}>
+                    <kpi.icon className="size-4" />
+                  </div>
+                  <p className="text-[7px] md:text-[9px] font-black uppercase text-muted-foreground tracking-widest mb-1">{kpi.label}</p>
+                  <h3 className="text-lg md:text-2xl font-black truncate">{kpi.value}<span className="text-[8px] opacity-40">{kpi.suffix}</span></h3>
+                </Card>
+              ))}
+            </div>
+
+            <Card className="border-none shadow-sm bg-white rounded-[2rem] p-8 md:p-14">
+              <h3 className="text-base md:text-2xl font-black mb-8 flex items-center gap-3">
+                <Wallet className="text-primary size-5" /> Progression du Recouvrement
+              </h3>
+              <div className="w-full bg-muted/30 h-6 rounded-full overflow-hidden mb-3">
+                <div className="h-full bg-primary transition-all duration-1000 flex items-center justify-end pr-3" style={{ width: `${Math.min(100, analysis.payRate)}%` }}>
+                  {analysis.payRate > 15 && <span className="text-white text-[9px] font-black">{analysis.payRate.toFixed(0)}%</span>}
+                </div>
+              </div>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                {analysis.revenue.toLocaleString()} F reçus sur {analysis.expectedRevenue.toLocaleString()} F attendus
+              </p>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
