@@ -1,4 +1,3 @@
-
 "use client"
 
 import { DashboardLayout } from "@/components/dashboard-layout"
@@ -16,7 +15,8 @@ import {
   BarChart3,
   Loader2,
   Lock,
-  ShieldAlert
+  ShieldAlert,
+  ArrowLeftRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -40,10 +40,15 @@ export default function AcademicYearsPage() {
   const [activeTab, setActiveTab] = useState("annees")
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
   const [loading, setLoading] = useState(false)
+  const [switching, setSwitching] = useState<string | null>(null)
   const [activeYear, setActiveYear] = useState("")
 
   const fetchConfig = async () => {
-    const { data } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+    const { data, error } = await supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+    if (error) {
+      toast({ title: "Erreur de chargement", description: "Impossible de récupérer la configuration de l'école.", variant: "destructive" })
+      return
+    }
     if (data) setSchoolConfig(data)
   }
 
@@ -57,9 +62,16 @@ export default function AcademicYearsPage() {
     setLoading(true)
     try {
       const currentYear = schoolConfig.academic_year
-      const [start, end] = currentYear.split('-').map(Number)
+      const parts = currentYear?.split('-').map(Number)
+
+      if (!parts || parts.length !== 2 || parts.some((n: number) => isNaN(n))) {
+        throw new Error("Format d'année académique invalide")
+      }
+
+      const [start, end] = parts
       const nextYear = `${start + 1}-${end + 1}`
-      const newAvailableYears = [...(schoolConfig.academic_years || []), nextYear]
+      const currentArchives = Array.isArray(schoolConfig.academic_years) ? schoolConfig.academic_years : [currentYear]
+      const newAvailableYears = currentArchives.includes(nextYear) ? currentArchives : [...currentArchives, nextYear]
 
       const { error } = await supabase.from('school_settings').update({
         academic_years: newAvailableYears,
@@ -74,12 +86,31 @@ export default function AcademicYearsPage() {
         description: `L'année ${currentYear} est désormais scellée dans l'histoire.` 
       })
       window.location.reload()
-    } catch (e) {
-      toast({ title: "Erreur de scellement", variant: "destructive" })
+    } catch (e: any) {
+      toast({ title: "Erreur de scellement", description: e?.message || "Une erreur est survenue.", variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }
+
+  const handleSwitchYear = async (year: string) => {
+    if (year === activeYear) return
+    setSwitching(year)
+    try {
+      localStorage.setItem('acadex_active_year', year)
+      toast({ 
+        title: "Année active changée", 
+        description: `Vous consultez désormais l'année ${year}.` 
+      })
+      window.location.reload()
+    } finally {
+      setSwitching(null)
+    }
+  }
+
+  const archivedYears: string[] = Array.isArray(schoolConfig?.academic_years)
+    ? schoolConfig.academic_years
+    : (schoolConfig?.academic_year ? [schoolConfig.academic_year] : [])
 
   return (
     <DashboardLayout>
@@ -105,7 +136,7 @@ export default function AcademicYearsPage() {
             {[
               { id: "annees", label: "Contrôle", icon: Calendar },
               { id: "comparaison", label: "Comparateur", icon: BarChart3 },
-              { id: "audit", label: "Audit", icon: ShieldCheck },
+              { id: "audit", label: "Navigation", icon: ArrowLeftRight },
             ].map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="rounded-xl md:rounded-[2rem] font-black px-6 md:px-12 text-[8px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white transition-all flex items-center gap-2 shrink-0">
                 <t.icon className="size-3.5 md:size-4" /> {t.label}
@@ -166,7 +197,7 @@ export default function AcademicYearsPage() {
                         <Clock className="text-primary size-4 md:size-8" /> Vault Temporel
                       </h4>
                       <div className="space-y-3 md:space-y-5 relative z-10">
-                         {schoolConfig?.academic_years?.map((year: string) => (
+                         {archivedYears.map((year: string) => (
                            <div key={year} className={cn(
                              "p-4 md:p-7 rounded-2xl md:rounded-[2rem] border-2 flex items-center justify-between transition-all", 
                              year === activeYear ? "bg-primary/20 border-primary shadow-lg scale-[1.02]" : "bg-white/5 border-white/10 opacity-60"
@@ -200,6 +231,57 @@ export default function AcademicYearsPage() {
                 <p className="text-muted-foreground font-medium max-w-sm mx-auto text-xs md:text-lg leading-relaxed">
                   "Fonction de pilotage activée dès deux univers scellés."
                 </p>
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="audit" className="space-y-6 animate-in slide-in-from-bottom-4">
+            <Card className="p-7 md:p-14 rounded-[2.2rem] md:rounded-[3.5rem] bg-white border-none shadow-sm">
+              <div className="mb-8 md:mb-12 space-y-2">
+                <h3 className="text-xl md:text-3xl font-black uppercase tracking-tight">Basculer d'univers</h3>
+                <p className="text-muted-foreground text-xs md:text-base font-medium">
+                  Sélectionnez une année scellée pour consulter ses données. L'application rechargera sur cet univers temporel.
+                </p>
+              </div>
+
+              {archivedYears.length === 0 && (
+                <p className="text-center text-muted-foreground py-10 font-medium">Aucune année archivée pour le moment.</p>
+              )}
+
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {archivedYears.map((year: string) => {
+                  const isActive = year === activeYear
+                  const isSwitching = switching === year
+                  return (
+                    <button
+                      key={year}
+                      disabled={isActive || switching !== null}
+                      onClick={() => handleSwitchYear(year)}
+                      className={cn(
+                        "p-5 md:p-8 rounded-2xl md:rounded-[2rem] border-2 flex items-center justify-between transition-all text-left",
+                        isActive 
+                          ? "bg-primary/10 border-primary shadow-md cursor-default" 
+                          : "bg-muted/10 border-transparent hover:border-primary/30 hover:bg-white cursor-pointer active:scale-95"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className={cn(
+                          "size-9 md:size-12 rounded-xl flex items-center justify-center shrink-0",
+                          isActive ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                        )}>
+                          {isSwitching ? <Loader2 className="size-4 md:size-5 animate-spin" /> : <Calendar className="size-4 md:size-5" />}
+                        </div>
+                        <div>
+                          <p className="font-black text-sm md:text-xl tabular-nums">{year}</p>
+                          <p className="text-[9px] md:text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            {isActive ? "Univers actif" : "Cliquer pour basculer"}
+                          </p>
+                        </div>
+                      </div>
+                      {isActive && <Badge className="bg-primary text-white text-[7px] md:text-xs font-black px-3 py-1 rounded-full shrink-0">ACTIVE</Badge>}
+                    </button>
+                  )
+                })}
               </div>
             </Card>
           </TabsContent>
