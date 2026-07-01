@@ -128,33 +128,39 @@ export default function PromotionsPage() {
 
     const studentsProcessed = students.map((student: any) => {
       const studentGrades = grades?.filter((g: any) => g.student_matricule === (student.student_matricule || student.matricule)) || []
-      const subjects: Record<string, any> = {}
-      
-      studentGrades.forEach((g: any) => {
-        if (!subjects[g.subject]) {
-          subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
-        }
-        if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
-        if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+      const gradesCount = studentGrades.length
+
+      const termAverages: number[] = []
+      ;['T1', 'T2', 'T3'].forEach(term => {
+        const termGrades = studentGrades.filter((g: any) => g.term === term)
+        if (termGrades.length === 0) return
+        const subjects: Record<string, any> = {}
+        termGrades.forEach((g: any) => {
+          if (!g.type) return
+          if (!subjects[g.subject]) {
+            subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
+          }
+          if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+          if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+        })
+        let totalWeighted = 0, totalCoef = 0
+        Object.values(subjects).forEach((s: any) => {
+          const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number, b:number) => a+b, 0) / s.ints.length : null
+          const blocks = []
+          if (avgInt !== null) blocks.push(avgInt)
+          s.devs.forEach((d: number) => blocks.push(d))
+          if (blocks.length > 0) {
+            const avg = blocks.reduce((a, b) => a + b, 0) / blocks.length
+            totalWeighted += avg * s.coef
+            totalCoef += s.coef
+          }
+        })
+        if (totalCoef > 0) termAverages.push(totalWeighted / totalCoef)
       })
 
-      let totalWeighted = 0, totalCoef = 0, gradesCount = 0
-      
-      Object.values(subjects).forEach((s: any) => {
-        const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number, b:number) => a+b, 0) / s.ints.length : null
-        const blocks = []
-        if (avgInt !== null) blocks.push(avgInt)
-        s.devs.forEach((d: number) => blocks.push(d))
-
-        if (blocks.length > 0) {
-          const avg = blocks.reduce((a, b) => a + b, 0) / blocks.length
-          totalWeighted += avg * s.coef
-          totalCoef += s.coef
-          gradesCount += (s.ints.length + s.devs.length)
-        }
-      })
-
-      const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
+      const generalAvg = termAverages.length > 0
+        ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length
+        : 0
       return { ...student, generalAvg: Number(generalAvg.toFixed(2)), gradesCount }
     })
 
