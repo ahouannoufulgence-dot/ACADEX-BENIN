@@ -117,7 +117,32 @@ export default function StudentGradesPage() {
     totalCoef += 1
     const generalAvg = totalCoef > 0 ? (totalWeighted / totalCoef) : 0
 
-    return { generalAvg, subjects: subjectList, conductValue }
+    const termAverages: number[] = []
+    ;['T1', 'T2', 'T3'].forEach(term => {
+      const tGrades = myGrades.filter((g: any) => g.term === term)
+      if (tGrades.length === 0) return
+      const tSubjects: Record<string, any> = {}
+      tGrades.forEach((g: any) => {
+        if (g.type.startsWith('int')) tSubjects[g.subject].ints.push(Number(g.value))
+        if (g.type.startsWith('dev')) tSubjects[g.subject].devs.push(Number(g.value))
+      })
+      let tW = 0, tC = 0
+      Object.values(tSubjects).forEach((s: any) => {
+        const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number, b:number) => a+b, 0) / s.ints.length : null
+        const blocks = []
+        if (avgInt !== null) blocks.push(avgInt)
+        s.devs.forEach((d: number) => blocks.push(d))
+        if (blocks.length > 0) {
+          const avg = blocks.reduce((a, b) => a + b, 0) / blocks.length
+          tW += avg * s.coef
+          tC += s.coef
+        }
+      })
+      if (tC > 0) termAverages.push(tW / tC)
+    })
+    const annualAvg = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0
+
+    return { generalAvg, subjects: subjectList, conductValue, annualAvg, termsCompleted: termAverages.length }
   }, [myGrades, myLifeEvents, mySanctions, conductConfig, activeTerm])
 
   return (
@@ -144,14 +169,25 @@ export default function StudentGradesPage() {
                   </Link>
                </Button>
              )}
-             <div className="bg-primary text-white p-5 md:p-10 rounded-[1.8rem] md:rounded-[3.5rem] shadow-xl flex items-center justify-between md:justify-start gap-6 md:gap-12 transition-all hover:scale-[1.02]">
-                <div className="space-y-0.5">
-                    <p className="text-[7px] md:text-[10px] font-black uppercase text-white/40 tracking-widest">Moyenne Provisoire</p>
-                    <h2 className="text-3xl md:text-6xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
-                </div>
-                <div className="size-9 md:size-20 bg-white/10 rounded-xl md:rounded-3xl flex items-center justify-center shadow-inner shrink-0">
-                  <TrendingUp className="size-4 md:size-10" />
-                </div>
+             <div className="flex flex-col sm:flex-row gap-3">
+               <div className="bg-primary text-white p-5 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] shadow-xl flex items-center justify-between gap-6 transition-all hover:scale-[1.02]">
+                  <div className="space-y-0.5">
+                      <p className="text-[7px] md:text-[9px] font-black uppercase text-white/40 tracking-widest">Moyenne {activeTerm}</p>
+                      <h2 className="text-2xl md:text-4xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
+                  </div>
+                  <div className="size-9 md:size-14 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
+                    <TrendingUp className="size-4 md:size-7" />
+                  </div>
+               </div>
+               <div className="bg-foreground text-white p-5 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] shadow-xl flex items-center justify-between gap-6 transition-all hover:scale-[1.02]">
+                  <div className="space-y-0.5">
+                      <p className="text-[7px] md:text-[9px] font-black uppercase text-white/40 tracking-widest">Moyenne Annuelle ({analysis?.termsCompleted || 0}/3)</p>
+                      <h2 className="text-2xl md:text-4xl font-black tabular-nums text-primary">{analysis?.annualAvg.toFixed(2) || "0.00"}</h2>
+                  </div>
+                  <div className="size-9 md:size-14 bg-primary/20 rounded-xl flex items-center justify-center shrink-0">
+                    <Trophy className="size-4 md:size-7 text-primary" />
+                  </div>
+               </div>
              </div>
           </div>
         </div>
