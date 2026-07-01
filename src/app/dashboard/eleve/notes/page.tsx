@@ -55,16 +55,13 @@ export default function StudentGradesPage() {
     if (!studentId) return
     const fetchData = async () => {
       setLoadingMyGrades(true)
-      const [gRes, eRes, sanRes, configRes] = await Promise.all([
+      const [gRes, eRes] = await Promise.all([
         supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
-        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear),
-        supabase.from('sanctions').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear).eq('trimestre', activeTerm),
-        supabase.from('conduct_config').select('*').eq('id', 'main').single()
+        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear)
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
-      setMySanctions(sanRes.data || [])
-      if (configRes.data) setConductConfig(configRes.data)
+      setMySanctions([])
       setLoadingMyGrades(false)
     }
     fetchData()
