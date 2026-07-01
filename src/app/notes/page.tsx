@@ -66,6 +66,8 @@ export default function GradesPage() {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userClasses, setUserClasses] = useState<string[]>([])
   const [userSubject, setUserSubject] = useState("")
+  const [userSubjectSecondaire, setUserSubjectSecondaire] = useState("")
+  const [activeSubject, setActiveSubject] = useState("")
   const [userName, setUserName] = useState("")
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [mounted, setMounted] = useState(false)
@@ -107,6 +109,8 @@ export default function GradesPage() {
         if (data) {
           setUserClasses(data.classes || [])
           setUserSubject(data.subject || "")
+          setUserSubjectSecondaire(data.subject_secondaire || "")
+          setActiveSubject(data.subject || "")
           setSelectedMatiere(data.subject || "Mathématiques")
         }
       }
@@ -184,7 +188,7 @@ export default function GradesPage() {
           .from('grades')
           .select('*')
           .eq('class_id', selectedClass)
-          .eq('subject', userSubject)
+          .eq('subject', activeSubject || userSubject)
           .eq('term', selectedTrimestre)
           .eq('academic_year', activeYear)
 
@@ -216,7 +220,7 @@ export default function GradesPage() {
       toast({ title: "Saisie impossible", description: "Le système est scellé par la direction.", variant: "destructive" })
       return
     }
-    if (!selectedClass || !userSubject || saving) return
+    if (!selectedClass || !(activeSubject || userSubject) || saving) return
     setSaving(true)
     try {
       const rows = (teacherStudents || [])
@@ -228,7 +232,7 @@ export default function GradesPage() {
           student_matricule: student.matricule,
           student_name: `${student.last_name} ${student.first_name}`,
           class_id: selectedClass,
-          subject: userSubject,
+          subject: activeSubject || userSubject,
           term: selectedTrimestre,
           type: selectedEvalType,
           value: parseFloat(gradesData[student.matricule]),
@@ -370,7 +374,23 @@ export default function GradesPage() {
 
         <Card className="p-4 md:p-10 rounded-[1.8rem] md:rounded-[3rem] bg-white border-none shadow-sm border-l-[15px] border-primary">
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-              <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Discipline</label><div className="flex items-center gap-3 bg-muted/20 p-2 md:p-3 rounded-xl"><Calculator className="size-5 text-primary" /><div className="flex-1 min-w-0"><p className="font-black text-[9px] md:text-xs uppercase text-foreground truncate">{userSubject || "N/A"}</p><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[7px] font-black text-primary">COEF:</span><Input type="number" value={classCoefficient} onChange={(e) => setClassCoefficient(e.target.value)} className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0 shadow-none focus-visible:ring-0" /></div></div></div></div>
+              <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Discipline</label>
+                {userSubjectSecondaire ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      {[userSubject, userSubjectSecondaire].map(sub => (
+                        <button key={sub} onClick={() => { setActiveSubject(sub); setSelectedMatiere(sub) }}
+                          className={`flex-1 px-3 py-2 rounded-xl font-black text-[8px] uppercase transition-all border-2 ${activeSubject === sub ? "bg-primary text-white border-primary" : "bg-white text-muted-foreground border-muted"}`}>
+                          {sub}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1.5"><span className="text-[7px] font-black text-primary">COEF:</span><Input type="number" value={classCoefficient} onChange={(e) => setClassCoefficient(e.target.value)} className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0 shadow-none focus-visible:ring-0" /></div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 bg-muted/20 p-2 md:p-3 rounded-xl"><Calculator className="size-5 text-primary" /><div className="flex-1 min-w-0"><p className="font-black text-[9px] md:text-xs uppercase text-foreground truncate">{userSubject || "N/A"}</p><div className="flex items-center gap-1.5 mt-0.5"><span className="text-[7px] font-black text-primary">COEF:</span><Input type="number" value={classCoefficient} onChange={(e) => setClassCoefficient(e.target.value)} className="h-5 w-10 bg-white border-primary/20 text-center font-black text-[9px] rounded p-0 shadow-none focus-visible:ring-0" /></div></div></div>
+                )}
+              </div>
               <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Classe</label><Select onValueChange={setSelectedClass} value={selectedClass}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue placeholder="Choisir" /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{classesToShow.map(c => <SelectItem key={c} value={c} className="font-bold p-2.5 rounded-lg text-xs">{c}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Trimestre</label><Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}</SelectContent></Select></div>
               <div className="space-y-1.5"><label className="text-[7px] md:text-[10px] font-black uppercase text-muted-foreground px-1">Évaluation</label><Select value={selectedEvalType} onValueChange={setSelectedEvalType}><SelectTrigger className="h-10 md:h-14 rounded-xl border-2 font-black text-xs md:text-base"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{evalTypes.map(t => (<SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label} {completionStats[t.id] && "✓"}</SelectItem>))}</SelectContent></Select></div>
