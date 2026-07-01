@@ -142,7 +142,7 @@ export default function TreasuryModule() {
       startY: finalY2 + 4,
       head: [['Motif', 'Catégorie', 'Montant', 'Date']],
       body: expenses.map((e: any) => [
-        e.motif || '---',
+        e.label || '---',
         e.category || '---',
         Number(e.amount).toLocaleString() + ' F',
         e.date ? new Date(e.date).toLocaleDateString('fr-FR') : '---'
@@ -235,11 +235,10 @@ export default function TreasuryModule() {
       const { error } = await supabase.from('expenses').insert({
         category: expenseForm.category,
         amount: Number(expenseForm.amount),
-        motif: expenseForm.motif,
-        responsible: expenseForm.responsible,
-        date: expenseForm.date,
+        label: expenseForm.motif,
+        created_by: expenseForm.responsible || localStorage.getItem('acadex_user_name') || "Direction",
+        date: new Date(expenseForm.date).toISOString(),
         academic_year: activeYear,
-        author: localStorage.getItem('acadex_user_name') || "Direction"
       })
       if (error) throw error
       toast({ title: "Dépense enregistrée" })
@@ -618,8 +617,8 @@ export default function TreasuryModule() {
                           <PiggyBank className="size-5 text-red-500" />
                         </div>
                         <div>
-                          <p className="font-black text-xs md:text-sm uppercase">{e.motif}</p>
-                          <p className="text-[9px] md:text-xs font-bold text-muted-foreground">{e.category} • {new Date(e.date).toLocaleDateString("fr-FR")} • {e.responsible}</p>
+                          <p className="font-black text-xs md:text-sm uppercase">{e.label}</p>
+                          <p className="text-[9px] md:text-xs font-bold text-muted-foreground">{e.category} • {new Date(e.date).toLocaleDateString("fr-FR")} • {e.created_by}</p>
                         </div>
                       </div>
                       <p className="font-black text-red-500 text-sm md:text-base shrink-0">-{Number(e.amount).toLocaleString("fr-FR")} F</p>
