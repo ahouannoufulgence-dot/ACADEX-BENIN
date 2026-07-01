@@ -25,6 +25,7 @@ export default function RegisterTeacherPage() {
     firstName: "",
     phone: "",
     subject: "",
+    subject_secondaire: "",
     classes: [] as string[],
     password: "",
     confirmPassword: "",
@@ -91,6 +92,7 @@ export default function RegisterTeacherPage() {
       full_name: `${form.firstName} ${form.lastName}`,
       phone: form.phone,
       subject: form.subject,
+      subject_secondaire: form.subject_secondaire || null,
       classes: form.classes,
       password: form.password,
       is_main_teacher: form.isMainTeacher,
@@ -200,6 +202,18 @@ export default function RegisterTeacherPage() {
                       <SelectValue placeholder="Choisir" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-2 p-1">
+                      {subjects.map(s => <SelectItem key={s} value={s} className="font-bold p-2.5 rounded-lg text-xs">{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground">Matière secondaire <span className="text-primary">(optionnel)</span></Label>
+                  <Select value={form.subject_secondaire} onValueChange={v => setForm({...form, subject_secondaire: v === "aucune" ? "" : v})}>
+                    <SelectTrigger className="h-11 md:h-12 rounded-xl text-sm font-bold">
+                      <SelectValue placeholder="Aucune" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-2 p-1">
+                      <SelectItem value="aucune" className="font-bold p-2.5 rounded-lg text-xs text-muted-foreground">Aucune</SelectItem>
                       {subjects.map(s => <SelectItem key={s} value={s} className="font-bold p-2.5 rounded-lg text-xs">{s}</SelectItem>)}
                     </SelectContent>
                   </Select>
