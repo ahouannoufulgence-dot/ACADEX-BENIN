@@ -170,7 +170,7 @@ export default function StudentGradesPage() {
                <div className="bg-primary text-white p-5 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] shadow-xl flex items-center justify-between gap-6 transition-all hover:scale-[1.02]">
                   <div className="space-y-0.5">
                       <p className="text-[7px] md:text-[9px] font-black uppercase text-white/40 tracking-widest">Moyenne {activeTerm}</p>
-                      <h2 className="text-2xl md:text-4xl font-black tabular-nums">{analysis?.generalAvg.toFixed(2) || "0.00"}</h2>
+                      <h2 className="text-2xl md:text-4xl font-black tabular-nums">{(analysis?.generalAvg || 0).toFixed(2)}</h2>
                   </div>
                   <div className="size-9 md:size-14 bg-white/10 rounded-xl flex items-center justify-center shrink-0">
                     <TrendingUp className="size-4 md:size-7" />
@@ -179,7 +179,7 @@ export default function StudentGradesPage() {
                <div className="bg-foreground text-white p-5 md:p-8 rounded-[1.8rem] md:rounded-[2.5rem] shadow-xl flex items-center justify-between gap-6 transition-all hover:scale-[1.02]">
                   <div className="space-y-0.5">
                       <p className="text-[7px] md:text-[9px] font-black uppercase text-white/40 tracking-widest">Moyenne Annuelle ({analysis?.termsCompleted || 0}/3)</p>
-                      <h2 className="text-2xl md:text-4xl font-black tabular-nums text-primary">{analysis?.annualAvg.toFixed(2) || "0.00"}</h2>
+                      <h2 className="text-2xl md:text-4xl font-black tabular-nums text-primary">{(analysis?.annualAvg || 0).toFixed(2)}</h2>
                   </div>
                   <div className="size-9 md:size-14 bg-primary/20 rounded-xl flex items-center justify-center shrink-0">
                     <Trophy className="size-4 md:size-7 text-primary" />
