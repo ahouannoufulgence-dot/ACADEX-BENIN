@@ -81,6 +81,7 @@ export default function PromotionsPage() {
   const [loadingGrades, setLoadingGrades] = useState(true)
   const [promoting, setPromoting] = useState(false)
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
+  const [viewTerm, setViewTerm] = useState<'T1' | 'T2' | 'T3' | 'ANNEE'>('ANNEE')
 
   useEffect(() => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
@@ -130,7 +131,7 @@ export default function PromotionsPage() {
       const studentGrades = grades?.filter((g: any) => g.student_matricule === (student.student_matricule || student.matricule)) || []
       const gradesCount = studentGrades.length
 
-      const termAverages: number[] = []
+      const termAveragesMap: Record<string, number> = {}
       ;['T1', 'T2', 'T3'].forEach(term => {
         const termGrades = studentGrades.filter((g: any) => g.term === term)
         if (termGrades.length === 0) return
@@ -155,13 +156,14 @@ export default function PromotionsPage() {
             totalCoef += s.coef
           }
         })
-        if (totalCoef > 0) termAverages.push(totalWeighted / totalCoef)
+        if (totalCoef > 0) termAveragesMap[term] = totalWeighted / totalCoef
       })
 
+      const termAverages = Object.values(termAveragesMap)
       const generalAvg = termAverages.length > 0
         ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length
         : 0
-      return { ...student, generalAvg: Number(generalAvg.toFixed(2)), gradesCount }
+      return { ...student, generalAvg: Number(generalAvg.toFixed(2)), avgT1: termAveragesMap["T1"] || null, avgT2: termAveragesMap["T2"] || null, avgT3: termAveragesMap["T3"] || null, gradesCount }
     })
 
     const classGroups: Record<string, any[]> = {}
@@ -437,6 +439,20 @@ export default function PromotionsPage() {
 
         {selectedClass && (
           <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+               {[
+                 { id: 'T1', label: '1er Trimestre' },
+                 { id: 'T2', label: '2ème Trimestre' },
+                 { id: 'T3', label: '3ème Trimestre' },
+                 { id: 'ANNEE', label: 'Moyenne Annuelle' },
+               ].map(t => (
+                 <button key={t.id} onClick={() => setViewTerm(t.id as any)}
+                   className={cn("px-4 md:px-6 py-2.5 rounded-xl font-black text-[9px] md:text-xs uppercase transition-all whitespace-nowrap border-2",
+                     viewTerm === t.id ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-muted hover:border-primary/30")}>
+                   {t.label}
+                 </button>
+               ))}
+            </div>
             <div className="flex lg:grid lg:grid-cols-5 gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
                {[
                  { label: "Effectif", val: academicData.classStats[selectedClass]?.count || 0, icon: Users, color: "text-blue-600" },
@@ -488,7 +504,11 @@ export default function PromotionsPage() {
                             </td>
                             <td className="px-6 py-6 text-center font-mono text-[10px] text-muted-foreground/60">{s.matricule}</td>
                             <td className="px-6 py-6 text-center">
-                               <span className={cn("font-black text-sm md:text-2xl tabular-nums", s.generalAvg >= 10 ? "text-primary" : "text-red-600")}>{s.generalAvg.toFixed(2)}</span>
+                               {(() => {
+                                 const displayAvg = viewTerm === 'ANNEE' ? s.generalAvg : (viewTerm === 'T1' ? s.avgT1 : viewTerm === 'T2' ? s.avgT2 : s.avgT3)
+                                 if (displayAvg === null || displayAvg === undefined) return <span className="font-black text-sm md:text-xl text-muted-foreground/40">--</span>
+                                 return <span className={cn("font-black text-sm md:text-2xl tabular-nums", displayAvg >= 10 ? "text-primary" : "text-red-600")}>{displayAvg.toFixed(2)}</span>
+                               })()}
                             </td>
                             <td className="px-8 py-6 text-right">
                                <Button variant="ghost" size="icon" asChild className="size-11 rounded-xl text-primary hover:bg-primary/5 active:scale-95 transition-all">
