@@ -488,6 +488,87 @@ export default function TreasuryModule() {
              </Card>
           </TabsContent>
 
+          <TabsContent value="depenses" className="animate-in fade-in">
+            <div className="space-y-4 md:space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl md:text-3xl font-black uppercase">Sorties</h2>
+                  <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Dépenses de l'établissement • {activeYear}</p>
+                </div>
+                <Button onClick={() => setIsAddingExpense(true)} className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-black text-xs md:text-sm gap-2 h-10 md:h-12 px-4 md:px-6">
+                  <Plus className="size-3.5 md:size-4" /> Nouvelle dépense
+                </Button>
+              </div>
+
+              {isAddingExpense && (
+                <Card className="border-2 border-red-200 rounded-[1.5rem] md:rounded-[2rem] p-6 md:p-8 space-y-4">
+                  <h3 className="font-black text-sm md:text-base uppercase">Enregistrer une dépense</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Catégorie</Label>
+                      <Select value={expenseForm.category} onValueChange={v => setExpenseForm({...expenseForm, category: v})}>
+                        <SelectTrigger className="h-11 rounded-xl font-bold">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {["Fournitures", "Salaires", "Entretien", "Électricité", "Eau", "Transport", "Communication", "Événements", "Autre"].map(c => (
+                            <SelectItem key={c} value={c} className="font-bold">{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Montant (FCFA)</Label>
+                      <Input type="number" placeholder="Ex: 50000" value={expenseForm.amount} onChange={e => setExpenseForm({...expenseForm, amount: e.target.value})} className="h-11 rounded-xl font-bold" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Motif</Label>
+                      <Input placeholder="Ex: Achat de craies et marqueurs" value={expenseForm.motif} onChange={e => setExpenseForm({...expenseForm, motif: e.target.value})} className="h-11 rounded-xl font-bold" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Responsable</Label>
+                      <Input placeholder="Nom du responsable" value={expenseForm.responsible} onChange={e => setExpenseForm({...expenseForm, responsible: e.target.value})} className="h-11 rounded-xl font-bold" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="font-bold text-[10px] uppercase tracking-widest text-muted-foreground">Date</Label>
+                      <Input type="date" value={expenseForm.date} onChange={e => setExpenseForm({...expenseForm, date: e.target.value})} className="h-11 rounded-xl font-bold" />
+                    </div>
+                  </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <Button variant="ghost" onClick={() => setIsAddingExpense(false)} className="font-bold rounded-xl">Annuler</Button>
+                    <Button onClick={handleAddExpense} disabled={loading} className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-black gap-2">
+                      {loading ? <Loader2 className="animate-spin size-4" /> : <Save className="size-4" />} Enregistrer
+                    </Button>
+                  </div>
+                </Card>
+              )}
+
+              {expenses.length === 0 ? (
+                <Card className="p-16 text-center border-4 border-dashed rounded-[2rem] bg-white/50 opacity-40">
+                  <PiggyBank className="size-12 mx-auto text-muted-foreground opacity-20 mb-4" />
+                  <p className="font-black uppercase text-muted-foreground">Aucune dépense enregistrée</p>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {expenses.map((e: any) => (
+                    <Card key={e.id} className="p-4 md:p-6 rounded-[1.5rem] border-none shadow-sm bg-white flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="size-10 md:size-12 bg-red-50 rounded-xl flex items-center justify-center shrink-0">
+                          <PiggyBank className="size-5 text-red-500" />
+                        </div>
+                        <div>
+                          <p className="font-black text-xs md:text-sm uppercase">{e.motif}</p>
+                          <p className="text-[9px] md:text-xs font-bold text-muted-foreground">{e.category} • {new Date(e.date).toLocaleDateString("fr-FR")} • {e.responsible}</p>
+                        </div>
+                      </div>
+                      <p className="font-black text-red-500 text-sm md:text-base shrink-0">-{Number(e.amount).toLocaleString("fr-FR")} F</p>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
           <TabsContent value="tarifs" className="animate-in fade-in">
              <Card className="border-none shadow-sm bg-white rounded-[2rem] md:rounded-[4rem] overflow-hidden">
                 <div className="p-6 md:p-14 border-b bg-muted/5 flex flex-col md:flex-row md:items-center justify-between gap-6">
