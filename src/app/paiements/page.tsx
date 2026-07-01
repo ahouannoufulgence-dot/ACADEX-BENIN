@@ -486,6 +486,67 @@ export default function TreasuryModule() {
                    ))}
                 </div>
              </Card>
+
+            {/* Suivi par classe */}
+            <div className="space-y-4 md:space-y-6 mt-6 md:mt-10">
+              <div>
+                <h2 className="text-xl md:text-3xl font-black uppercase">Suivi par Classe</h2>
+                <p className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">Taux de recouvrement par promotion</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {OFFICIAL_CLASSES.map(cls => {
+                  const fee = Number(feesData[cls]) || 0
+                  const classStudents = students.filter((s: any) => s.class_id === cls)
+                  const classPayments = payments.filter((p: any) => p.class_id === cls)
+                  const paidStudentIds = new Set(classPayments.map((p: any) => p.student_matricule))
+                  const totalCollected = classPayments.reduce((acc: number, p: any) => acc + (Number(p.amount_paid) || 0), 0)
+                  const expected = fee * classStudents.length
+                  const remaining = expected - totalCollected
+                  const rate = expected > 0 ? Math.round((totalCollected / expected) * 100) : 0
+                  if (classStudents.length === 0) return null
+                  return (
+                    <Card key={cls} className="border-none shadow-sm bg-white rounded-[1.5rem] md:rounded-[2rem] overflow-hidden">
+                      <div className="p-4 md:p-6 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-black text-sm md:text-lg uppercase">{cls}</h3>
+                          <Badge className={`font-black text-[9px] md:text-xs px-3 py-1 rounded-full ${rate >= 80 ? "bg-emerald-100 text-emerald-700" : rate >= 50 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
+                            {rate}%
+                          </Badge>
+                        </div>
+                        <div className="w-full bg-muted/30 rounded-full h-2">
+                          <div className={`h-2 rounded-full transition-all ${rate >= 80 ? "bg-emerald-500" : rate >= 50 ? "bg-amber-500" : "bg-red-500"}`} style={{ width: `${rate}%` }} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-center">
+                          <div className="bg-muted/20 rounded-xl p-2">
+                            <p className="font-black text-xs md:text-sm text-emerald-600">{Number(totalCollected).toLocaleString()} F</p>
+                            <p className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase">Collecté</p>
+                          </div>
+                          <div className="bg-muted/20 rounded-xl p-2">
+                            <p className="font-black text-xs md:text-sm text-red-500">{Number(remaining).toLocaleString()} F</p>
+                            <p className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase">Reste</p>
+                          </div>
+                          <div className="bg-muted/20 rounded-xl p-2">
+                            <p className="font-black text-xs md:text-sm">{paidStudentIds.size}/{classStudents.length}</p>
+                            <p className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase">Élèves</p>
+                          </div>
+                        </div>
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar">
+                          {classStudents.map((s: any) => (
+                            <div key={s.id} className="flex items-center justify-between text-[9px] md:text-xs py-1 border-b border-muted/10 last:border-0">
+                              <span className="font-bold uppercase truncate">{s.last_name} {s.first_name}</span>
+                              {paidStudentIds.has(s.matricule)
+                                ? <Badge className="bg-emerald-100 text-emerald-700 border-none font-black text-[7px] px-2">Payé</Badge>
+                                : <Badge className="bg-red-100 text-red-600 border-none font-black text-[7px] px-2">En attente</Badge>
+                              }
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                }).filter(Boolean)}
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="depenses" className="animate-in fade-in">
