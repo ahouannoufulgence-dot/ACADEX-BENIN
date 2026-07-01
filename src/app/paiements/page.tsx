@@ -172,9 +172,9 @@ export default function TreasuryModule() {
   useEffect(() => { fetchAll() }, [activeYear])
 
   useEffect(() => {
-    if (classFees) {
+    if (classFees && classFees.length > 0) {
       const data: Record<string, string> = {}
-      classFees.forEach((f: any) => { data[f.class_id] = f.amount.toString() })
+      classFees.forEach((f: any) => { data[f.class_id] = f.amount?.toString() || "150000" })
       setFeesData(data)
     }
   }, [classFees])
@@ -222,6 +222,31 @@ export default function TreasuryModule() {
       setIsAdding(false)
       setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche", date: new Date().toISOString().split('T')[0] })
     } catch (e) { toast({ title: "Erreur", variant: "destructive" }) }
+    finally { setLoading(false) }
+  }
+
+  const handleAddExpense = async () => {
+    if (!expenseForm.amount || !expenseForm.motif) {
+      toast({ title: "Champs requis", variant: "destructive" })
+      return
+    }
+    setLoading(true)
+    try {
+      const { error } = await supabase.from('expenses').insert({
+        category: expenseForm.category,
+        amount: Number(expenseForm.amount),
+        motif: expenseForm.motif,
+        responsible: expenseForm.responsible,
+        date: expenseForm.date,
+        academic_year: activeYear,
+        author: localStorage.getItem('acadex_user_name') || "Direction"
+      })
+      if (error) throw error
+      toast({ title: "Dépense enregistrée" })
+      setIsAddingExpense(false)
+      setExpenseForm({ category: "Fournitures", amount: "", motif: "", responsible: "", date: new Date().toISOString().split('T')[0] })
+      fetchAll()
+    } catch (e: any) { toast({ title: "Erreur", description: e.message, variant: "destructive" }) }
     finally { setLoading(false) }
   }
 
