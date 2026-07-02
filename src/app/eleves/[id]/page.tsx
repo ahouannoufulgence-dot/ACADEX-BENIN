@@ -409,6 +409,8 @@ export default function StudentDetailPage() {
                       const trimGrades = grades.filter(g => g.term === selectedTrimestre)
                       const subjects: Record<string, any> = {}
                       trimGrades.forEach((g: any) => {
+                        if (!g.type) return
+                        if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 1 }
                         if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
                         if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
                       })
