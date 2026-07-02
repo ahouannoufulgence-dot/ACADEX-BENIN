@@ -81,6 +81,8 @@ export default function PromotionsPage() {
   const [loadingGrades, setLoadingGrades] = useState(true)
   const [promoting, setPromoting] = useState(false)
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
+  const [sanctions, setSanctions] = useState<any[]>([])
+  const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20 })
   const [viewTerm, setViewTerm] = useState<'T1' | 'T2' | 'T3' | 'ANNEE'>('ANNEE')
 
   useEffect(() => {
@@ -101,12 +103,16 @@ export default function PromotionsPage() {
     const fetchData = async () => {
       setLoadingStudents(true)
       setLoadingGrades(true)
-      const [sRes, gRes] = await Promise.all([
+      const [sRes, gRes, sanRes, confRes] = await Promise.all([
         supabase.from('students').select('*').eq('academic_year', activeYear),
-        supabase.from('grades').select('*').eq('academic_year', activeYear)
+        supabase.from('grades').select('*').eq('academic_year', activeYear),
+        supabase.from('sanctions').select('*').eq('academic_year', activeYear),
+        supabase.from('conduct_config').select('*').eq('id', 'main').single()
       ])
       setStudents(sRes.data || [])
       setGrades(gRes.data || [])
+      setSanctions(sanRes.data || [])
+      if (confRes.data) setConductConfig(confRes.data)
       setLoadingStudents(false)
       setLoadingGrades(false)
     }
@@ -156,6 +162,11 @@ export default function PromotionsPage() {
             totalCoef += s.coef
           }
         })
+        const termSanctions = sanctions.filter((s: any) => s.student_matricule === (student.student_matricule || student.matricule) && s.trimestre === term)
+        const totalPointsRetires = termSanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retranches) || 0), 0)
+        const conductValue = Math.max(0, (conductConfig.note_depart || 20) - totalPointsRetires)
+        totalWeighted += conductValue * 1
+        totalCoef += 1
         if (totalCoef > 0) termAveragesMap[term] = totalWeighted / totalCoef
       })
 
