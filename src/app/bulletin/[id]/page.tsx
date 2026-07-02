@@ -122,7 +122,7 @@ export default function OfficialBulletinPage() {
     const absNonJustif = absences.filter(a => a.statut === "Non justifiée").length
     const absJustif = absences.filter(a => a.statut === "Justifiée").length
     const retards = absences.filter(a => a.type === "Retard").length
-    const totalPointsRetires = sanctions.reduce((acc, s) => acc + (Number(s.points_retires) || 0), 0)
+    const totalPointsRetires = sanctions.reduce((acc, s) => acc + (Number(s.points_retranches) || 0), 0)
     const noteConduite = Math.max(0, Math.min(20, 20 - totalPointsRetires))
     return { absNonJustif, absJustif, retards, noteConduite }
   }, [absences, sanctions])
@@ -157,8 +157,10 @@ export default function OfficialBulletinPage() {
       }
     })
 
-    const totalWeighted = gradesList.reduce((acc, g) => acc + g.weighted, 0)
-    const totalCoef = gradesList.reduce((acc, g) => acc + g.coef, 0)
+    let totalWeighted = gradesList.reduce((acc, g) => acc + g.weighted, 0)
+    let totalCoef = gradesList.reduce((acc, g) => acc + g.coef, 0)
+    totalWeighted += disciplineStats.noteConduite * 1
+    totalCoef += 1
     const generalAvg = totalCoef > 0 ? totalWeighted / totalCoef : 0
 
     const getMention = (avg: number) => {
