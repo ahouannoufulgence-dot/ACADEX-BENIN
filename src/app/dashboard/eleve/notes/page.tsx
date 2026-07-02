@@ -141,6 +141,9 @@ export default function StudentGradesPage() {
           tC += s.coef
         }
       })
+      // Inclure la conduite dans chaque trimestre
+      tW += conductValue * 1
+      tC += 1
       if (tC > 0) termAverages.push(tW / tC)
     })
     const annualAvg = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0
