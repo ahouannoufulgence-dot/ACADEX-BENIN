@@ -120,6 +120,8 @@ export default function StudentGradesPage() {
       if (tGrades.length === 0) return
       const tSubjects: Record<string, any> = {}
       tGrades.forEach((g: any) => {
+        if (!g.type) return
+        if (!tSubjects[g.subject]) tSubjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 1 }
         if (g.type.startsWith('int')) tSubjects[g.subject].ints.push(Number(g.value))
         if (g.type.startsWith('dev')) tSubjects[g.subject].devs.push(Number(g.value))
       })
