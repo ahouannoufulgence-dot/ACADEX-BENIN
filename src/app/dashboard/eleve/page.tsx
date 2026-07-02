@@ -126,24 +126,34 @@ export default function StudentDashboard() {
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
     
-    const subjects: Record<string, any> = {}
-    grades.forEach((g: any) => {
-      const sub = g.subject
-      const val = Number(g.value)
-      if (isNaN(val)) return
-      if (!subjects[sub]) subjects[sub] = { vals: [], coef: Number(g.coefficient) || 1 }
-      subjects[sub].vals.push(val)
+    const termAverages: number[] = []
+    ;['T1', 'T2', 'T3'].forEach(term => {
+      const tGrades = grades.filter((g: any) => g.term === term)
+      if (tGrades.length === 0) return
+      const tSubjects: Record<string, any> = {}
+      tGrades.forEach((g: any) => {
+        if (!g.type) return
+        if (!tSubjects[g.subject]) tSubjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 1 }
+        if (g.type.startsWith('int')) tSubjects[g.subject].ints.push(Number(g.value))
+        if (g.type.startsWith('dev')) tSubjects[g.subject].devs.push(Number(g.value))
+      })
+      let tW = 0, tC = 0
+      Object.values(tSubjects).forEach((s: any) => {
+        const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number, b:number) => a+b, 0) / s.ints.length : null
+        const blocks: number[] = []
+        if (avgInt !== null) blocks.push(avgInt)
+        s.devs.forEach((d: number) => blocks.push(d))
+        if (blocks.length > 0) {
+          const avg = blocks.reduce((a:number, b:number) => a + b, 0) / blocks.length
+          tW += avg * s.coef
+          tC += s.coef
+        }
+      })
+      tW += 20 * 1
+      tC += 1
+      if (tC > 0) termAverages.push(tW / tC)
     })
-
-    let totalWeighted = 0
-    let totalCoef = 0
-    Object.values(subjects).forEach((s: any) => {
-      const avgSub = s.vals.reduce((a:number, b:number)=>a+b, 0) / s.vals.length
-      totalWeighted += avgSub * s.coef
-      totalCoef += s.coef
-    })
-
-    const avg = totalCoef > 0 ? (totalWeighted / totalCoef).toFixed(2) : "0.00"
+    const avg = termAverages.length > 0 ? (termAverages.reduce((a, b) => a + b, 0) / termAverages.length).toFixed(2) : "0.00"
 
     return [
       { title: "Ma Moyenne", value: avg, label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
