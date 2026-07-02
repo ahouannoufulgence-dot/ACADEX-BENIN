@@ -65,7 +65,7 @@ export default function StudentGradesPage() {
       const config = await getConductConfig()
       setConductConfig(config)
       const conductResult = await getStudentConduct(studentId, activeYear, activeTerm, config)
-      setMySanctions(conductResult.sanctions)
+      console.log("CONDUCT DEBUG:", { studentId, activeYear, activeTerm, config, conductResult }); setMySanctions(conductResult.sanctions)
       setLoadingMyGrades(false)
     }
     fetchData()
