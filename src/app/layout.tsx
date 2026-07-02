@@ -15,8 +15,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: '/icons/favicon.ico',
-    apple: '/icons/apple-touch-icon.png',
+    apple: '/icons/apple-icon.png',
   },
+  manifest: '/icons/manifest.json',
 };
 
 export default function RootLayout({
@@ -27,9 +28,9 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <head>
-        <link rel="manifest" href="/icons/site.webmanifest" />
+        <link rel="manifest" href="/icons/manifest.json" />
         <meta name="theme-color" content="#14532d" />
-        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+        <link rel="apple-touch-icon" href="/icons/apple-icon.png" />
         <link rel="icon" href="/icons/favicon.ico" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

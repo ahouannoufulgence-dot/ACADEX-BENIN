@@ -1,0 +1,29 @@
+{
+  "name": "ACADEX - Gestion Scolaire",
+  "short_name": "ACADEX",
+  "description": "Gérer • Suivre • Réussir",
+  "icons": [
+    {
+      "src": "/icons/icon1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#14532d",
+  "background_color": "#14532d",
+  "display": "standalone",
+  "start_url": "/",
+  "orientation": "portrait"
+}
