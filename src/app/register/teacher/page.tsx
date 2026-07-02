@@ -29,6 +29,7 @@ export default function RegisterTeacherPage() {
     classes: [] as string[],
     password: "",
     confirmPassword: "",
+    secretCode: "",
     isMainTeacher: false,
     mainTeacherClass: ""
   });
@@ -59,6 +60,18 @@ export default function RegisterTeacherPage() {
     if (!form.password || form.password !== form.confirmPassword) {
       toast({ title: "Erreur", description: "Les mots de passe ne correspondent pas.", variant: "destructive" });
       return;
+    }
+
+    // Vérifier le code secret
+    const { data: configData } = await supabase
+      .from('school_settings')
+      .select('teacher_code')
+      .eq('id', 'main_config')
+      .single()
+    
+    if (!configData || form.secretCode !== configData.teacher_code) {
+      toast({ title: "Code invalide", description: "Le code d'accès enseignant est incorrect.", variant: "destructive" })
+      return
     }
 
     if (form.isMainTeacher && !form.mainTeacherClass) {
@@ -275,6 +288,17 @@ export default function RegisterTeacherPage() {
                 <CardDescription className="text-sm md:text-lg font-medium">Protégez votre espace pédagogique.</CardDescription>
               </CardHeader>
               <CardContent className="p-6 md:p-10 pt-0 space-y-4 md:space-y-6">
+                <div className="space-y-1.5 mb-2">
+                  <Label className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground">Code d'accès enseignant</Label>
+                  <Input
+                    type="password"
+                    placeholder="Code fourni par la direction"
+                    className="h-11 md:h-12 rounded-xl text-sm border-2 border-primary/20 focus:border-primary"
+                    value={form.secretCode}
+                    onChange={e => setForm({...form, secretCode: e.target.value})}
+                  />
+                  <p className="text-[7px] md:text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-1">Ce code est fourni par votre direction — obligatoire</p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="font-bold text-[10px] md:text-xs uppercase tracking-widest text-muted-foreground">Mot de passe</Label>

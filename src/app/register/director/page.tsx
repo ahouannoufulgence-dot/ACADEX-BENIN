@@ -45,6 +45,19 @@ export default function RegisterDirectorPage() {
     }
     setLoading(true);
     try {
+      // Vérifier si un directeur existe déjà
+      const { data: existing } = await supabase
+        .from('school_settings')
+        .select('director_password')
+        .eq('id', 'main_config')
+        .single()
+      
+      if (existing?.director_password) {
+        toast({ title: "Accès refusé", description: "Un compte directeur existe déjà pour cet établissement.", variant: "destructive" })
+        setLoading(false)
+        return
+      }
+
       const { error } = await supabase.from('school_settings').upsert({
         id: 'main_config',
         school_name: form.schoolName,

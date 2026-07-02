@@ -43,6 +43,7 @@ export default function SettingsPage() {
   const [address, setAddress] = useState("")
   const [email, setEmail] = useState("")
   const [motto, setMotto] = useState("")
+  const [teacherCode, setTeacherCode] = useState("sagesse.1")
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [loadingLogs, setLoadingLogs] = useState(true)
 
@@ -58,6 +59,7 @@ export default function SettingsPage() {
       setAddress(data.address || "")
       setEmail(data.email || "")
       setMotto(data.motto || "")
+      setTeacherCode(data.teacher_code || "sagesse.1")
     }
   }
 
@@ -88,6 +90,7 @@ export default function SettingsPage() {
         address: address,
         email: email,
         motto: motto,
+        teacher_code: teacherCode,
       })
       if (error) throw error
       toast({ title: "Configuration scellée", description: "L'identité de l'établissement a été mise à jour." })
@@ -312,7 +315,22 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="mt-10 md:mt-16 pt-8 md:pt-12 border-t flex justify-end">
+              {/* Code enseignant */}
+              <div className="mt-6 p-5 md:p-8 bg-amber-50 rounded-2xl border-2 border-amber-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="size-4 text-amber-600" />
+                  <p className="font-black text-[9px] md:text-xs uppercase text-amber-700 tracking-widest">Code d'accès enseignant</p>
+                </div>
+                <Input
+                  value={teacherCode}
+                  onChange={e => setTeacherCode(e.target.value)}
+                  placeholder="sagesse.1"
+                  className="h-11 md:h-12 rounded-xl border-2 border-amber-200 font-black text-sm bg-white"
+                />
+                <p className="text-[7px] md:text-[9px] font-bold text-amber-600 uppercase tracking-widest">Ce code est requis pour l'inscription des enseignants. Partagez-le uniquement avec votre équipe.</p>
+              </div>
+
+              <div className="mt-6 pt-6 border-t flex justify-end">
                  <Button onClick={handleSaveInstitutional} disabled={loading} className="w-full md:w-auto h-12 md:h-16 px-10 md:px-20 rounded-xl md:rounded-2xl bg-primary shadow-xl shadow-primary/20 font-black text-xs md:text-xl uppercase active:scale-95 transition-all">
                     {loading ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />}
                     Sceller les modifications

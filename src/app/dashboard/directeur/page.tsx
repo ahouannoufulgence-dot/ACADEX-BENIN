@@ -104,24 +104,34 @@ export default function DirectorDashboard() {
     if (students && grades) {
       students.forEach((s: any) => {
         const sGrades = grades.filter(g => g.student_matricule === s.matricule)
-        const subjects: Record<string, any> = {}
-        sGrades.forEach(g => {
-          if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
-          if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
-          if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+        const termAvgs: number[] = []
+        ;['T1', 'T2', 'T3'].forEach(term => {
+          const tGrades = sGrades.filter((g: any) => g.term === term)
+          if (tGrades.length === 0) return
+          const subjects: Record<string, any> = {}
+          tGrades.forEach((g: any) => {
+            if (!g.type) return
+            if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
+            if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+            if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+          })
+          let totalW = 0, totalC = 0
+          Object.values(subjects).forEach((sub: any) => {
+            const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length : null
+            const blocks = []
+            if (avgInt !== null) blocks.push(avgInt)
+            sub.devs.forEach((d: number) => blocks.push(d))
+            if (blocks.length > 0) {
+              totalW += (blocks.reduce((a, b) => a + b, 0) / blocks.length) * sub.coef
+              totalC += sub.coef
+            }
+          })
+          if (totalC > 0) termAvgs.push(totalW / totalC)
         })
-        let totalW = 0, totalC = 0
-        Object.values(subjects).forEach((sub: any) => {
-          const avgInt = sub.ints.length > 0 ? sub.ints.reduce((a:number, b:number) => a + b, 0) / sub.ints.length : null
-          const blocks = []
-          if (avgInt !== null) blocks.push(avgInt)
-          sub.devs.forEach((d: number) => blocks.push(d))
-          if (blocks.length > 0) {
-            totalW += (blocks.reduce((a, b) => a + b, 0) / blocks.length) * sub.coef
-            totalC += sub.coef
-          }
-        })
-        if (totalC > 0) { globalSum += (totalW / totalC); gpaCount++ }
+        if (termAvgs.length > 0) {
+          globalSum += termAvgs.reduce((a, b) => a + b, 0) / termAvgs.length
+          gpaCount++
+        }
       })
     }
 
