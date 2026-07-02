@@ -196,7 +196,7 @@ export default function StudentDashboard() {
       { title: "Absences", value: totalAbsences.toString(), label: "Cette année", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
-  }, [grades, mounted, totalPaid, expectedFee])
+  }, [grades, mounted, totalPaid, expectedFee, rank])
 
   if (!mounted) return null
 
