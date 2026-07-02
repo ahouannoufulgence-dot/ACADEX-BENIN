@@ -89,15 +89,37 @@ export default function StudentDashboard() {
         if (classMates && classMates.length > 0) {
           const matricules = classMates.map((s: any) => s.matricule)
           const { data: classGrades } = await supabase.from("grades").select("*").eq("academic_year", activeYear).in("student_matricule", matricules)
-          if (classGrades) {
-            const avgs: Record<string, number[]> = {}
-            classGrades.forEach((g: any) => {
-              if (!avgs[g.student_matricule]) avgs[g.student_matricule] = []
-              avgs[g.student_matricule].push(Number(g.value))
-            })
-            const sorted = Object.entries(avgs).map(([mat, vals]) => ({ mat, avg: vals.reduce((a,b)=>a+b,0)/vals.length })).sort((a,b)=>b.avg-a.avg)
-            const r = sorted.findIndex(s => s.mat === studentId) + 1
-            console.log("RANK DEBUG:", {r, sorted, studentId, classMates}); setRank(r > 0 ? r+"/"+sorted.length : "---")
+          if (classGrades && classGrades.length > 0) {
+            // Calcul moyenne progressive par trimestre pour chaque élève
+            const calcAvg = (mat: string) => {
+              const termAvgs: number[] = []
+              ;['T1', 'T2', 'T3'].forEach(term => {
+                const tg = classGrades.filter((g: any) => g.student_matricule === mat && g.term === term)
+                if (tg.length === 0) return
+                const subs: Record<string, any> = {}
+                tg.forEach((g: any) => {
+                  if (!subs[g.subject]) subs[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 1 }
+                  if (g.type?.startsWith('int')) subs[g.subject].ints.push(Number(g.value))
+                  if (g.type?.startsWith('dev')) subs[g.subject].devs.push(Number(g.value))
+                })
+                let tW = 0, tC = 0
+                Object.values(subs).forEach((s: any) => {
+                  const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number,b:number)=>a+b,0)/s.ints.length : null
+                  const blocks: number[] = []
+                  if (avgInt !== null) blocks.push(avgInt)
+                  s.devs.forEach((d:number) => blocks.push(d))
+                  if (blocks.length > 0) {
+                    tW += (blocks.reduce((a:number,b:number)=>a+b,0)/blocks.length) * s.coef
+                    tC += s.coef
+                  }
+                })
+                if (tC > 0) termAvgs.push(tW / tC)
+              })
+              return termAvgs.length > 0 ? termAvgs.reduce((a,b)=>a+b,0)/termAvgs.length : 0
+            }
+            const sorted = matricules.map((mat: string) => ({ mat, avg: calcAvg(mat) })).filter((s: any) => s.avg > 0).sort((a: any, b: any) => b.avg - a.avg)
+            const r = sorted.findIndex((s: any) => s.mat === studentId) + 1
+            setRank(r > 0 ? r + "/" + sorted.length : "---")
           }
         }
       }
