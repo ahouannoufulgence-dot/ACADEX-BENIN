@@ -87,7 +87,8 @@ export default function StudentDashboard() {
       if (classId) {
         const { data: classMates } = await supabase.from("students").select("matricule").eq("class_id", classId).eq("status", "Actif")
         if (classMates && classMates.length > 0) {
-          const matricules = classMates.map((s: any) => s.matricule)
+          const matricules = classMates.map((s: any) => s.matricule).filter(Boolean)
+          if (matricules.length === 0) { setRank("---"); return }
           const { data: classGrades } = await supabase.from("grades").select("*").eq("academic_year", activeYear).in("student_matricule", matricules)
           if (classGrades && classGrades.length > 0) {
             // Calcul moyenne progressive par trimestre pour chaque élève
