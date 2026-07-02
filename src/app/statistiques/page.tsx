@@ -36,6 +36,8 @@ export default function StatisticsModule() {
   const [payments, setPayments] = useState<any[]>([])
   const [classFees, setClassFees] = useState<any[]>([])
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
+  const [sanctions, setSanctions] = useState<any[]>([])
+  const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20 })
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [loadingGrades, setLoadingGrades] = useState(true)
 
@@ -49,18 +51,22 @@ export default function StatisticsModule() {
     const fetchData = async () => {
       setLoadingStudents(true)
       setLoadingGrades(true)
-      const [sRes, gRes, pRes, fRes, cRes] = await Promise.all([
+      const [sRes, gRes, pRes, fRes, cRes, scRes, ccRes] = await Promise.all([
         supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
         supabase.from('grades').select('*').eq('academic_year', activeYear),
         supabase.from('payments').select('*').eq('academic_year', activeYear),
         supabase.from('class_fees').select('*').eq('academic_year', activeYear),
-        supabase.from('school_settings').select('*').eq('id', 'main_config').single()
+        supabase.from('school_settings').select('*').eq('id', 'main_config').single(),
+        supabase.from('sanctions').select('*').eq('academic_year', activeYear),
+        supabase.from('conduct_config').select('*').eq('id', 'main').single()
       ])
       setStudents(sRes.data || [])
       setGrades(gRes.data || [])
       setPayments(pRes.data || [])
       setClassFees(fRes.data || [])
       if (cRes.data) setSchoolConfig(cRes.data)
+      setSanctions(scRes.data || [])
+      if (ccRes.data) setConductConfig(ccRes.data)
       setLoadingStudents(false)
       setLoadingGrades(false)
     }
@@ -107,8 +113,16 @@ export default function StatisticsModule() {
         }
       })
 
+      // Intégrer la note de conduite (coef 1)
+      if (totalCoef > 0) {
+        const studentSanctions = sanctions.filter((sc: any) => sc.student_matricule === (s.student_matricule || s.matricule))
+        const totalPoints = studentSanctions.reduce((acc: number, sc: any) => acc + Number(sc.points_retranches || 0), 0)
+        const conductValue = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
+        totalWeighted += conductValue * 1
+        totalCoef += 1
+      }
       const gpa = totalCoef > 0 ? totalWeighted / totalCoef : 0
-      
+
       if (!classStats[s.class_id]) {
         classStats[s.class_id] = { totalGrades: 0, expectedGrades: 0, sumGPA: 0, count: 0 }
       }
@@ -173,7 +187,7 @@ export default function StatisticsModule() {
       lateClasses,
       subjectStats
     }
-  }, [students, grades, payments, classFees])
+  }, [students, grades, payments, classFees, sanctions, conductConfig])
 
   const exportPDF = () => {
     const doc = new jsPDF()
