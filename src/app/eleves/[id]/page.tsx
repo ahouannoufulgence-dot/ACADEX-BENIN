@@ -269,6 +269,12 @@ export default function StudentDetailPage() {
 
   const isArchived = student.status === "Archivé"
 
+  const studentConduct = (() => {
+    const termSanctions = sanctions.filter((s: any) => s.trimestre === selectedTrimestre)
+    const totalPoints = termSanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retranches) || 0), 0)
+    return Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
+  })()
+
   return (
     <DashboardLayout>
       <div className="space-y-6 md:space-y-8 animate-in slide-in-from-bottom-4 duration-500">
@@ -399,9 +405,27 @@ export default function StudentDetailPage() {
                 <div className="flex-1 md:flex-none text-center px-4 md:px-6 py-2 md:py-3 bg-muted/50 rounded-2xl md:rounded-3xl border border-muted">
                   <p className="text-[8px] md:text-[10px] uppercase font-black text-muted-foreground mb-1">Moyenne</p>
                   <p className="text-lg md:text-2xl font-black text-primary">
-                    {grades.filter(g => g.term === selectedTrimestre).length > 0
-                      ? (grades.filter(g => g.term === selectedTrimestre).reduce((acc: number, g: any) => acc + Number(g.value), 0) / grades.filter(g => g.term === selectedTrimestre).length).toFixed(2)
-                      : "0.00"}
+                    {(() => {
+                      const trimGrades = grades.filter(g => g.term === selectedTrimestre)
+                      const subjects: Record<string, any> = {}
+                      trimGrades.forEach((g: any) => {
+                        if (g.type.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+                        if (g.type.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+                      })
+                      let totalW = 0, totalC = 0
+                      Object.values(subjects).forEach((s: any) => {
+                        const avgInt = s.ints.length > 0 ? s.ints.reduce((a:number,b:number)=>a+b,0)/s.ints.length : null
+                        const blocks = [...(avgInt !== null ? [avgInt] : []), ...s.devs]
+                        if (blocks.length > 0) {
+                          const avg = blocks.reduce((a:number,b:number)=>a+b,0)/blocks.length
+                          totalW += avg * s.coef
+                          totalC += s.coef
+                        }
+                      })
+                      totalW += studentConduct * 1
+                      totalC += 1
+                      return totalC > 0 ? (totalW / totalC).toFixed(2) : "0.00"
+                    })()}
                   </p>
                 </div>
                 <div className="flex-1 md:flex-none text-center px-4 md:px-6 py-2 md:py-3 bg-muted/50 rounded-2xl md:rounded-3xl border border-muted">
