@@ -49,6 +49,10 @@ export default function RegisterDirectorPage() {
         id: 'main_config',
         school_name: form.schoolName,
         academic_year: "2026-2027",
+        phone: form.phone,
+        address: `${form.address ? form.address + ', ' : ''}${form.city}`,
+        director_name: `${form.firstName} ${form.lastName}`,
+        director_password: form.password,
       });
 
       if (error) throw error;
