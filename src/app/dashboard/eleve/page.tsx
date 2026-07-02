@@ -85,7 +85,7 @@ export default function StudentDashboard() {
       const total = (payData || []).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
       setTotalPaid(total)
       if (classId) {
-        const { data: classMates } = await supabase.from("students").select("matricule").eq("class_id", classId).eq("academic_year", activeYear)
+        const { data: classMates } = await supabase.from("students").select("matricule").eq("class_id", classId).eq("status", "Actif")
         if (classMates && classMates.length > 0) {
           const matricules = classMates.map((s: any) => s.matricule)
           const { data: classGrades } = await supabase.from("grades").select("*").eq("academic_year", activeYear).in("student_matricule", matricules)
