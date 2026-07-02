@@ -48,6 +48,7 @@ export default function StudentDashboard() {
   }, [])
 
   const [grades, setGrades] = useState<any[]>([])
+  const [sanctions, setSanctions] = useState<any[]>([])
   const [loadingGrades, setLoadingGrades] = useState(true)
   const [totalPaid, setTotalPaid] = useState(0)
   const [rank, setRank] = useState("---")
@@ -57,8 +58,12 @@ export default function StudentDashboard() {
   useEffect(() => {
     const fetchGrades = async () => {
       if (!studentId) { setLoadingGrades(false); return }
-      const { data } = await supabase.from("grades").select("*").eq("student_matricule", studentId).eq("academic_year", activeYear)
-      setGrades(data || [])
+      const [gradesRes, sanctionsRes] = await Promise.all([
+        supabase.from("grades").select("*").eq("student_matricule", studentId).eq("academic_year", activeYear),
+        supabase.from("sanctions").select("points_retranches, trimestre").eq("student_matricule", studentId).eq("academic_year", activeYear)
+      ])
+      setGrades(gradesRes.data || [])
+      setSanctions(sanctionsRes.data || [])
       setLoadingGrades(false)
     }
     fetchGrades()
@@ -149,7 +154,10 @@ export default function StudentDashboard() {
           tC += s.coef
         }
       })
-      tW += 20 * 1
+      const termSanctions = sanctions.filter((s: any) => s.trimestre === term)
+      const pointsRetires = termSanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retranches) || 0), 0)
+      const conductValue = Math.max(0, 20 - pointsRetires)
+      tW += conductValue * 1
       tC += 1
       if (tC > 0) termAverages.push(tW / tC)
     })
