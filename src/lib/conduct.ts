@@ -45,7 +45,7 @@ export async function getStudentConduct(
     .eq('trimestre', trimestre)
 
   const sanctionsList = sanctions || []
-  const totalPoints = sanctionsList.reduce((acc, s) => acc + (Number(s.points_retires) || 0), 0)
+  const totalPoints = sanctionsList.reduce((acc, s) => acc + (Number(s.points_retranches) || 0), 0)
   const noteConduite = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
 
   return {

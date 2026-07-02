@@ -65,7 +65,7 @@ export default function StudentGradesPage() {
       const config = await getConductConfig()
       setConductConfig(config)
       const conductResult = await getStudentConduct(studentId, activeYear, activeTerm, config)
-      console.log("CONDUCT DEBUG:", { studentId, activeYear, activeTerm, config, conductResult }); setMySanctions(conductResult.sanctions)
+      setMySanctions(conductResult.sanctions)
       setLoadingMyGrades(false)
     }
     fetchData()
@@ -77,7 +77,7 @@ export default function StudentGradesPage() {
     const termGrades = myGrades.filter((g: any) => g.term === activeTerm)
 
     // Conduite calculée depuis les vraies sanctions
-    const totalPointsRetires = mySanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retires) || 0), 0)
+    const totalPointsRetires = mySanctions.reduce((acc: number, s: any) => acc + (Number(s.points_retranches) || 0), 0)
     const conductValue = Math.max(0, (conductConfig.note_depart || 20) - totalPointsRetires)
 
     const subjects: Record<string, any> = {}
@@ -204,7 +204,7 @@ export default function StudentGradesPage() {
               <p className={cn("text-lg md:text-2xl font-black", analysis.conductValue >= 14 ? "text-emerald-600" : analysis.conductValue >= 10 ? "text-amber-500" : "text-red-600")}>
                 {analysis.conductValue.toFixed(1)}/20
                 <span className="text-[8px] font-normal text-muted-foreground ml-2">
-                  ({mySanctions.length} sanction{mySanctions.length > 1 ? 's' : ''} — {mySanctions.reduce((acc, s) => acc + (Number(s.points_retires) || 0), 0)} pts retirés)
+                  ({mySanctions.length} sanction{mySanctions.length > 1 ? 's' : ''} — {mySanctions.reduce((acc, s) => acc + (Number(s.points_retranches) || 0), 0)} pts retirés)
                 </span>
               </p>
             </div>
