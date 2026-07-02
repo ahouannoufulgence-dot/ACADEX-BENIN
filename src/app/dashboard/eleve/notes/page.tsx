@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { getConductConfig, getStudentConduct } from "@/lib/conduct"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -61,7 +62,10 @@ export default function StudentGradesPage() {
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
-      setMySanctions([])
+      const config = await getConductConfig()
+      setConductConfig(config)
+      const conductResult = await getStudentConduct(studentId, activeYear, activeTerm, config)
+      setMySanctions(conductResult.sanctions)
       setLoadingMyGrades(false)
     }
     fetchData()
