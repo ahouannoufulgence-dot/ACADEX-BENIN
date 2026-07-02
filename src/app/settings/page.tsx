@@ -38,6 +38,11 @@ export default function SettingsPage() {
   const [schoolName, setSchoolName] = useState("")
   const [academicYear, setAcademicYear] = useState("")
   const [termLocked, setTermLocked] = useState(false)
+  const [directorName, setDirectorName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [address, setAddress] = useState("")
+  const [email, setEmail] = useState("")
+  const [motto, setMotto] = useState("")
   const [auditLogs, setAuditLogs] = useState<any[]>([])
   const [loadingLogs, setLoadingLogs] = useState(true)
 
@@ -48,6 +53,11 @@ export default function SettingsPage() {
       setSchoolName(data.school_name || "")
       setAcademicYear(data.academic_year || "")
       setTermLocked(data.term_locked || false)
+      setDirectorName(data.director_name || "")
+      setPhone(data.phone || "")
+      setAddress(data.address || "")
+      setEmail(data.email || "")
+      setMotto(data.motto || "")
     }
   }
 
@@ -73,6 +83,11 @@ export default function SettingsPage() {
         id: 'main_config',
         school_name: schoolName,
         academic_year: academicYear,
+        director_name: directorName,
+        phone: phone,
+        address: address,
+        email: email,
+        motto: motto,
       })
       if (error) throw error
       toast({ title: "Configuration scellée", description: "L'identité de l'établissement a été mise à jour." })
@@ -254,34 +269,46 @@ export default function SettingsPage() {
                  </div>
               </div>
               
-              <div className="grid md:grid-cols-2 gap-8 md:gap-14">
-                <div className="space-y-6">
-                  <div className="space-y-2 px-1">
-                    <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground tracking-widest px-1">Nom de l'établissement</Label>
-                    <Input 
-                      value={schoolName} 
-                      onChange={e => setSchoolName(e.target.value)} 
-                      className="h-12 md:h-16 rounded-xl md:rounded-2xl border-2 font-black text-sm md:text-xl shadow-sm focus:ring-primary" 
-                    />
+              <div className="grid md:grid-cols-2 gap-6 md:gap-10">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Nom de l'établissement</Label>
+                    <Input value={schoolName} onChange={e => setSchoolName(e.target.value)} className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
                   </div>
-                  <div className="space-y-2 px-1">
-                    <Label className="font-black text-[9px] md:text-[11px] uppercase text-muted-foreground tracking-widest px-1">Année Scolaire Active</Label>
-                    <Input 
-                      value={academicYear} 
-                      onChange={e => setAcademicYear(e.target.value)} 
-                      className="h-12 md:h-16 rounded-xl md:rounded-2xl border-2 font-black text-sm md:text-xl shadow-sm focus:ring-primary" 
-                    />
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Nom du Directeur</Label>
+                    <Input value={directorName} onChange={e => setDirectorName(e.target.value)} className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Année Scolaire Active</Label>
+                    <Input value={academicYear} onChange={e => setAcademicYear(e.target.value)} className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Devise de l'école</Label>
+                    <Input value={motto} onChange={e => setMotto(e.target.value)} placeholder="Ex: Excellence et Rigueur" className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
                   </div>
                 </div>
-
-                <div className="flex flex-col justify-center p-8 md:p-12 bg-muted/20 rounded-[2rem] md:rounded-[3rem] border-2 border-dashed border-muted-foreground/10 text-center space-y-4">
-                   <div className="size-20 md:size-24 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto text-3xl md:text-5xl font-black text-primary border-4 border-white">
-                     {schoolName?.[0] || "A"}
-                   </div>
-                   <div className="space-y-1">
-                     <p className="text-base md:text-2xl font-black uppercase tracking-tight">{schoolName || "Nom de l'école"}</p>
-                     <Badge variant="outline" className="font-black border-primary/20 text-primary text-[8px] md:text-xs">{academicYear}</Badge>
-                   </div>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Téléphone</Label>
+                    <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+229 XX XX XX XX" className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Email</Label>
+                    <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="contact@ecole.bj" className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="font-black text-[9px] uppercase text-muted-foreground tracking-widest">Adresse</Label>
+                    <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="Quartier, Ville" className="h-11 md:h-14 rounded-xl border-2 font-black text-sm" />
+                  </div>
+                  <div className="p-5 bg-muted/20 rounded-2xl border-2 border-dashed border-muted/50 text-center space-y-2">
+                    <div className="size-14 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto text-2xl font-black text-primary border-2 border-white">
+                      {schoolName?.[0] || "A"}
+                    </div>
+                    <p className="font-black text-xs uppercase">{schoolName || "Nom de l'école"}</p>
+                    <p className="text-[8px] font-bold text-muted-foreground italic">{motto || "Devise..."}</p>
+                    <Badge variant="outline" className="font-black border-primary/20 text-primary text-[8px]">{academicYear}</Badge>
+                  </div>
                 </div>
               </div>
 
