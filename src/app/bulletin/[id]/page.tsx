@@ -25,6 +25,7 @@ export default function OfficialBulletinPage() {
   const [allClassGrades, setAllClassGrades] = useState<any[]>([])
   const [absences, setAbsences] = useState<any[]>([])
   const [sanctions, setSanctions] = useState<any[]>([])
+  const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20 })
   const [classStudents, setClassStudents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -78,6 +79,9 @@ export default function OfficialBulletinPage() {
         .eq('academic_year', activeYear)
       setSanctions(sanData || [])
 
+      const { data: conductData } = await supabase.from('conduct_config').select('*').eq('id', 'main').single()
+      if (conductData) setConductConfig(conductData)
+
       setLoading(false)
     }
     fetchAll()
@@ -122,10 +126,11 @@ export default function OfficialBulletinPage() {
     const absNonJustif = absences.filter(a => a.statut === "Non justifiée").length
     const absJustif = absences.filter(a => a.statut === "Justifiée").length
     const retards = absences.filter(a => a.type === "Retard").length
-    const totalPointsRetires = sanctions.reduce((acc, s) => acc + (Number(s.points_retranches) || 0), 0)
-    const noteConduite = Math.max(0, Math.min(20, 20 - totalPointsRetires))
+    const termSanctions = sanctions.filter((s: any) => s.trimestre === activeTerm)
+    const totalPointsRetires = termSanctions.reduce((acc, s) => acc + (Number(s.points_retranches) || 0), 0)
+    const noteConduite = Math.max(0, (conductConfig.note_depart || 20) - totalPointsRetires)
     return { absNonJustif, absJustif, retards, noteConduite }
-  }, [absences, sanctions])
+  }, [absences, sanctions, activeTerm, conductConfig])
 
   const bulletinData = useMemo(() => {
     if (!student || !grades || !schoolConfig) return null
