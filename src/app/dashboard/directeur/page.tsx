@@ -46,6 +46,8 @@ export default function DirectorDashboard() {
   const [unusedIds, setUnusedIds] = useState<any[]>([])
   const [payments, setPayments] = useState<any[]>([])
   const [grades, setGrades] = useState<any[]>([])
+  const [sanctions, setSanctions] = useState<any[]>([])
+  const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20 })
   const [recentAudit, setRecentAudit] = useState<any[]>([])
   const [loadingStudents, setLoadingStudents] = useState(true)
   const [loadingTeachers, setLoadingTeachers] = useState(true)
@@ -71,13 +73,15 @@ export default function DirectorDashboard() {
       setLoadingTeachers(true)
       setLoadingGrades(true)
 
-      const [studentsRes, teachersRes, idsRes, paymentsRes, gradesRes, auditRes] = await Promise.all([
+      const [studentsRes, teachersRes, idsRes, paymentsRes, gradesRes, auditRes, sanctionsRes, conductRes] = await Promise.all([
         supabase.from('students').select('*').eq('academic_year', activeYear).eq('status', 'Actif'),
         supabase.from('teachers').select('*'),
         supabase.from('registration_ids').select('*').eq('status', 'non utilisé'),
         supabase.from('payments').select('*').eq('academic_year', activeYear),
         supabase.from('grades').select('*').eq('academic_year', activeYear),
-        supabase.from('student_life').select('*').order('created_at', { ascending: false }).limit(5)
+        supabase.from('student_life').select('*').order('created_at', { ascending: false }).limit(5),
+        supabase.from('sanctions').select('*').eq('academic_year', activeYear),
+        supabase.from('conduct_config').select('*').eq('id', 'main').single()
       ])
 
       setStudents(studentsRes.data || [])
@@ -85,6 +89,8 @@ export default function DirectorDashboard() {
       setUnusedIds(idsRes.data || [])
       setPayments(paymentsRes.data || [])
       setGrades(gradesRes.data || [])
+      setSanctions(sanctionsRes.data || [])
+      if (conductRes.data) setConductConfig(conductRes.data)
       setRecentAudit(auditRes.data || [])
       setLoadingStudents(false)
       setLoadingTeachers(false)
@@ -126,7 +132,15 @@ export default function DirectorDashboard() {
               totalC += sub.coef
             }
           })
-          if (totalC > 0) termAvgs.push(totalW / totalC)
+          if (totalC > 0) {
+            // Intégrer la note de conduite (coef 1)
+            const termSanctions = sanctions.filter((sc: any) => sc.student_matricule === (s.student_matricule || s.matricule) && sc.trimestre === term)
+            const totalPoints = termSanctions.reduce((acc: number, sc: any) => acc + Number(sc.points_retranches || 0), 0)
+            const conductValue = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
+            totalW += conductValue * 1
+            totalC += 1
+            termAvgs.push(totalW / totalC)
+          }
         })
         if (termAvgs.length > 0) {
           globalSum += termAvgs.reduce((a, b) => a + b, 0) / termAvgs.length
@@ -139,7 +153,7 @@ export default function DirectorDashboard() {
     const completionRate = Math.min(100, Math.round((totalGradesEntered / (Math.max(1, totalStudents) * 50)) * 100))
 
     return { totalStudents, totalTeachers, idsCount, revenue, avg, completionRate }
-  }, [students, teachers, unusedIds, payments, grades])
+  }, [students, teachers, unusedIds, payments, grades, sanctions, conductConfig])
 
   if (!mounted) return null
   const todayStr = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
