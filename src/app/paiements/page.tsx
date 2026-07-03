@@ -55,6 +55,19 @@ const OFFICIAL_CLASSES = [
   "TLE A", "TLE B", "TLE C", "TLE D"
 ]
 
+const MOTIFS_PAIEMENT = [
+  "Scolarité - Tranche 1",
+  "Scolarité - Tranche 2", 
+  "Scolarité - Tranche 3",
+  "Tenue scolaire",
+  "Frais de dossier",
+  "Frais de cantine",
+  "Frais de maintenance ACADEX",
+  "Frais d'examen",
+  "Cotisation APE",
+  "Autre"
+]
+
 export default function TreasuryModule() {
   const [activeYear, setActiveYear] = useState("2026-2027")
   const [payments, setPayments] = useState<any[]>([])
@@ -70,6 +83,9 @@ export default function TreasuryModule() {
   const [searchTerm, setSearchTerm] = useState("")
   const [studentSearch, setStudentSearch] = useState("")
   const [feesData, setFeesData] = useState<Record<string, string>>({})
+  const [selectedClass, setSelectedClass] = useState("")
+  const [lotMode, setLotMode] = useState(false)
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
 
   const [formData, setFormData] = useState({
     studentId: "",
@@ -200,27 +216,51 @@ export default function TreasuryModule() {
   }, [students, studentSearch])
 
   const handleAddPayment = async () => {
-    if (!formData.studentId || !formData.amountPaid) {
-      toast({ title: "Champs requis", variant: "destructive" })
+    if (!formData.amountPaid) {
+      toast({ title: "Montant requis", variant: "destructive" })
       return
     }
     setLoading(true)
     try {
-      const student = students?.find((s: any) => s.matricule === formData.studentId)
-      const { error } = await supabase.from('payments').insert({
-        student_matricule: formData.studentId,
-        student_name: student ? `${student.last_name} ${student.first_name}` : 'Inconnu',
-        class_id: student?.class_id || '',
-        amount_paid: Number(formData.amountPaid),
-        payment_date: new Date().toISOString(),
-        academic_year: activeYear,
-        note: formData.description,
-        status: 'En attente'
-      })
+      let rows: any[] = []
+      if (lotMode && selectedClass && selectedClass !== "all") {
+        const classStudents = students.filter((s: any) => s.class_id === selectedClass)
+        rows = classStudents.map((s: any) => ({
+          student_matricule: s.matricule,
+          student_name: `${s.last_name} ${s.first_name}`,
+          class_id: s.class_id,
+          amount_paid: Number(formData.amountPaid),
+          payment_date: new Date().toISOString(),
+          academic_year: activeYear,
+          note: formData.description,
+          status: 'Payé'
+        }))
+      } else {
+        if (!formData.studentId) {
+          toast({ title: "Choisir un élève", variant: "destructive" })
+          setLoading(false)
+          return
+        }
+        const student = students?.find((s: any) => s.matricule === formData.studentId)
+        rows = [{
+          student_matricule: formData.studentId,
+          student_name: student ? `${student.last_name} ${student.first_name}` : 'Inconnu',
+          class_id: student?.class_id || '',
+          amount_paid: Number(formData.amountPaid),
+          payment_date: new Date().toISOString(),
+          academic_year: activeYear,
+          note: formData.description,
+          status: 'Payé'
+        }]
+      }
+      const { error } = await supabase.from('payments').insert(rows)
       if (error) throw error
-      toast({ title: "Encaissement scellé" })
+      toast({ title: lotMode ? `${rows.length} encaissements scellés` : "Encaissement scellé" })
       setIsAdding(false)
-      setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche", date: new Date().toISOString().split('T')[0] })
+      setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche 1", date: new Date().toISOString().split('T')[0] })
+      setSelectedClass("")
+      setLotMode(false)
+      fetchAll()
     } catch (e) { toast({ title: "Erreur", variant: "destructive" }) }
     finally { setLoading(false) }
   }
@@ -294,42 +334,90 @@ export default function TreasuryModule() {
                    <DialogTitle className="text-xl md:text-3xl font-black uppercase">Encaissement</DialogTitle>
                    <p className="text-white/40 font-bold text-[9px] uppercase tracking-widest mt-1">Scolarité • {activeYear}</p>
                  </div>
-                 <div className="p-5 md:p-10 space-y-6 bg-[#F8FAFC]">
-                    <div className="grid md:grid-cols-2 gap-6">
+                 <div className="p-5 md:p-10 space-y-5 bg-[#F8FAFC]">
+                   {/* Mode individuel / lot */}
+                   <div className="flex gap-2">
+                     <button onClick={() => { setLotMode(false); setSelectedStudents([]) }}
+                       className={cn("flex-1 h-9 rounded-xl font-black text-[9px] uppercase transition-all border-2", !lotMode ? "bg-primary text-white border-primary" : "bg-white text-muted-foreground border-muted")}>
+                       Individuel
+                     </button>
+                     <button onClick={() => { setLotMode(true); setFormData({...formData, studentId: ""}) }}
+                       className={cn("flex-1 h-9 rounded-xl font-black text-[9px] uppercase transition-all border-2", lotMode ? "bg-primary text-white border-primary" : "bg-white text-muted-foreground border-muted")}>
+                       Lot (classe entière)
+                     </button>
+                   </div>
+
+                   <div className="grid md:grid-cols-2 gap-5">
+                     <div className="space-y-3">
+                       {/* Filtre par classe */}
+                       <div className="space-y-1.5">
+                         <Label className="font-black text-[9px] uppercase text-muted-foreground">Classe</Label>
+                         <Select value={selectedClass} onValueChange={v => { setSelectedClass(v); setFormData({...formData, studentId: ""}); setSelectedStudents([]) }}>
+                           <SelectTrigger className="h-10 rounded-xl border-2 font-black text-xs"><SelectValue placeholder="Toutes les classes" /></SelectTrigger>
+                           <SelectContent className="rounded-xl border-2 p-1 max-h-[200px]">
+                             <SelectItem value="all" className="font-bold text-xs p-2 rounded-lg">Toutes</SelectItem>
+                             {OFFICIAL_CLASSES.map(c => <SelectItem key={c} value={c} className="font-bold text-xs p-2 rounded-lg">{c}</SelectItem>)}
+                           </SelectContent>
+                         </Select>
+                       </div>
+
+                       {!lotMode ? (
+                         <>
+                           <Input placeholder="Rechercher élève..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="h-10 rounded-xl bg-white border-none shadow-inner text-xs" />
+                           <ScrollArea className="h-44 border-2 rounded-2xl p-2 bg-white/50">
+                             {filteredStudents
+                               .filter((s: any) => !selectedClass || selectedClass === "all" || s.class_id === selectedClass)
+                               .map((s: any) => {
+                                 const paid = payments.filter((p: any) => p.student_matricule === s.matricule).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
+                                 const fee = Number(feesData[s.class_id]) || 150000
+                                 const reste = fee - paid
+                                 return (
+                                   <button key={s.id} onClick={() => { setFormData({...formData, studentId: s.matricule, amountPaid: reste > 0 ? reste.toString() : ""}) }}
+                                     className={cn("w-full text-left p-2.5 rounded-xl text-xs font-bold transition-all mb-1", formData.studentId === s.matricule ? "bg-primary text-white shadow-lg" : "hover:bg-muted/50")}>
+                                     <p className="truncate uppercase">{s.last_name} {s.first_name}</p>
+                                     <p className={cn("text-[8px]", formData.studentId === s.matricule ? "text-white/60" : reste <= 0 ? "text-emerald-600" : "text-red-500")}>
+                                       {reste <= 0 ? "✓ Soldé" : `Reste: ${reste.toLocaleString()} F`}
+                                     </p>
+                                   </button>
+                                 )
+                               })}
+                           </ScrollArea>
+                         </>
+                       ) : (
+                         <div className="space-y-2">
+                           <p className="text-[9px] font-black uppercase text-muted-foreground">
+                             {selectedClass && selectedClass !== "all" ? `${students.filter((s:any) => s.class_id === selectedClass).length} élèves` : "Choisir une classe d'abord"}
+                           </p>
+                           {selectedClass && selectedClass !== "all" && (
+                             <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                               <p className="text-[9px] font-black text-amber-700 uppercase">Le même montant sera appliqué à tous les élèves de {selectedClass}</p>
+                             </div>
+                           )}
+                         </div>
+                       )}
+                     </div>
+
+                     <div className="space-y-4 flex flex-col justify-between">
                        <div className="space-y-3">
-                          <Label className="font-black text-[9px] uppercase text-muted-foreground px-1">Choisir Élève</Label>
-                          <Input placeholder="Rechercher..." value={studentSearch} onChange={e => setStudentSearch(e.target.value)} className="h-11 rounded-xl bg-white border-none shadow-inner" />
-                          <ScrollArea className="h-44 md:h-56 border-2 rounded-2xl p-2 bg-white/50">
-                             {filteredStudents.map((s:any) => (
-                               <button 
-                                 key={s.id} 
-                                 onClick={() => setFormData({...formData, studentId: s.matricule})} 
-                                 className={cn(
-                                   "w-full text-left p-3 rounded-xl text-xs font-bold transition-all mb-1 truncate uppercase", 
-                                   formData.studentId === s.matricule ? "bg-primary text-white shadow-lg" : "hover:bg-muted/50"
-                                 )}
-                               >
-                                 {s.last_name} {s.first_name}
-                               </button>
-                             ))}
-                          </ScrollArea>
+                         <div className="space-y-1.5">
+                           <Label className="font-black text-[9px] uppercase text-muted-foreground">Montant (FCFA)</Label>
+                           <Input type="number" value={formData.amountPaid} onChange={e => setFormData({...formData, amountPaid: e.target.value})} className="h-12 md:h-16 rounded-xl text-center text-xl md:text-3xl font-black border-2 border-primary/10 shadow-sm" />
+                         </div>
+                         <div className="space-y-1.5">
+                           <Label className="font-black text-[9px] uppercase text-muted-foreground">Motif</Label>
+                           <Select value={formData.description} onValueChange={v => setFormData({...formData, description: v})}>
+                             <SelectTrigger className="h-11 rounded-xl border-2 font-black text-xs"><SelectValue /></SelectTrigger>
+                             <SelectContent className="rounded-xl border-2 p-1 max-h-[200px]">
+                               {MOTIFS_PAIEMENT.map(m => <SelectItem key={m} value={m} className="font-bold text-xs p-2 rounded-lg">{m}</SelectItem>)}
+                             </SelectContent>
+                           </Select>
+                         </div>
                        </div>
-                       <div className="space-y-4 flex flex-col justify-between">
-                          <div className="space-y-3">
-                            <div className="space-y-1.5">
-                               <Label className="font-black text-[9px] uppercase text-muted-foreground">Montant (FCFA)</Label>
-                               <Input type="number" value={formData.amountPaid} onChange={e => setFormData({...formData, amountPaid: e.target.value})} className="h-12 md:h-16 rounded-xl md:rounded-2xl text-center text-xl md:text-3xl font-black border-2 border-primary/10 shadow-sm focus:ring-primary" />
-                            </div>
-                            <div className="space-y-1.5">
-                               <Label className="font-black text-[9px] uppercase text-muted-foreground">Motif</Label>
-                               <Input value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="h-11 rounded-xl font-bold border-2" />
-                            </div>
-                          </div>
-                          <Button onClick={handleAddPayment} disabled={loading || !formData.studentId} className="w-full h-12 md:h-16 rounded-xl md:rounded-2xl bg-primary font-black text-[10px] md:text-lg shadow-xl active:scale-95 transition-all uppercase">
-                            {loading ? <Loader2 className="animate-spin size-4" /> : "Valider Encaissement"}
-                          </Button>
-                       </div>
-                    </div>
+                       <Button onClick={handleAddPayment} disabled={loading || (!formData.studentId && !lotMode) || (lotMode && (!selectedClass || selectedClass === "all"))} className="w-full h-12 md:h-14 rounded-xl bg-primary font-black text-xs md:text-sm shadow-xl active:scale-95 uppercase">
+                         {loading ? <Loader2 className="animate-spin size-4" /> : lotMode ? `Encaisser (${students.filter((s:any) => s.class_id === selectedClass).length} élèves)` : "Valider Encaissement"}
+                       </Button>
+                     </div>
+                   </div>
                  </div>
               </DialogContent>
             </Dialog>
