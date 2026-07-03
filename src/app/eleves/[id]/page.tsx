@@ -150,12 +150,12 @@ export default function StudentDetailPage() {
     const { data } = await supabase.from('students').select('*').eq('id', id).single()
     setStudent(data)
     if (data?.student_matricule || data?.matricule) {
-      await fetchGrades(data.student_matricule || data.matricule)
+      await fetchGrades(data.student_matricule || data.matricule, data.class_id)
     }
     setLoadingStudent(false)
   }
 
-  const fetchGrades = async (studentMatricule: string) => {
+  const fetchGrades = async (studentMatricule: string, classId?: string) => {
     const year = localStorage.getItem('acadex_active_year') || "2026-2027"
     setActiveYear(year)
     const [gradesRes, presRes, sanctRes, configRes] = await Promise.all([
@@ -171,10 +171,10 @@ export default function StudentDetailPage() {
     if (configRes.data) setConductConfig(configRes.data)
 
     // Calculer le rang dans la classe
-    if (data?.class_id) {
+    if (classId) {
       const [classStudentsRes, classGradesRes] = await Promise.all([
-        supabase.from('students').select('*').eq('class_id', data.class_id).eq('academic_year', year).eq('status', 'Actif'),
-        supabase.from('grades').select('*').eq('class_id', data.class_id).eq('academic_year', year)
+        supabase.from('students').select('*').eq('class_id', classId).eq('academic_year', year).eq('status', 'Actif'),
+        supabase.from('grades').select('*').eq('class_id', classId).eq('academic_year', year)
       ])
       const allStudents = classStudentsRes.data || []
       const allGrades = classGradesRes.data || []
