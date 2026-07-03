@@ -141,6 +141,9 @@ export default function StudentDetailPage() {
   const [presences, setPresences] = useState<any[]>([])
   const [sanctions, setSanctions] = useState<any[]>([])
   const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20 })
+  const [rang, setRang] = useState<string>("---")
+  const [classGrades, setClassGrades] = useState<any[]>([])
+  const [classStudents, setClassStudents] = useState<any[]>([])
 
   const fetchStudent = async () => {
     setLoadingStudent(true)
@@ -161,10 +164,45 @@ export default function StudentDetailPage() {
       supabase.from('sanctions').select('*').eq('student_matricule', studentMatricule).eq('academic_year', year).order('date', { ascending: false }),
       supabase.from('conduct_config').select('*').eq('id', 'main').single()
     ])
-    setGrades(gradesRes.data || [])
+    const gradesData = gradesRes.data || []
+    setGrades(gradesData)
     setPresences(presRes.data || [])
     setSanctions(sanctRes.data || [])
     if (configRes.data) setConductConfig(configRes.data)
+
+    // Calculer le rang dans la classe
+    if (data?.class_id) {
+      const [classStudentsRes, classGradesRes] = await Promise.all([
+        supabase.from('students').select('*').eq('class_id', data.class_id).eq('academic_year', year).eq('status', 'Actif'),
+        supabase.from('grades').select('*').eq('class_id', data.class_id).eq('academic_year', year)
+      ])
+      const allStudents = classStudentsRes.data || []
+      const allGrades = classGradesRes.data || []
+      setClassStudents(allStudents)
+      setClassGrades(allGrades)
+
+      // Calculer moyenne de chaque élève
+      const studentAvgs = allStudents.map((s: any) => {
+        const sGrades = allGrades.filter((g: any) => g.student_matricule === s.matricule)
+        const subjects: Record<string, any> = {}
+        sGrades.forEach((g: any) => {
+          if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
+          if (g.type?.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+          if (g.type?.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+        })
+        let totalW = 0, totalC = 0
+        Object.values(subjects).forEach((sub: any) => {
+          const avgInt = sub.ints.length ? sub.ints.reduce((a: number, b: number) => a + b, 0) / sub.ints.length : null
+          const blocks = [...(avgInt !== null ? [avgInt] : []), ...sub.devs]
+          if (blocks.length) { totalW += (blocks.reduce((a: number, b: number) => a + b, 0) / blocks.length) * sub.coef; totalC += sub.coef }
+        })
+        return { matricule: s.matricule, avg: totalC > 0 ? totalW / totalC : 0 }
+      }).sort((a: any, b: any) => b.avg - a.avg)
+
+      const myMatricule = data.student_matricule || data.matricule
+      const myRank = studentAvgs.findIndex((s: any) => s.matricule === myMatricule) + 1
+      setRang(myRank > 0 ? `${myRank}e / ${allStudents.length}` : "---")
+    }
   }
 
   useEffect(() => {
@@ -432,7 +470,7 @@ export default function StudentDetailPage() {
                 </div>
                 <div className="flex-1 md:flex-none text-center px-4 md:px-6 py-2 md:py-3 bg-muted/50 rounded-2xl md:rounded-3xl border border-muted">
                   <p className="text-[8px] md:text-[10px] uppercase font-black text-muted-foreground mb-1">Rang</p>
-                  <p className="text-lg md:text-2xl font-black text-foreground">---</p>
+                  <p className="text-lg md:text-2xl font-black text-foreground">{rang}</p>
                 </div>
               </div>
             </div>
