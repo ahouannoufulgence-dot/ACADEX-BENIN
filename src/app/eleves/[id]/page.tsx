@@ -199,7 +199,7 @@ export default function StudentDetailPage() {
         return { matricule: s.matricule, avg: totalC > 0 ? totalW / totalC : 0 }
       }).sort((a: any, b: any) => b.avg - a.avg)
 
-      const myMatricule = data.student_matricule || data.matricule
+      const myMatricule = studentMatricule
       const myRank = studentAvgs.findIndex((s: any) => s.matricule === myMatricule) + 1
       setRang(myRank > 0 ? `${myRank}e / ${allStudents.length}` : "---")
     }
