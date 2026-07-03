@@ -36,6 +36,149 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+function ComparateurAnnees({ archivedYears }: { archivedYears: string[] }) {
+  const [yearA, setYearA] = useState(archivedYears[0] || "")
+  const [yearB, setYearB] = useState(archivedYears[1] || "")
+  const [dataA, setDataA] = useState<any>(null)
+  const [dataB, setDataB] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchYearData = async (year: string) => {
+    const [studRes, gradesRes, payRes] = await Promise.all([
+      supabase.from('students').select('*').eq('academic_year', year).eq('status', 'Actif'),
+      supabase.from('grades').select('*').eq('academic_year', year),
+      supabase.from('payments').select('*').eq('academic_year', year)
+    ])
+    const students = studRes.data || []
+    const grades = gradesRes.data || []
+    const payments = payRes.data || []
+
+    // Calcul moyenne générale
+    const studentAvgs = students.map((s: any) => {
+      const sGrades = grades.filter((g: any) => g.student_matricule === (s.student_matricule || s.matricule))
+      const subjects: Record<string, any> = {}
+      sGrades.forEach((g: any) => {
+        if (!subjects[g.subject]) subjects[g.subject] = { ints: [], devs: [], coef: Number(g.coefficient) || 2 }
+        if (g.type?.startsWith('int')) subjects[g.subject].ints.push(Number(g.value))
+        if (g.type?.startsWith('dev')) subjects[g.subject].devs.push(Number(g.value))
+      })
+      let totalW = 0, totalC = 0
+      Object.values(subjects).forEach((sub: any) => {
+        const avgInt = sub.ints.length ? sub.ints.reduce((a: number, b: number) => a + b, 0) / sub.ints.length : null
+        const blocks = [...(avgInt !== null ? [avgInt] : []), ...sub.devs]
+        if (blocks.length) { totalW += (blocks.reduce((a: number, b: number) => a + b, 0) / blocks.length) * sub.coef; totalC += sub.coef }
+      })
+      return totalC > 0 ? totalW / totalC : 0
+    })
+
+    const avg = studentAvgs.length ? studentAvgs.reduce((a: number, b: number) => a + b, 0) / studentAvgs.length : 0
+    const successRate = studentAvgs.length ? (studentAvgs.filter((a: number) => a >= 10).length / studentAvgs.length) * 100 : 0
+    const totalRevenue = payments.reduce((acc: number, p: any) => acc + Number(p.amount_paid || 0), 0)
+
+    return { year, effectif: students.length, avg, successRate, totalRevenue, gradesCount: grades.length }
+  }
+
+  const handleCompare = async () => {
+    if (!yearA || !yearB || yearA === yearB) {
+      toast({ title: "Choisir deux années différentes", variant: "destructive" })
+      return
+    }
+    setLoading(true)
+    const [a, b] = await Promise.all([fetchYearData(yearA), fetchYearData(yearB)])
+    setDataA(a)
+    setDataB(b)
+    setLoading(false)
+  }
+
+  const diff = (a: number, b: number) => {
+    const d = a - b
+    return { value: Math.abs(d).toFixed(2), up: d > 0, neutral: d === 0 }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card className="p-5 md:p-8 rounded-[1.8rem] bg-white border-none shadow-sm">
+        <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-4">Choisir les années à comparer</p>
+        <div className="flex items-center gap-3 md:gap-6">
+          <select value={yearA} onChange={e => setYearA(e.target.value)}
+            className="flex-1 h-11 md:h-14 rounded-xl border-2 border-primary/20 font-black text-sm px-4 bg-white focus:outline-none focus:border-primary">
+            {archivedYears.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <div className="size-9 bg-primary/10 rounded-xl flex items-center justify-center shrink-0">
+            <ArrowLeftRight className="size-4 text-primary" />
+          </div>
+          <select value={yearB} onChange={e => setYearB(e.target.value)}
+            className="flex-1 h-11 md:h-14 rounded-xl border-2 border-primary/20 font-black text-sm px-4 bg-white focus:outline-none focus:border-primary">
+            {archivedYears.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <Button onClick={handleCompare} disabled={loading} className="h-11 md:h-14 px-6 md:px-10 rounded-xl bg-primary font-black text-xs md:text-sm shadow-lg active:scale-95">
+            {loading ? <Loader2 className="animate-spin size-4" /> : "Comparer"}
+          </Button>
+        </div>
+      </Card>
+
+      {dataA && dataB && (
+        <div className="space-y-4">
+          {/* Header */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-4 bg-primary text-white rounded-2xl text-center">
+              <p className="font-black text-lg md:text-2xl">{dataA.year}</p>
+              <p className="text-[8px] font-bold uppercase opacity-60">Année A</p>
+            </div>
+            <div className="p-4 bg-muted/30 rounded-2xl text-center flex items-center justify-center">
+              <p className="font-black text-xs uppercase text-muted-foreground">Différence</p>
+            </div>
+            <div className="p-4 bg-foreground text-white rounded-2xl text-center">
+              <p className="font-black text-lg md:text-2xl">{dataB.year}</p>
+              <p className="text-[8px] font-bold uppercase opacity-60">Année B</p>
+            </div>
+          </div>
+
+          {/* Comparaisons */}
+          {[
+            { label: "Effectif total", a: dataA.effectif, b: dataB.effectif, suffix: " élèves", format: (v: number) => v.toString() },
+            { label: "Moyenne générale", a: dataA.avg, b: dataB.avg, suffix: "/20", format: (v: number) => v.toFixed(2) },
+            { label: "Taux de réussite", a: dataA.successRate, b: dataB.successRate, suffix: "%", format: (v: number) => v.toFixed(1) },
+            { label: "Notes saisies", a: dataA.gradesCount, b: dataB.gradesCount, suffix: "", format: (v: number) => v.toString() },
+            { label: "Recettes totales", a: dataA.totalRevenue, b: dataB.totalRevenue, suffix: " F", format: (v: number) => v.toLocaleString() },
+          ].map((row, i) => {
+            const d = diff(row.a, row.b)
+            return (
+              <Card key={i} className="p-4 md:p-6 rounded-[1.5rem] border-none shadow-sm bg-white">
+                <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-3">{row.label}</p>
+                <div className="grid grid-cols-3 gap-3 items-center">
+                  <div className="text-center">
+                    <p className="text-xl md:text-3xl font-black text-primary">{row.format(row.a)}<span className="text-xs opacity-40">{row.suffix}</span></p>
+                  </div>
+                  <div className="text-center">
+                    {d.neutral ? (
+                      <Badge className="bg-muted text-muted-foreground font-black text-[9px]">Identique</Badge>
+                    ) : (
+                      <Badge className={cn("font-black text-[9px]", d.up ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700")}>
+                        {d.up ? "▲" : "▼"} {d.value}{row.suffix}
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl md:text-3xl font-black text-foreground">{row.format(row.b)}<span className="text-xs opacity-40">{row.suffix}</span></p>
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
+      {!dataA && !dataB && (
+        <Card className="p-16 text-center rounded-[2rem] border-4 border-dashed bg-white/50 opacity-40 space-y-4">
+          <BarChart3 className="size-12 mx-auto text-muted-foreground" />
+          <p className="font-black uppercase text-muted-foreground text-sm">Choisir deux années et cliquer Comparer</p>
+        </Card>
+      )}
+    </div>
+  )
+}
+
 export default function AcademicYearsPage() {
   const [activeTab, setActiveTab] = useState("annees")
   const [schoolConfig, setSchoolConfig] = useState<any>(null)
@@ -223,16 +366,8 @@ export default function AcademicYearsPage() {
              </div>
           </TabsContent>
 
-          <TabsContent value="comparaison" className="animate-in zoom-in-95">
-            <Card className="p-20 md:p-40 text-center rounded-[3rem] md:rounded-[5rem] border-4 border-dashed bg-muted/10 opacity-30 flex flex-col items-center justify-center gap-8">
-              <BarChart3 className="size-12 md:size-24 text-muted-foreground mx-auto" />
-              <div className="space-y-3">
-                <h3 className="text-lg md:text-3xl font-black uppercase tracking-tight">Analyse Inter-Annuelle</h3>
-                <p className="text-muted-foreground font-medium max-w-sm mx-auto text-xs md:text-lg leading-relaxed">
-                  "Fonction de pilotage activée dès deux univers scellés."
-                </p>
-              </div>
-            </Card>
+          <TabsContent value="comparaison" className="animate-in zoom-in-95 space-y-6 md:space-y-10">
+            <ComparateurAnnees archivedYears={archivedYears} />
           </TabsContent>
 
           <TabsContent value="audit" className="space-y-6 animate-in slide-in-from-bottom-4">
