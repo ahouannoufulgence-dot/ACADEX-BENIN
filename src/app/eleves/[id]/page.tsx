@@ -588,9 +588,76 @@ export default function StudentDetailPage() {
           </TabsContent>
 
           <TabsContent value="absences" className="space-y-6 animate-in slide-in-from-right-4">
-            <Card className="p-16 text-center border-none shadow-sm bg-white rounded-[1.5rem]">
-              <p className="font-black text-muted-foreground uppercase text-xs opacity-30">Module absences à venir</p>
-            </Card>
+            <div className="flex gap-2">
+              {["T1","T2","T3"].map(t => (
+                <button key={t} onClick={() => setSelectedTrimestre(t)}
+                  className={`h-10 px-6 rounded-xl font-black text-xs uppercase transition-all border-2 ${selectedTrimestre === t ? "bg-primary text-white border-primary shadow-lg" : "bg-white text-muted-foreground border-muted"}`}>
+                  {t === "T1" ? "1er Trim." : t === "T2" ? "2ème Trim." : "3ème Trim."}
+                </button>
+              ))}
+            </div>
+            {(() => {
+              const trimPresences = presences.filter(p => p.trimestre === selectedTrimestre)
+              const trimSanctions = sanctions.filter(s => s.trimestre === selectedTrimestre)
+              const absNonJust = trimPresences.filter(p => p.statut === "Absent" && !p.justifiee).length
+              const absJust = trimPresences.filter(p => p.statut === "Absent" && p.justifiee).length
+              const retards = trimPresences.filter(p => p.statut === "Retard").length
+              const totalPoints = trimSanctions.reduce((acc, s) => acc + Number(s.points_retranches || 0), 0)
+              const noteConduite = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
+              return (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { label: "Abs. non just.", value: absNonJust, color: "text-red-600", bg: "bg-red-50" },
+                      { label: "Abs. justifiées", value: absJust, color: "text-blue-600", bg: "bg-blue-50" },
+                      { label: "Retards", value: retards, color: "text-amber-600", bg: "bg-amber-50" },
+                      { label: "Sanctions", value: trimSanctions.length, color: "text-red-600", bg: "bg-red-50" },
+                    ].map(st => (
+                      <Card key={st.label} className={`p-4 md:p-6 rounded-[1.2rem] border-none shadow-sm text-center ${st.bg}`}>
+                        <p className={`text-2xl md:text-3xl font-black ${st.color}`}>{st.value}</p>
+                        <p className="text-[7px] font-black uppercase text-muted-foreground mt-1 tracking-widest">{st.label}</p>
+                      </Card>
+                    ))}
+                  </div>
+                  <Card className={`p-4 rounded-[1.2rem] border-none shadow-sm text-center ${noteConduite >= 10 ? "bg-emerald-50" : "bg-red-50"}`}>
+                    <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest mb-1">Note de conduite — {selectedTrimestre}</p>
+                    <p className={`text-3xl font-black ${noteConduite >= 10 ? "text-emerald-600" : "text-red-600"}`}>{noteConduite.toFixed(1)}<span className="text-xs opacity-40">/20</span></p>
+                  </Card>
+                  <Card className="border-none shadow-sm bg-white rounded-[1.5rem] overflow-hidden">
+                    <div className="p-4 border-b bg-muted/5 flex items-center justify-between">
+                      <h3 className="font-black text-sm flex items-center gap-2"><UserCheck className="size-4 text-primary" /> Présences</h3>
+                      <Badge className="bg-primary/10 text-primary font-black text-[8px]">{trimPresences.length}</Badge>
+                    </div>
+                    {trimPresences.length === 0 ? (
+                      <div className="p-10 text-center opacity-30"><p className="font-black uppercase text-xs">Aucune entrée ce trimestre</p></div>
+                    ) : trimPresences.map((p, i) => (
+                      <div key={i} className="p-3 border-b border-muted/10 flex items-center gap-3 hover:bg-muted/5">
+                        <Badge className={`text-[7px] font-black px-2 h-5 rounded-md ${p.statut === "Absent" ? "bg-red-100 text-red-700" : p.statut === "Retard" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{p.statut}</Badge>
+                        <span className="text-[8px] font-bold flex-1">{p.matiere} • {p.heure}</span>
+                        {p.justifiee && <Badge className="text-[6px] font-black px-1.5 h-4 rounded-md bg-blue-100 text-blue-700">Justifiée</Badge>}
+                        <span className="text-[7px] font-bold text-muted-foreground">{new Date(p.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                      </div>
+                    ))}
+                  </Card>
+                  {trimSanctions.length > 0 && (
+                    <Card className="border-none shadow-sm bg-white rounded-[1.5rem] overflow-hidden">
+                      <div className="p-4 border-b bg-muted/5 flex items-center justify-between">
+                        <h3 className="font-black text-sm flex items-center gap-2"><ShieldAlert className="size-4 text-red-500" /> Sanctions</h3>
+                        <Badge className="bg-red-50 text-red-600 font-black text-[8px]">{trimSanctions.length}</Badge>
+                      </div>
+                      {trimSanctions.map((s, i) => (
+                        <div key={i} className="p-3 border-b border-muted/10 flex items-center gap-3 hover:bg-muted/5">
+                          <Badge className="text-[7px] font-black px-2 h-5 rounded-md bg-red-100 text-red-700">{s.sanction}</Badge>
+                          <span className="text-[8px] font-bold flex-1">{s.type_faute}{s.motif ? " — " + s.motif : ""}</span>
+                          <Badge className="text-[7px] font-black px-2 h-5 rounded-md bg-foreground text-white">-{s.points_retranches}pts</Badge>
+                          <span className="text-[7px] font-bold text-muted-foreground">{new Date(s.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+                        </div>
+                      ))}
+                    </Card>
+                  )}
+                </div>
+              )
+            })()}
           </TabsContent>
 
           <TabsContent value="finance" className="space-y-6 animate-in slide-in-from-right-4">
