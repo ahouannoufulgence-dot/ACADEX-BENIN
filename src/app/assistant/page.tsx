@@ -56,38 +56,46 @@ export default function AssistantPage() {
       const userRole = localStorage.getItem('acadex_user_role') || "Élève"
       const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
+      const userId = localStorage.getItem('acadex_user_id') || ""
+      const userRole = localStorage.getItem('acadex_user_role') || "Élève"
+      const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
+
       let contextData: any = { academicYear: activeYear }
       
       if (userRole === 'Élève') {
-        const [gradesRes, lifeRes] = await Promise.all([
+        const [gradesRes, presencesRes, sanctionsRes, conductRes] = await Promise.all([
           supabase.from('grades').select('*').eq('student_matricule', userId).eq('academic_year', activeYear),
-          supabase.from('student_life').select('*').eq('student_id', userId).eq('academic_year', activeYear)
+          supabase.from('presences').select('*').eq('student_matricule', userId).eq('academic_year', activeYear),
+          supabase.from('sanctions').select('*').eq('student_matricule', userId).eq('academic_year', activeYear),
+          supabase.from('conduct_config').select('*').eq('id', 'main').single()
         ])
-        
         const grades = gradesRes.data || []
-        const subjects: Record<string, number[]> = {}
+        const presences = presencesRes.data || []
+        const sanctions = sanctionsRes.data || []
+        const conductConfig = conductRes.data || { note_depart: 20 }
+        const notesParMatiere: Record<string, any> = {}
         grades.forEach((g: any) => {
-          if (!subjects[g.subject]) subjects[g.subject] = []
-          subjects[g.subject].push(Number(g.value))
+          const key = `${g.subject}_${g.term}`
+          if (!notesParMatiere[key]) notesParMatiere[key] = { matiere: g.subject, trimestre: g.term, notes: {} }
+          notesParMatiere[key].notes[g.type] = Number(g.value)
         })
-
-        const averages: Record<string, number> = {}
-        Object.entries(subjects).forEach(([sub, vals]) => {
-          averages[sub] = Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2))
-        })
-
-        const totalAvg = Object.values(averages).length > 0 
-          ? (Object.values(averages).reduce((a, b) => a + b, 0) / Object.values(averages).length).toFixed(2)
-          : "0.00";
-
+        const totalPoints = sanctions.reduce((acc: number, s: any) => acc + Number(s.points_retranches || 0), 0)
+        const noteConduite = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
         contextData = {
           nom: localStorage.getItem('acadex_user_name'),
-          moyennes: averages,
-          moyenneGenerale: totalAvg,
-          historiqueVieScolaire: (lifeRes.data || []).map((d: any) => ({ motif: d.motif, type: d.category, impact: d.points_impact }))
+          matricule: userId,
+          notes: Object.values(notesParMatiere),
+          absences: {
+            total: presences.filter((p: any) => p.statut === 'Absent').length,
+            justifiees: presences.filter((p: any) => p.statut === 'Absent' && p.justifiee).length,
+            nonJustifiees: presences.filter((p: any) => p.statut === 'Absent' && !p.justifiee).length,
+            retards: presences.filter((p: any) => p.statut === 'Retard').length
+          },
+          sanctions: sanctions.map((s: any) => ({ type: s.sanction, faute: s.type_faute, points: s.points_retranches })),
+          noteConduite: noteConduite.toFixed(1)
         }
       } else if (userRole === 'Directeur') {
-        const [studentsRes, gradesRes, paymentsRes, teachersRes, schedulesRes, expensesRes, settingsRes, lifeRes, contribRes, msgsRes, subjectRes] = await Promise.all([
+        const [studentsRes, gradesRes, paymentsRes, teachersRes, schedulesRes, expensesRes, settingsRes, lifeRes, sanctionsRes, presencesRes] = await Promise.all([
           supabase.from('students').select('*').eq('academic_year', activeYear),
           supabase.from('grades').select('*').eq('academic_year', activeYear),
           supabase.from('payments').select('*').eq('academic_year', activeYear),
@@ -96,11 +104,9 @@ export default function AssistantPage() {
           supabase.from('expenses').select('*').eq('academic_year', activeYear),
           supabase.from('school_settings').select('*'),
           supabase.from('student_life').select('*').eq('academic_year', activeYear),
-          supabase.from('class_contributions').select('*').eq('academic_year', activeYear),
-          supabase.from('messages').select('*').eq('academic_year', activeYear),
-          supabase.from('subject_configs').select('*')
+          supabase.from('sanctions').select('*').eq('academic_year', activeYear),
+          supabase.from('presences').select('*').eq('academic_year', activeYear)
         ])
-
         const students = studentsRes.data || []
         const grades = gradesRes.data || []
         const payments = paymentsRes.data || []
@@ -109,26 +115,11 @@ export default function AssistantPage() {
         const expenses = expensesRes.data || []
         const settings = settingsRes.data || []
         const studentLife = lifeRes.data || []
-        const contributions = contribRes.data || []
-        const messages = msgsRes.data || []
-        const subjects = subjectRes.data || []
-
-        const promos: Record<string, { total: number, count: number }> = {}
-        grades.forEach(g => {
-          const p = g.class_id?.split(' ')[0] || 'Inconnue'
-          if (!promos[p]) promos[p] = { total: 0, count: 0 }
-          promos[p].total += Number(g.value)
-          promos[p].count++
-        })
-
-        const promoAvgs: Record<string, string> = {}
-        Object.entries(promos).forEach(([name, data]) => {
-          promoAvgs[name] = (data.total / data.count).toFixed(2)
-        })
-
+        const sanctionsData = sanctionsRes.data || []
+        const presencesData = presencesRes.data || []
         contextData = {
           eleves: students.map((s: any) => ({
-            matricule: s.student_matricule,
+            matricule: s.student_matricule || s.matricule,
             nom: s.last_name,
             prenom: s.first_name,
             classe: s.class_id,
@@ -138,8 +129,10 @@ export default function AssistantPage() {
             matricule: g.student_matricule,
             matiere: g.subject,
             valeur: g.value,
+            type: g.type,
             classe: g.class_id,
-            promotion: g.promotion
+            trimestre: g.term,
+            coefficient: g.coefficient
           })),
           enseignants: teachers.map((t: any) => ({
             code: t.official_id,
@@ -149,54 +142,83 @@ export default function AssistantPage() {
           })),
           paiements: payments.map((p: any) => ({
             matricule: p.student_matricule,
+            nom: p.student_name,
             montant: p.amount_paid,
-            statut: p.status
+            motif: p.note,
+            classe: p.class_id
+          })),
+          depenses: expenses.map((e: any) => ({
+            label: e.label,
+            montant: e.amount,
+            categorie: e.category,
+            date: e.date
+          })),
+          vieScolaire: studentLife,
+          sanctions: sanctionsData.map((s: any) => ({
+            eleve: s.student_name,
+            classe: s.class_id,
+            faute: s.type_faute,
+            sanction: s.sanction,
+            points: s.points_retranches,
+            trimestre: s.trimestre
+          })),
+          presences: presencesData.map((p: any) => ({
+            eleve: p.student_name,
+            classe: p.class_id,
+            statut: p.statut,
+            matiere: p.matiere,
+            justifiee: p.justifiee,
+            trimestre: p.trimestre
           })),
           emploiDuTemps: schedules,
-          depenses: expenses,
-          parametresEcole: settings,
-          vieScolaire: studentLife,
-          contributions: contributions,
-          messagerie: messages,
-          configMatieres: subjects
+          parametresEcole: settings
         }
       } else if (userRole === 'Enseignant') {
         const classes = JSON.parse(localStorage.getItem('acadex_user_classes') || "[]")
-        const { data: gradesData } = await supabase.from('grades').select('*').eq('subject', localStorage.getItem('acadex_user_subject')).eq('academic_year', activeYear)
-        const myGrades = (gradesData || []).filter((g: any) => classes.includes(g.class_id))
-
+        const subject = localStorage.getItem('acadex_user_subject') || ""
+        const subjectSecondaire = localStorage.getItem('acadex_user_subject_secondaire') || ""
+        const [gradesRes, studentsRes, presencesRes, sanctionsRes] = await Promise.all([
+          supabase.from('grades').select('*').eq('academic_year', activeYear).in('class_id', classes.length ? classes : ['']),
+          supabase.from('students').select('*').eq('academic_year', activeYear).in('class_id', classes.length ? classes : ['']),
+          supabase.from('presences').select('*').eq('academic_year', activeYear).in('class_id', classes.length ? classes : ['']),
+          supabase.from('sanctions').select('*').eq('academic_year', activeYear).in('class_id', classes.length ? classes : [''])
+        ])
+        const myGrades = (gradesRes.data || []).filter((g: any) => g.subject === subject || (subjectSecondaire && g.subject === subjectSecondaire))
+        const myStudents = studentsRes.data || []
         contextData = {
-          matiere: localStorage.getItem('acadex_user_subject'),
+          matiere: subject,
+          matiereSecondaire: subjectSecondaire || null,
           mesClasses: classes,
-          notes: myGrades.map((g: any) => ({
-            matricule: g.student_matricule,
-            nomEleve: g.student_name,
-            valeur: g.value,
-            classe: g.class_id,
-            trimestre: g.term
-          })),
-          eleves:students.map((s: any) => ({
-            matricule: s.student_matricule,
+          eleves: myStudents.map((s: any) => ({
+            matricule: s.student_matricule || s.matricule,
             nom: s.last_name,
             prenom: s.first_name,
             classe: s.class_id
-          })).filter((s: any) => classes.includes(s.classe))
+          })),
+          notes: myGrades.map((g: any) => ({
+            matricule: g.student_matricule,
+            matiere: g.subject,
+            valeur: g.value,
+            type: g.type,
+            classe: g.class_id,
+            trimestre: g.term,
+            coefficient: g.coefficient
+          })),
+          presences: (presencesRes.data || []).map((p: any) => ({
+            eleve: p.student_name,
+            statut: p.statut,
+            matiere: p.matiere,
+            justifiee: p.justifiee,
+            trimestre: p.trimestre
+          })),
+          sanctions: (sanctionsRes.data || []).map((s: any) => ({
+            eleve: s.student_name,
+            faute: s.type_faute,
+            sanction: s.sanction,
+            points: s.points_retranches
+          }))
         }
       }
-      
-      const res = await askAcadexBrain({
-        question: userMsg,
-        userRole: userRole as any,
-        userId: userId,
-        contextData
-      })
-
-      setMessages(prev => [...prev, { role: 'bot', content: res.answer }])
-    } catch (err) {
-      setMessages(prev => [...prev, { role: 'bot', content: "Je rencontre une difficulté pour accéder aux registres scellés. Ma connexion à l'infrastructure centrale ACADEX est momentanément ralentie." }])
-    } finally {
-      setLoading(false)
-    }
   }
 
   const quickPrompts = [
