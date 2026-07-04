@@ -119,7 +119,6 @@ export default function StudentDashboard() {
               return termAvgs.length > 0 ? termAvgs.reduce((a,b)=>a+b,0)/termAvgs.length : 0
             }
             const sorted = matricules.map((mat: string) => ({ mat, avg: calcAvg(mat) })).filter((s: any) => s.avg > 0).sort((a: any, b: any) => b.avg - a.avg)
-            console.log("RANK DEBUG", { studentId, matricules, sorted, classGradesCount: classGrades.length })
             const r = sorted.findIndex((s: any) => s.mat === studentId) + 1
             setRank(r > 0 ? r + "/" + sorted.length : "---")
           }
