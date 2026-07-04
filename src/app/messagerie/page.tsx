@@ -34,8 +34,10 @@ import {
   VideoOff,
   Maximize2,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
@@ -58,6 +60,7 @@ import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export default function MessagingPage() {
+  const router = useRouter()
   const [currentUserId, setCurrentUserId] = useState<string>("")
   const [currentUserName, setCurrentUserName] = useState<string>("")
   const [currentUserRole, setCurrentUserRole] = useState<string>("")
@@ -304,7 +307,12 @@ export default function MessagingPage() {
       )}>
         <div className="p-5 md:p-8 pb-4">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-black tracking-tight uppercase">Messages</h2>
+            <div className="flex items-center gap-3">
+              <button onClick={() => router.back()} className="hidden md:flex size-9 rounded-xl bg-muted/30 hover:bg-muted items-center justify-center transition-all">
+                <ArrowLeft className="size-4 text-muted-foreground" />
+              </button>
+              <h2 className="text-3xl font-black tracking-tight uppercase">Messages</h2>
+            </div>
             <Dialog>
               <DialogTrigger asChild>
                 <Button size="icon" onClick={fetchContacts} className="size-11 rounded-full bg-primary text-white shadow-xl hover:scale-105 active:scale-95 transition-all"><Plus className="size-7" /></Button>

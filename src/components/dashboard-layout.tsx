@@ -100,9 +100,26 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [userId, setUserId] = useState("")
   const [mounted, setMounted] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [schoolInfo, setSchoolInfo] = useState({ name: "ACADEX", logo: "" })
   const [availableYears, setAvailableYears] = useState<string[]>(["2026-2027"])
   const [activeYear, setActiveYear] = useState("2026-2027")
+
+  // Fetch messages non lus
+  useEffect(() => {
+    if (!userId) return
+    const fetchUnread = async () => {
+      const { data } = await supabase
+        .from('conversations')
+        .select('unread_count')
+        .contains('participants', [userId])
+      const total = (data || []).reduce((acc: number, c: any) => acc + (c.unread_count?.[userId] || 0), 0)
+      setUnreadCount(total)
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [userId])
 
   const isMessaging = pathname === '/messagerie'
   const heroImage = placeholderData.placeholderImages.find(img => img.id === "hero-students-class")
@@ -216,8 +233,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                           }`}
                           tooltip={item.name}
                         >
-                          <Link href={item.href}>
-                            <item.icon className={cn("size-4 md:size-4.5 shrink-0", pathname === item.href ? "text-white" : "text-white/50")} />
+                          <Link href={item.href} className="relative flex items-center gap-2 w-full">
+                            <div className="relative shrink-0">
+                              <item.icon className={cn("size-4 md:size-4.5", pathname === item.href ? "text-white" : "text-white/50")} />
+                              {item.href === '/messagerie' && unreadCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 size-3.5 bg-red-500 rounded-full text-[7px] text-white flex items-center justify-center font-black animate-pulse">
+                                  {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                              )}
+                            </div>
                             <span className="font-bold text-[11px] md:text-sm tracking-wide group-data-[collapsible=icon]:hidden">{item.name}</span>
                             {item.isIA && (
                               <Badge className="ml-auto bg-amber-400 text-[7px] font-black h-3.5 px-1 rounded-sm text-black group-data-[collapsible=icon]:hidden animate-pulse">IA</Badge>
