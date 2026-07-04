@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "app.vercel.acadex_benin.twa",
+    "sha256_cert_fingerprints": [
+      "58:A4:3D:79:92:9A:EE:40:00:10:DA:D2:C6:BF:35:EC:5B:D9:D1:3F:83:18:47:A3:C0:8D:E6:08:1F:A6:8A:52"
+    ]
+  }
+}]
