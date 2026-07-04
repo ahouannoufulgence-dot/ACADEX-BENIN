@@ -56,9 +56,6 @@ export default function AssistantPage() {
       const userRole = localStorage.getItem('acadex_user_role') || "Élève"
       const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
-      const userId = localStorage.getItem('acadex_user_id') || ""
-      const userRole = localStorage.getItem('acadex_user_role') || "Élève"
-      const activeYear = localStorage.getItem('acadex_active_year') || "2026-2027"
 
       let contextData: any = { academicYear: activeYear }
       
@@ -219,6 +216,11 @@ export default function AssistantPage() {
           }))
         }
       }
+    } catch (err) {
+      setMessages(prev => [...prev, { role: 'bot', content: "Je rencontre une difficulté pour accéder aux registres scellés." }])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const quickPrompts = [
