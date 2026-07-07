@@ -5,6 +5,8 @@ import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { jsPDF } from "jspdf"
+import autoTable from "jspdf-autotable"
 import { 
   Save, 
   Loader2, 
@@ -292,50 +294,148 @@ export default function GradesPage() {
   }
 
   if (isDirector && selectedClass) {
-    const finalData = registerData.students
+    const finalData = registerData.students.sort((a: any, b: any) => b.subjectAvg - a.subjectAvg).map((s: any, i: number) => ({ ...s, rang: i + 1 }))
+    const classAvg = finalData.length ? finalData.reduce((acc: number, s: any) => acc + s.subjectAvg, 0) / finalData.length : 0
+    const maxAvg = finalData.length ? Math.max(...finalData.map((s: any) => s.subjectAvg)) : 0
+    const minAvg = finalData.length ? Math.min(...finalData.map((s: any) => s.subjectAvg)) : 0
+    const successRate = finalData.length ? (finalData.filter((s: any) => s.subjectAvg >= 10).length / finalData.length * 100) : 0
+
+    const exportPDF = () => {
+      const doc = new jsPDF()
+      const primaryColor: [number, number, number] = [20, 83, 45]
+      doc.setFillColor(...primaryColor)
+      doc.rect(0, 0, 210, 40, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`REGISTRE — ${selectedClass}`, 14, 18)
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`${selectedMatiere} • ${selectedTrimestre} • ${activeYear}`, 14, 28)
+      doc.text(`Édité le ${new Date().toLocaleDateString('fr-FR')}`, 196, 28, { align: 'right' })
+      
+      // Stats
+      doc.setTextColor(0, 0, 0)
+      autoTable(doc, {
+        startY: 48,
+        head: [['Effectif', 'Moy. Classe', 'Meilleure', 'Plus faible', 'Taux Réussite']],
+        body: [[
+          finalData.length,
+          classAvg.toFixed(2) + '/20',
+          maxAvg.toFixed(2) + '/20',
+          minAvg.toFixed(2) + '/20',
+          successRate.toFixed(1) + '%'
+        ]],
+        styles: { fontSize: 9, fontStyle: 'bold', halign: 'center' },
+        headStyles: { fillColor: primaryColor },
+      })
+
+      // Tableau notes
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 8,
+        head: [['Rang', 'Nom & Prénom', 'Matricule', 'INT 1', 'INT 2', 'INT 3', 'DEV 1', 'DEV 2', 'Moyenne']],
+        body: finalData.map((s: any) => [
+          s.rang,
+          `${s.last_name} ${s.first_name}`,
+          s.matricule || '--',
+          s.i1 ?? '--',
+          s.i2 ?? '--',
+          s.i3 ?? '--',
+          s.d1 ?? '--',
+          s.d2 ?? '--',
+          s.subjectAvg.toFixed(2)
+        ]),
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: primaryColor },
+        columnStyles: { 8: { fontStyle: 'bold' } },
+        didParseCell: (data: any) => {
+          if (data.column.index === 8 && data.section === 'body') {
+            const avg = parseFloat(data.cell.text[0])
+            data.cell.styles.textColor = avg >= 10 ? [20, 83, 45] : [220, 38, 38]
+          }
+        }
+      })
+
+      doc.save(`registre-${selectedClass}-${selectedMatiere}-${selectedTrimestre}-${activeYear}.pdf`)
+    }
+
     return (
       <DashboardLayout>
-        <div className="space-y-6 md:space-y-10 animate-in slide-in-from-right-4 duration-500">
-           <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-6 md:space-y-8 animate-in slide-in-from-right-4 duration-500">
+           {/* Header */}
+           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1">
-                 <button onClick={() => setSelectedClass("")} className="flex items-center gap-2 text-muted-foreground hover:text-primary font-black text-[10px] md:text-sm uppercase tracking-widest mb-2 transition-all"><ChevronLeft className="size-4" /> Retour au registre</button>
-                 <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">{selectedClass}</span></h1>
+                 <button onClick={() => setSelectedClass("")} className="flex items-center gap-2 text-muted-foreground hover:text-primary font-black text-[10px] md:text-sm uppercase tracking-widest mb-2 transition-all"><ChevronLeft className="size-4" /> Retour</button>
+                 <h1 className="text-2xl md:text-4xl font-black text-foreground tracking-tight uppercase">Registre <span className="text-primary italic">{selectedClass}</span></h1>
+                 <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMatiere} • {selectedTrimestre} • {activeYear}</p>
               </div>
               <div className="flex items-center gap-3">
-                 {systemLocked && <Badge className="bg-destructive text-white px-5 h-12 rounded-xl font-black uppercase shadow-lg shadow-destructive/20"><Lock className="size-4 mr-2" /> Scellé</Badge>}
-                 <Button variant="outline" className="h-11 md:h-14 px-6 md:px-10 rounded-xl md:rounded-2xl border-2 font-black bg-white"><Download className="mr-2 size-4" /> Export</Button>
+                 {systemLocked && <Badge className="bg-destructive text-white px-4 h-10 rounded-xl font-black uppercase"><Lock className="size-3.5 mr-1.5" /> Scellé</Badge>}
+                 <Button onClick={exportPDF} className="h-10 md:h-12 px-5 md:px-8 rounded-xl border-2 font-black bg-white text-foreground border-muted hover:bg-primary hover:text-white hover:border-primary transition-all" variant="outline">
+                   <Download className="mr-2 size-4" /> PDF
+                 </Button>
               </div>
            </div>
-           <Card className="p-4 md:p-8 rounded-[2rem] md:rounded-[3rem] bg-white border-none shadow-sm flex flex-col md:flex-row gap-4 md:gap-8 items-center border-l-[10px] border-primary">
-              <div className="flex-1 w-full"><Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Matière</Label><Select value={selectedMatiere} onValueChange={setSelectedMatiere}><SelectTrigger className="h-11 md:h-14 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1 max-h-[300px]">{[...MATIERES, ...(["6EME","5EME","4EME","3EME"].some(p => selectedClass?.startsWith(p)) ? MATIERES_PREMIER_CYCLE : [])].map(m => <SelectItem key={m} value={m} className="font-bold p-2.5 rounded-lg text-xs">{m}</SelectItem>)}</SelectContent></Select></div>
-              <div className="w-full md:w-64"><Label className="font-black text-[9px] uppercase text-muted-foreground px-2 mb-2 block">Trimestre</Label><Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}><SelectTrigger className="h-11 md:h-14 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}</SelectContent></Select></div>
+
+           {/* Stats */}
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+             {[
+               { label: "Effectif", value: finalData.length, suffix: " élèves", color: "text-foreground", bg: "bg-white" },
+               { label: "Moy. Classe", value: classAvg.toFixed(2), suffix: "/20", color: classAvg >= 10 ? "text-emerald-600" : "text-red-500", bg: classAvg >= 10 ? "bg-emerald-50" : "bg-red-50" },
+               { label: "Meilleure", value: maxAvg.toFixed(2), suffix: "/20", color: "text-emerald-600", bg: "bg-emerald-50" },
+               { label: "Taux Réussite", value: successRate.toFixed(1), suffix: "%", color: successRate >= 50 ? "text-primary" : "text-red-500", bg: "bg-white" },
+             ].map(s => (
+               <Card key={s.label} className={cn("p-4 md:p-6 rounded-[1.5rem] border-none shadow-sm text-center", s.bg)}>
+                 <p className={cn("text-xl md:text-3xl font-black", s.color)}>{s.value}<span className="text-xs opacity-40">{s.suffix}</span></p>
+                 <p className="text-[7px] md:text-[9px] font-black uppercase text-muted-foreground mt-1 tracking-widest">{s.label}</p>
+               </Card>
+             ))}
+           </div>
+
+           {/* Filtres */}
+           <Card className="p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] bg-white border-none shadow-sm border-l-[8px] border-primary">
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1"><Label className="font-black text-[9px] uppercase text-muted-foreground mb-2 block">Matière</Label><Select value={selectedMatiere} onValueChange={setSelectedMatiere}><SelectTrigger className="h-10 md:h-12 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1 max-h-[300px]">{[...MATIERES, ...(["6EME","5EME","4EME","3EME"].some(p => selectedClass?.startsWith(p)) ? MATIERES_PREMIER_CYCLE : [])].map(m => <SelectItem key={m} value={m} className="font-bold p-2.5 rounded-lg text-xs">{m}</SelectItem>)}</SelectContent></Select></div>
+                <div className="w-full md:w-48"><Label className="font-black text-[9px] uppercase text-muted-foreground mb-2 block">Trimestre</Label><Select value={selectedTrimestre} onValueChange={setSelectedTrimestre}><SelectTrigger className="h-10 md:h-12 rounded-xl border-2 font-black text-xs md:text-sm"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 p-1">{trimestres.map(t => <SelectItem key={t.id} value={t.id} className="font-bold p-2.5 rounded-lg text-xs">{t.label}</SelectItem>)}</SelectContent></Select></div>
+              </div>
            </Card>
-           <Card className="border-none shadow-sm bg-white rounded-[1.8rem] md:rounded-[4.5rem] overflow-hidden">
-              <div className="overflow-x-auto no-scrollbar relative">
+
+           {/* Tableau */}
+           <Card className="border-none shadow-sm bg-white rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden">
+              <div className="overflow-x-auto no-scrollbar">
                  <table className="w-full text-left border-separate border-spacing-0">
-                    <thead className="bg-muted/30 text-[8px] md:text-[10px] font-black uppercase text-muted-foreground sticky top-0 z-20">
+                    <thead className="bg-primary text-white text-[8px] md:text-[10px] font-black uppercase">
                        <tr>
-                          <th className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-30 bg-white border-b border-muted/30 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">ID & ÉLÈVE</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 1</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 2</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">INT 3</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">DEV 1</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30">DEV 2</th>
-                          <th className="px-5 py-4 md:px-10 md:py-8 text-center border-b border-muted/30 bg-primary/5 text-primary">MOY/20</th>
+                          <th className="px-4 py-3 md:px-6 md:py-5 text-center rounded-tl-[1.5rem] md:rounded-tl-[2.5rem] w-12">Rang</th>
+                          <th className="px-4 py-3 md:px-6 md:py-5 sticky left-0 z-10 bg-primary">Élève</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center">INT 1</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center">INT 2</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center">INT 3</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center">DEV 1</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center">DEV 2</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center bg-white/20 rounded-tr-[1.5rem] md:rounded-tr-[2.5rem]">MOY/20</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/10">
                        {finalData.map((s: any) => (
                          <tr key={s.id} className="hover:bg-muted/5 transition-all group">
-                            <td className="px-5 py-4 md:px-10 md:py-8 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC] transition-colors border-r shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
-                               <div className="min-w-[150px] md:min-w-[220px]"><p className="font-black text-[10px] md:text-xl text-foreground uppercase truncate">{s.last_name} {s.first_name}</p><span className="text-[7px] md:text-[10px] font-bold text-muted-foreground uppercase">{s.matricule}</span></div>
+                            <td className="px-4 py-3 md:px-6 md:py-4 text-center">
+                              <span className={cn("size-7 md:size-9 rounded-xl flex items-center justify-center font-black text-xs mx-auto", s.rang === 1 ? "bg-amber-100 text-amber-700" : s.rang === 2 ? "bg-slate-100 text-slate-600" : s.rang === 3 ? "bg-orange-100 text-orange-600" : "bg-muted/30 text-muted-foreground")}>{s.rang}</span>
                             </td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i1 ?? "--"}</td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i2 ?? "--"}</td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.i3 ?? "--"}</td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.d1 ?? "--"}</td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center font-black tabular-nums">{s.d2 ?? "--"}</td>
-                            <td className="px-5 py-4 md:px-10 md:py-8 text-center"><Badge className={cn("h-8 md:h-12 w-14 md:w-20 justify-center rounded-lg md:rounded-xl font-black text-xs md:text-xl", s.subjectAvg >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{s.subjectAvg.toFixed(2)}</Badge></td>
+                            <td className="px-4 py-3 md:px-6 md:py-4 sticky left-0 z-10 bg-white group-hover:bg-[#F8FAFC] border-r border-muted/10">
+                               <div className="min-w-[140px] md:min-w-[200px]">
+                                 <p className="font-black text-[10px] md:text-base uppercase">{s.last_name} {s.first_name}</p>
+                                 <span className="text-[7px] md:text-[9px] font-bold text-muted-foreground">{s.matricule || '--'}</span>
+                               </div>
+                            </td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black tabular-nums text-sm">{s.i1 ?? "--"}</td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black tabular-nums text-sm">{s.i2 ?? "--"}</td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black tabular-nums text-sm">{s.i3 ?? "--"}</td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black tabular-nums text-sm">{s.d1 ?? "--"}</td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black tabular-nums text-sm">{s.d2 ?? "--"}</td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center">
+                              <Badge className={cn("h-7 md:h-10 w-14 md:w-20 justify-center rounded-lg md:rounded-xl font-black text-xs md:text-base", s.subjectAvg >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{s.subjectAvg.toFixed(2)}</Badge>
+                            </td>
                          </tr>
                        ))}
                     </tbody>
