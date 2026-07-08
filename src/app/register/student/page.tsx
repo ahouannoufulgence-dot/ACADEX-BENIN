@@ -156,11 +156,11 @@ export default function RegisterStudentPage() {
               </CardHeader>
               <CardContent className="p-6 md:p-12 pt-0 space-y-6 md:space-y-8">
                 <div className="space-y-3">
-                  <Label className="font-black uppercase text-[9px] md:text-[10px] text-muted-foreground tracking-[0.2em] px-2">Identifiant Officiel (ELV-...)</Label>
+                  <Label className="font-black uppercase text-[9px] md:text-[10px] text-muted-foreground tracking-[0.2em] px-2">Identifiant Officiel (ELV-XXXXX)</Label>
                   <div className="relative">
                     <Search className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 size-5 md:size-6 text-muted-foreground" />
                     <Input 
-                      placeholder="Ex: ELV-3EMEA-001" 
+                      placeholder="Ex: ELV-32119" 
                       className="h-14 md:h-20 pl-12 md:pl-16 rounded-xl md:rounded-[1.5rem] text-lg md:text-2xl font-black tracking-widest border-2 focus-visible:ring-primary uppercase shadow-inner" 
                       value={matricule} 
                       onChange={e => setMatricule(e.target.value)}
