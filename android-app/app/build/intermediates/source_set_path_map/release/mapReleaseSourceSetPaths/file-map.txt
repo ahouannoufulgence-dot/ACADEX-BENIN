@@ -23,10 +23,10 @@ app.vercel.acadex_benin.twa.app-play-services-basement-18.4.0-21 /home/user/.gra
 app.vercel.acadex_benin.twa.app-profileinstaller-1.3.1-22 /home/user/.gradle/caches/8.11.1/transforms/bb4a0d32d1b17a1dcea0cf71d2bde5e0/transformed/profileinstaller-1.3.1/res
 app.vercel.acadex_benin.twa.app-browser-1.9.0-alpha04-23 /home/user/.gradle/caches/8.11.1/transforms/be57bd43967b699c12a0f6b8bd2f21c6/transformed/browser-1.9.0-alpha04/res
 app.vercel.acadex_benin.twa.app-appcompat-resources-1.7.0-24 /home/user/.gradle/caches/8.11.1/transforms/d6f2e3c3aeb152384c7f6efcc9d99697/transformed/appcompat-resources-1.7.0/res
-app.vercel.acadex_benin.twa.app-pngs-25 /home/user/studio/app/build/generated/res/pngs/release
-app.vercel.acadex_benin.twa.app-resValues-26 /home/user/studio/app/build/generated/res/resValues/release
-app.vercel.acadex_benin.twa.app-packageReleaseResources-27 /home/user/studio/app/build/intermediates/incremental/release/packageReleaseResources/merged.dir
-app.vercel.acadex_benin.twa.app-packageReleaseResources-28 /home/user/studio/app/build/intermediates/incremental/release/packageReleaseResources/stripped.dir
-app.vercel.acadex_benin.twa.app-release-29 /home/user/studio/app/build/intermediates/merged_res/release/mergeReleaseResources
-app.vercel.acadex_benin.twa.app-main-30 /home/user/studio/app/src/main/res
-app.vercel.acadex_benin.twa.app-release-31 /home/user/studio/app/src/release/res
+app.vercel.acadex_benin.twa.app-pngs-25 /home/user/studio/android-app/app/build/generated/res/pngs/release
+app.vercel.acadex_benin.twa.app-resValues-26 /home/user/studio/android-app/app/build/generated/res/resValues/release
+app.vercel.acadex_benin.twa.app-packageReleaseResources-27 /home/user/studio/android-app/app/build/intermediates/incremental/release/packageReleaseResources/merged.dir
+app.vercel.acadex_benin.twa.app-packageReleaseResources-28 /home/user/studio/android-app/app/build/intermediates/incremental/release/packageReleaseResources/stripped.dir
+app.vercel.acadex_benin.twa.app-release-29 /home/user/studio/android-app/app/build/intermediates/merged_res/release/mergeReleaseResources
+app.vercel.acadex_benin.twa.app-main-30 /home/user/studio/android-app/app/src/main/res
+app.vercel.acadex_benin.twa.app-release-31 /home/user/studio/android-app/app/src/release/res

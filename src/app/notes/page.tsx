@@ -333,7 +333,7 @@ export default function GradesPage() {
       // Tableau notes
       autoTable(doc, {
         startY: (doc as any).lastAutoTable.finalY + 8,
-        head: [['Rang', 'Nom & Prénom', 'Matricule', 'INT 1', 'INT 2', 'INT 3', 'DEV 1', 'DEV 2', 'Moyenne']],
+        head: [['Rang', 'Nom & Prénom', 'Matricule', 'INT 1', 'INT 2', 'INT 3', 'DEV 1', 'DEV 2', 'Moy/20', 'Coef', 'Moy×Coef']],
         body: finalData.map((s: any) => [
           s.rang,
           `${s.last_name} ${s.first_name}`,
@@ -343,7 +343,9 @@ export default function GradesPage() {
           s.i3 ?? '--',
           s.d1 ?? '--',
           s.d2 ?? '--',
-          s.subjectAvg.toFixed(2)
+          s.subjectAvg.toFixed(2),
+          s.coef || 2,
+          (s.subjectAvg * (s.coef || 2)).toFixed(2)
         ]),
         styles: { fontSize: 8 },
         headStyles: { fillColor: primaryColor },
@@ -413,7 +415,9 @@ export default function GradesPage() {
                           <th className="px-4 py-3 md:px-5 md:py-5 text-center">INT 3</th>
                           <th className="px-4 py-3 md:px-5 md:py-5 text-center">DEV 1</th>
                           <th className="px-4 py-3 md:px-5 md:py-5 text-center">DEV 2</th>
-                          <th className="px-4 py-3 md:px-5 md:py-5 text-center bg-white/20 rounded-tr-[1.5rem] md:rounded-tr-[2.5rem]">MOY/20</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center bg-white/10">MOY/20</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center bg-white/10">COEF</th>
+                          <th className="px-4 py-3 md:px-5 md:py-5 text-center bg-white/20 rounded-tr-[1.5rem] md:rounded-tr-[2.5rem]">MOY×COEF</th>
                        </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/10">
@@ -435,6 +439,10 @@ export default function GradesPage() {
                             <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black tabular-nums text-sm">{s.d2 ?? "--"}</td>
                             <td className="px-4 py-3 md:px-5 md:py-4 text-center">
                               <Badge className={cn("h-7 md:h-10 w-14 md:w-20 justify-center rounded-lg md:rounded-xl font-black text-xs md:text-base", s.subjectAvg >= 10 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{s.subjectAvg.toFixed(2)}</Badge>
+                            </td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center font-black text-sm text-muted-foreground">{s.coef || 2}</td>
+                            <td className="px-4 py-3 md:px-5 md:py-4 text-center">
+                              <Badge className="h-7 md:h-10 w-16 md:w-24 justify-center rounded-lg md:rounded-xl font-black text-xs md:text-base bg-primary/5 text-primary">{(s.subjectAvg * (s.coef || 2)).toFixed(2)}</Badge>
                             </td>
                          </tr>
                        ))}
