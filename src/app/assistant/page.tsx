@@ -120,7 +120,13 @@ export default function AssistantPage() {
             nom: s.last_name,
             prenom: s.first_name,
             classe: s.class_id,
-            promotion: s.promotion
+            genre: s.gender,
+            telephone: s.phone,
+            villeNaissance: s.city_of_birth,
+            dateNaissance: s.dob,
+            nomParent: s.parent_name,
+            prenomParent: s.parent_first_name,
+            statut: s.status
           })),
           notes: grades.map((g: any) => ({
             matricule: g.student_matricule,
