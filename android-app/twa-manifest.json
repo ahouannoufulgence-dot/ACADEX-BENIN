@@ -14,7 +14,7 @@
   "enableNotifications": true,
   "startUrl": "/",
   "iconUrl": "https://acadex-benin.vercel.app/icons/android-chrome-512x512.png",
-  "maskableIconUrl": "https://acadex-benin.vercel.app/icons/android-chrome-512x512.png",
+  "maskableIconUrl": "https://acadex-benin.vercel.app/icons/maskable-512x512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "/home/user/studio/android.keystore",
