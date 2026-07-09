@@ -25,5 +25,6 @@
   "background_color": "#ffffff",
   "display": "standalone",
   "start_url": "/",
-  "orientation": "portrait"
+  "orientation": "portrait",
+  "iconUrl": "https://acadex-benin.vercel.app/icons/android-chrome-512x512.png"
 }
