@@ -11,6 +11,7 @@ import { ShieldCheck, Loader2, Sparkles, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
+import { registerPushToken } from "@/lib/push-notifications"
 import placeholderData from "@/app/lib/placeholder-images.json";
 
 export default function LoginPage() {
@@ -76,7 +77,7 @@ export default function LoginPage() {
         localStorage.setItem('acadex_user_id', upperId);
         localStorage.setItem('acadex_user_role', 'Directeur');
         localStorage.setItem('acadex_user_name', dirData.school_name ? `Directeur — ${dirData.school_name}` : 'le Directeur');
-        router.push('/dashboard/directeur');
+        registerPushToken(upperId); router.push('/dashboard/directeur');
         return;
       }
 
@@ -105,7 +106,7 @@ export default function LoginPage() {
         localStorage.setItem('acadex_user_name', teacherData.full_name || 'Professeur');
         localStorage.setItem('acadex_user_classes', JSON.stringify(teacherData.classes || []));
         localStorage.setItem('acadex_user_subject', teacherData.subject || "");
-        router.push('/dashboard/enseignant');
+        registerPushToken(upperId); router.push('/dashboard/enseignant');
         return;
       }
 
@@ -148,7 +149,7 @@ export default function LoginPage() {
           localStorage.setItem("acadex_user_role", "Élève");
           localStorage.setItem("acadex_user_name", `${studentData.first_name} ${studentData.last_name}`);
           localStorage.setItem("acadex_active_year", studentData.academic_year || "2026-2027");
-          router.push("/dashboard/eleve");
+          registerPushToken(upperId); router.push("/dashboard/eleve");
           return;
       }
 
