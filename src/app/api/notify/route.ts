@@ -5,6 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 
 // Initialiser Firebase Admin une seule fois
 function getFirebaseAdmin() {
+  console.log("DEBUG projectId:", process.env.FIREBASE_PROJECT_ID);
+  console.log("DEBUG clientEmail:", process.env.FIREBASE_CLIENT_EMAIL);
+  console.log("DEBUG base64 length:", (process.env.FIREBASE_PRIVATE_KEY_BASE64 || "").length);
   if (getApps().length > 0) return getApps()[0];
   return initializeApp({
     credential: cert({
