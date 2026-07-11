@@ -10,60 +10,62 @@ const VAPID_KEY = "BM9TogsTUN52NpLv0Z69Y-582MdAfAI23bwbnB7Ciy6deZAzq43jN4Vik1vXC
 /**
  * Demande la permission de notification et enregistre le token FCM
  * pour l'utilisateur courant dans Supabase.
- * À appeler juste après une connexion réussie.
+ * VERSION DEBUG : affiche des alertes visibles à chaque étape.
  */
 export async function registerPushToken(userId: string): Promise<boolean> {
   try {
     if (typeof window === "undefined") return false
 
     const supported = await isSupported()
-    if (!supported) {
-      console.log("Push notifications non supportées sur cet appareil")
+    alert("Étape 1 - Supporté: " + supported)
+    if (!supported) return false
+
+    if (!("serviceWorker" in navigator)) {
+      alert("Service Worker non disponible")
       return false
     }
 
-    if (!("serviceWorker" in navigator)) return false
-
-    // Enregistrer le service worker
     const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js")
+    alert("Étape 2 - SW enregistré: " + registration.scope)
 
-    // Demander la permission
+    const currentPermission = Notification.permission
+    alert("Étape 3 - Permission actuelle: " + currentPermission)
+
     const permission = await Notification.requestPermission()
+    alert("Étape 4 - Permission après demande: " + permission)
+
     if (permission !== "granted") {
-      console.log("Permission notification refusée")
+      alert("Permission refusée, arrêt")
       return false
     }
 
-    // Initialiser Firebase si pas déjà fait
     const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig)
     const messaging = getMessaging(app)
+    alert("Étape 5 - Firebase Messaging initialisé")
 
-    // Récupérer le token FCM
     const token = await getToken(messaging, {
       vapidKey: VAPID_KEY,
       serviceWorkerRegistration: registration
     })
 
-    if (!token) {
-      console.log("Impossible de récupérer le token FCM")
-      return false
-    }
+    alert("Étape 6 - Token: " + (token ? token.substring(0, 30) + "..." : "AUCUN"))
 
-    // Sauvegarder dans Supabase
+    if (!token) return false
+
     const { error } = await supabase.from("push_tokens").upsert({
       user_id: userId,
       fcm_token: token
     }, { onConflict: "user_id,fcm_token" })
 
     if (error) {
-      console.error("Erreur sauvegarde token:", error)
+      alert("Erreur Supabase: " + JSON.stringify(error))
       return false
     }
 
-    console.log("Token push enregistré avec succès")
+    alert("SUCCÈS - Token enregistré !")
     return true
-  } catch (e) {
-    console.error("Erreur registerPushToken:", e)
+  } catch (e: any) {
+    alert("ERREUR CATCH: " + (e?.message || JSON.stringify(e)))
     return false
   }
 }
