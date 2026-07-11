@@ -149,7 +149,8 @@ export default function LoginPage() {
           localStorage.setItem("acadex_user_role", "Élève");
           localStorage.setItem("acadex_user_name", `${studentData.first_name} ${studentData.last_name}`);
           localStorage.setItem("acadex_active_year", studentData.academic_year || "2026-2027");
-          registerPushToken(upperId); router.push("/dashboard/eleve");
+          await registerPushToken(upperId);
+          router.push("/dashboard/eleve");
           return;
       }
 
