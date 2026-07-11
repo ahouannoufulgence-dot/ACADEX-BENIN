@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select"
 import { useState, useMemo, useEffect } from "react"
 import { toast } from "@/hooks/use-toast"
+import { sendPushNotification } from "@/lib/send-notification"
 import { supabase } from "@/lib/supabase"
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
@@ -246,6 +247,16 @@ export default function GradesPage() {
       if (rows.length > 0) {
         const { error } = await supabase.from('grades').upsert(rows, { onConflict: 'student_matricule,subject,term,type,academic_year' })
         if (error) throw error
+
+        // Notifier chaque élève noté
+        rows.forEach((row: any) => {
+          sendPushNotification({
+            userId: row.student_matricule,
+            title: `Nouvelle note — ${row.subject}`,
+            body: `Vous avez reçu ${row.value}/20 en ${row.subject} (${row.term})`,
+            url: '/dashboard/eleve/notes'
+          })
+        })
       }
       toast({ title: "Registre scellé" })
     } catch (e) {
