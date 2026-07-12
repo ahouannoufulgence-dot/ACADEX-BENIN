@@ -206,9 +206,17 @@ export default function PromotionsPage() {
       if (levelId && levelsMap[levelId]) {
         levelsMap[levelId].students.push(s)
         levelsMap[levelId].classes.add(s.class_id)
-        levelsMap[levelId].totalAvg += s.generalAvg
         levelsMap[levelId].count += 1
       }
+    })
+
+    levels.forEach(l => {
+      const classesInLevel = Array.from(levelsMap[l.id].classes) as string[]
+      const classAvgs = classesInLevel
+        .map(cid => classStats[cid]?.avg)
+        .filter((avg): avg is number => avg !== undefined && avg > 0)
+      levelsMap[l.id].totalAvg = classAvgs.length > 0 ? classAvgs.reduce((a, b) => a + b, 0) : 0
+      levelsMap[l.id].classAvgCount = classAvgs.length
     })
 
     return { levelsMap, classStats, studentsProcessed }
@@ -346,7 +354,7 @@ export default function PromotionsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {levels.map((level) => {
               const data = academicData.levelsMap[level.id]
-              const levelAvg = data?.count > 0 ? (data.totalAvg / data.count).toFixed(2) : "0.00"
+              const levelAvg = data?.classAvgCount > 0 ? (data.totalAvg / data.classAvgCount).toFixed(2) : "0.00"
               return (
                 <Card 
                   key={level.id} 
