@@ -64,7 +64,23 @@ export async function POST(req: NextRequest) {
           token: t.fcm_token,
           notification: { title, body },
           data: { url: url || '/' },
+          android: {
+            priority: 'high' as const,
+            notification: {
+              sound: 'default',
+              priority: 'max' as const,
+              defaultVibrateTimings: true,
+              channelId: 'acadex_default'
+            }
+          },
           webpush: {
+            headers: { Urgency: 'high' },
+            notification: {
+              icon: '/icons/android-chrome-192x192.png',
+              badge: '/icons/android-chrome-192x192.png',
+              requireInteraction: true,
+              vibrate: [200, 100, 200]
+            },
             fcmOptions: { link: url || '/' }
           }
         });
