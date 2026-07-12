@@ -140,11 +140,18 @@ export default function StatisticsModule() {
       : "0.00"
 
     const promoMap: Record<string, { total: number, count: number }> = {}
-    students.forEach((s, i) => {
-      const level = LEVELS.find(l => s.class_id?.toUpperCase().includes(l.id))?.id || "AUTRE"
-      if (!promoMap[level]) promoMap[level] = { total: 0, count: 0 }
-      promoMap[level].total += studentAverages[i]
-      promoMap[level].count += 1
+    const classLevelMap: Record<string, string> = {}
+    Object.keys(classStats).forEach(cid => {
+      const level = LEVELS.find(l => cid?.toUpperCase().includes(l.id))?.id
+      if (level) classLevelMap[cid] = level
+    })
+    Object.entries(classStats).forEach(([cid, cs]: [string, any]) => {
+      const level = classLevelMap[cid] || "AUTRE"
+      if (cs.count > 0) {
+        if (!promoMap[level]) promoMap[level] = { total: 0, count: 0 }
+        promoMap[level].total += (cs.sumGPA / cs.count)
+        promoMap[level].count += 1
+      }
     })
 
     const promoData = LEVELS.map(l => ({
