@@ -107,6 +107,7 @@ export default function DirectorDashboard() {
     
     let globalSum = 0, gpaCount = 0, totalGradesEntered = grades?.length || 0
     
+    const classAverages: Record<string, number[]> = {}
     if (students && grades) {
       students.forEach((s: any) => {
         const sGrades = grades.filter(g => g.student_matricule === s.matricule)
@@ -133,7 +134,6 @@ export default function DirectorDashboard() {
             }
           })
           if (totalC > 0) {
-            // Intégrer la note de conduite (coef 1)
             const termSanctions = sanctions.filter((sc: any) => sc.student_matricule === (s.student_matricule || s.matricule) && sc.trimestre === term)
             const totalPoints = termSanctions.reduce((acc: number, sc: any) => acc + Number(sc.points_retranches || 0), 0)
             const conductValue = Math.max(0, (conductConfig.note_depart || 20) - totalPoints)
@@ -143,9 +143,16 @@ export default function DirectorDashboard() {
           }
         })
         if (termAvgs.length > 0) {
-          globalSum += termAvgs.reduce((a, b) => a + b, 0) / termAvgs.length
-          gpaCount++
+          const studentGPA = termAvgs.reduce((a, b) => a + b, 0) / termAvgs.length
+          if (!classAverages[s.class_id]) classAverages[s.class_id] = []
+          classAverages[s.class_id].push(studentGPA)
         }
+      })
+
+      Object.values(classAverages).forEach((avgsInClass: number[]) => {
+        const classAvg = avgsInClass.reduce((a, b) => a + b, 0) / avgsInClass.length
+        globalSum += classAvg
+        gpaCount++
       })
     }
 
