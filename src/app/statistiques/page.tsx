@@ -134,8 +134,9 @@ export default function StatisticsModule() {
       return gpa
     })
 
-    const globalGPA = studentAverages.length > 0 
-      ? (studentAverages.reduce((acc, v) => acc + v, 0) / studentAverages.length).toFixed(2)
+    const classAvgsList = Object.values(classStats).map((cs: any) => cs.count > 0 ? cs.sumGPA / cs.count : 0).filter(v => v > 0)
+    const globalGPA = classAvgsList.length > 0 
+      ? (classAvgsList.reduce((acc, v) => acc + v, 0) / classAvgsList.length).toFixed(2)
       : "0.00"
 
     const promoMap: Record<string, { total: number, count: number }> = {}
