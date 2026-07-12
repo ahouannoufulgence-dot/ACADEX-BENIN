@@ -85,6 +85,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ sent: sentCount, cleaned: failedTokens.length });
   } catch (e: any) {
     console.error('Erreur envoi notification:', e);
-    return NextResponse.json({ error: e.message || 'Erreur serveur', debug: { hasProjectId: Boolean(process.env.FIREBASE_PROJECT_ID), hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL), base64Length: (process.env.FIREBASE_PRIVATE_KEY_BASE64 || '').length } }, { status: 500 });
+    return NextResponse.json({ error: e.message || 'Erreur serveur', debug: { hasProjectId: Boolean(process.env.FIREBASE_PROJECT_ID), hasClientEmail: Boolean(process.env.FIREBASE_CLIENT_EMAIL), keyLength: (process.env.FIREBASE_PRIVATE_KEY || '').length, keyStart: (process.env.FIREBASE_PRIVATE_KEY || '').substring(0, 30) } }, { status: 500 });
   }
 }
