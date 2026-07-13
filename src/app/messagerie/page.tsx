@@ -42,6 +42,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useMemo, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
+import { sendPushNotification } from "@/lib/send-notification"
 import {
   Dialog,
   DialogContent,
@@ -187,6 +188,17 @@ export default function MessagingPage() {
         last_message_time: new Date().toISOString(),
         unread_count: newUnreadCount,
       }).eq('id', selectedChat.id)
+
+      selectedChat.participants.forEach((pId: string) => {
+        if (pId !== currentUserId) {
+          sendPushNotification({
+            userId: pId,
+            title: currentUserName,
+            body: type === 'image' ? '📷 Photo' : (type === 'like' ? '👍 Like' : msgContent),
+            url: '/messagerie'
+          })
+        }
+      })
 
       fetchMessages()
       fetchConversations()
