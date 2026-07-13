@@ -70,7 +70,6 @@ export async function POST(req: NextRequest) {
               sound: 'default',
               priority: 'max' as const,
               defaultVibrateTimings: true,
-              channelId: 'acadex_default'
             }
           },
           webpush: {
