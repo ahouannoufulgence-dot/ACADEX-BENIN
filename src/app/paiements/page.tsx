@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
+import { sendPushNotification } from "@/lib/send-notification"
 import { useState, useMemo, useEffect } from "react"
 import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
@@ -255,6 +256,16 @@ export default function TreasuryModule() {
       }
       const { error } = await supabase.from('payments').insert(rows)
       if (error) throw error
+
+      rows.forEach((r: any) => {
+        sendPushNotification({
+          userId: r.student_matricule,
+          title: 'Paiement enregistré',
+          body: `${Number(r.amount_paid).toLocaleString()} FCFA reçu — ${r.note || 'Scolarité'}`,
+          url: '/dashboard/eleve/paiements'
+        })
+      })
+
       toast({ title: lotMode ? `${rows.length} encaissements scellés` : "Encaissement scellé" })
       setIsAdding(false)
       setFormData({ studentId: "", amountPaid: "", description: "Scolarité - Tranche 1", date: new Date().toISOString().split('T')[0] })
