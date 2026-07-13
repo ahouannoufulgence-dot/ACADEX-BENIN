@@ -19,6 +19,7 @@ import {
 import { useState, useEffect, useMemo } from "react"
 import { supabase } from "@/lib/supabase"
 import { toast } from "@/hooks/use-toast"
+import { sendPushNotification } from "@/lib/send-notification"
 import { cn } from "@/lib/utils"
 
 const TYPES_FAUTE = ["Bavardage", "Tenue incorrecte", "Absence répétée", "Fraude/Examen", "Violence", "Manque de respect", "Téléphone en classe", "Autre"]
@@ -176,6 +177,16 @@ export default function VieScolairePage() {
       }))
       const { error } = await supabase.from("sanctions").insert(rows)
       if (error) throw error
+
+      targets.forEach(s => {
+        sendPushNotification({
+          userId: s.matricule,
+          title: 'Sanction disciplinaire',
+          body: `${sanctionForm.type_faute} — ${sanctionForm.points_retranches} points retirés`,
+          url: '/vie-scolaire'
+        })
+      })
+
       toast({ title: `Sanction scellée pour ${targets.length} élève(s)` })
       setSanctionForm({ type_faute: "Bavardage", sanction: "Avertissement oral", points_retranches: 2, motif: "" })
       const { data } = await supabase.from("sanctions").select("*").eq("academic_year", activeYear).eq("trimestre", trimestre).order("created_at", { ascending: false })
