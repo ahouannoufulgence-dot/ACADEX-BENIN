@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { jsPDF } from "jspdf"
+import * as XLSX from "xlsx"
 import autoTable from "jspdf-autotable"
 import { 
   Save, 
@@ -372,6 +373,44 @@ export default function GradesPage() {
       doc.save(`registre-${selectedClass}-${selectedMatiere}-${selectedTrimestre}-${activeYear}.pdf`)
     }
 
+    const exportExcel = () => {
+      const wb = XLSX.utils.book_new()
+
+      // Feuille 1 : Statistiques
+      const statsData = [
+        ['Effectif', 'Moyenne Classe', 'Meilleure Moyenne', 'Plus Faible Moyenne', 'Taux de Réussite'],
+        [finalData.length, classAvg.toFixed(2), maxAvg.toFixed(2), minAvg.toFixed(2), successRate.toFixed(1) + '%']
+      ]
+      const wsStats = XLSX.utils.aoa_to_sheet(statsData)
+      wsStats['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 16 }]
+      XLSX.utils.book_append_sheet(wb, wsStats, 'Statistiques')
+
+      // Feuille 2 : Notes détaillées
+      const header = ['Rang', 'Nom & Prénom', 'Matricule', 'INT 1', 'INT 2', 'INT 3', 'DEV 1', 'DEV 2', 'Moy/20', 'Coef', 'Moy x Coef']
+      const rows = finalData.map((s: any) => [
+        s.rang,
+        `${s.last_name} ${s.first_name}`,
+        s.matricule || '--',
+        s.i1 ?? '',
+        s.i2 ?? '',
+        s.i3 ?? '',
+        s.d1 ?? '',
+        s.d2 ?? '',
+        Number(s.subjectAvg.toFixed(2)),
+        s.coef || 2,
+        Number((s.subjectAvg * (s.coef || 2)).toFixed(2))
+      ])
+      const wsNotes = XLSX.utils.aoa_to_sheet([header, ...rows])
+      wsNotes['!cols'] = [
+        { wch: 6 }, { wch: 24 }, { wch: 14 }, { wch: 7 }, { wch: 7 }, { wch: 7 },
+        { wch: 7 }, { wch: 7 }, { wch: 9 }, { wch: 7 }, { wch: 11 }
+      ]
+      XLSX.utils.book_append_sheet(wb, wsNotes, 'Registre Notes')
+
+      XLSX.writeFile(wb, `registre-${selectedClass}-${selectedMatiere}-${selectedTrimestre}-${activeYear}.xlsx`)
+    }
+
+
     return (
       <DashboardLayout>
         <div className="space-y-6 md:space-y-8 animate-in slide-in-from-right-4 duration-500">
@@ -384,6 +423,9 @@ export default function GradesPage() {
               </div>
               <div className="flex items-center gap-3">
                  {systemLocked && <Badge className="bg-destructive text-white px-4 h-10 rounded-xl font-black uppercase"><Lock className="size-3.5 mr-1.5" /> Scellé</Badge>}
+                 <Button onClick={exportExcel} className="h-10 md:h-12 px-5 md:px-8 rounded-xl border-2 font-black bg-white text-foreground border-muted hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all" variant="outline">
+                   <Download className="mr-2 size-4" /> Excel
+                 </Button>
                  <Button onClick={exportPDF} className="h-10 md:h-12 px-5 md:px-8 rounded-xl border-2 font-black bg-white text-foreground border-muted hover:bg-primary hover:text-white hover:border-primary transition-all" variant="outline">
                    <Download className="mr-2 size-4" /> PDF
                  </Button>

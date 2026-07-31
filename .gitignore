@@ -45,3 +45,4 @@ firebase-debug.log
 firestore-debug.logpublic/sw.js
 public/workbox-*.js
 app/build/
+src/fichier.json
