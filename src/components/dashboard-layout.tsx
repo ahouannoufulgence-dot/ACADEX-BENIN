@@ -69,6 +69,7 @@ const navigationConfig = {
     { name: "Trésorerie", href: "/paiements", icon: CreditCard },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
+    { name: "Documents", href: "/documents", icon: FileText },
     { name: "Archives", href: "/archives", icon: History },
     { name: "Paramètres", href: "/settings", icon: Settings },
   ],
@@ -79,6 +80,7 @@ const navigationConfig = {
     { name: "Mes Classes", href: "/eleves", icon: Users },
     { name: "Saisie Notes", href: "/notes", icon: PenTool },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
+    { name: "Documents", href: "/documents", icon: FileText },
     { name: "Assistant IA", href: "/assistant", icon: Sparkles, isIA: true },
   ],
   Élève: [
@@ -88,6 +90,7 @@ const navigationConfig = {
     { name: "Mon Planning", href: "/dashboard/eleve/agenda", icon: CalendarDays },
     { name: "Mes Notes", href: "/dashboard/eleve/notes", icon: PenTool },
     { name: "Paiements", href: "/dashboard/eleve/paiements", icon: CreditCard },
+    { name: "Documents", href: "/documents", icon: FileText },
     { name: "Messagerie", href: "/messagerie", icon: MessageSquare },
     { name: "Assistant", href: "/assistant", icon: Sparkles, isIA: true },
   ]
