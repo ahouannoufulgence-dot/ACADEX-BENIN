@@ -20,7 +20,8 @@ import {
   Layers,
   CalendarDays,
   TrendingUp,
-  Zap
+  Zap,
+  FileText
 } from "lucide-react"
 import {
   Sidebar,
