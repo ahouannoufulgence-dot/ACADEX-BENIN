@@ -222,7 +222,7 @@ export default function AssistantPage() {
           }))
         }
       }
-      const res = await askAcadexBrain({ question: userMsg, userRole: userRole as any, userId: userId, contextData })
+      const res = await askAcadexBrain({ question: userMsg, userRole: userRole as any, userId: userId, contextData, history: messages })
       setMessages(prev => [...prev, { role: 'bot', content: res.answer }])
     } catch (err) {
       setMessages(prev => [...prev, { role: 'bot', content: "Je rencontre une difficulté pour accéder aux registres scellés." }])

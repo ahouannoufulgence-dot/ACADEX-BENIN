@@ -12,6 +12,7 @@ export interface BrainInput {
   userRole: 'Directeur' | 'Enseignant' | 'Élève';
   userId: string;
   contextData?: any;
+  history?: { role: string; content: string }[];
 }
 
 export interface BrainOutput {
@@ -20,7 +21,7 @@ export interface BrainOutput {
 }
 
 export async function askAcadexBrain(input: BrainInput): Promise<BrainOutput> {
-  const { question, userRole, contextData } = input;
+  const { question, userRole, contextData, history = [] } = input;
 
   // On transmet les données brutes en JSON structuré pour permettre à l'IA
   // de faire elle-même tous les calculs, filtres, classements et listes demandés.
@@ -77,8 +78,14 @@ ${dataJson}
 
 APPLIQUE LA MÉTHODE OBLIGATOIRE EN SILENCE, PUIS RÉPONDS DIRECTEMENT À LA QUESTION CI-DESSOUS AVEC L'INFORMATION EXACTE DEMANDÉE.`;
 
+  const historyMessages = history.slice(-10).map(h => ({
+    role: h.role === 'bot' ? 'assistant' : 'user',
+    content: h.content
+  }));
+
   const response = await callGroq([
     { role: "system", content: systemPrompt },
+    ...historyMessages,
     { role: "user", content: question }
   ]);
 
