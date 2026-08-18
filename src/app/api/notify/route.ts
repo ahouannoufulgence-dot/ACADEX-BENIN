@@ -18,10 +18,12 @@ function getFirebaseAdmin() {
   });
 }
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
-);
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Récupérer tous les tokens de cet utilisateur (peut avoir plusieurs appareils)
-    const { data: tokens, error: tokensError } = await supabaseAdmin
+    const { data: tokens, error: tokensError } = await getSupabaseAdmin()
       .from('push_tokens')
       .select('fcm_token')
       .eq('user_id', userId);
@@ -94,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     // Nettoyer les tokens invalides
     if (failedTokens.length > 0) {
-      await supabaseAdmin.from('push_tokens').delete().in('fcm_token', failedTokens);
+      await getSupabaseAdmin().from('push_tokens').delete().in('fcm_token', failedTokens);
     }
 
     return NextResponse.json({ sent: sentCount, cleaned: failedTokens.length });

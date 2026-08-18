@@ -46,3 +46,6 @@ firestore-debug.logpublic/sw.js
 public/workbox-*.js
 app/build/
 src/fichier.json
+test-firebase.js
+test-firebase.js
+android-app/.gradle/

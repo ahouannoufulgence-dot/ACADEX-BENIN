@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  FileDown
+  FileDown,
+  Lock
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
@@ -28,6 +29,7 @@ import { getConductConfig, getStudentConduct } from "@/lib/conduct"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { getPaymentStatus, isTermUnlocked, BULLETIN_THRESHOLD } from "@/lib/payments"
 
 export default function StudentGradesPage() {
   const [studentId, setStudentId] = useState("")
@@ -39,6 +41,7 @@ export default function StudentGradesPage() {
   const [mySanctions, setMySanctions] = useState<any[]>([])
   const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20, seuil_absences: 3, bareme: {} })
   const [loadingMyGrades, setLoadingMyGrades] = useState(true)
+  const [paymentStatus, setPaymentStatus] = useState({ totalPaid: 0, totalDue: 0, percent: 0 })
 
   useEffect(() => {
     const matricule = localStorage.getItem('acadex_user_id') || ""
@@ -56,12 +59,14 @@ export default function StudentGradesPage() {
     if (!studentId) return
     const fetchData = async () => {
       setLoadingMyGrades(true)
-      const [gRes, eRes] = await Promise.all([
+      const [gRes, eRes, payStatus] = await Promise.all([
         supabase.from('grades').select('*').eq('student_matricule', studentId).eq('academic_year', activeYear),
-        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear)
+        supabase.from('student_life').select('*').eq('student_id', studentId).eq('academic_year', activeYear),
+        getPaymentStatus(studentId, activeYear)
       ])
       setMyGrades(gRes.data || [])
       setMyLifeEvents(eRes.data || [])
+      setPaymentStatus(payStatus)
       const config = await getConductConfig()
       setConductConfig(config)
       const conductResult = await getStudentConduct(studentId, activeYear, activeTerm, config)
@@ -168,7 +173,7 @@ export default function StudentGradesPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-             {studentInternalId && analysis && analysis.subjects.length > 0 && (
+             {studentInternalId && analysis && analysis.subjects.length > 0 && paymentStatus.percent >= BULLETIN_THRESHOLD && (
                <Button asChild variant="outline" className="h-12 md:h-20 px-6 md:px-10 rounded-2xl md:rounded-[2.5rem] border-2 border-primary/20 font-black text-[10px] md:text-sm bg-white hover:bg-primary/5 transition-all shadow-sm">
                   <Link href={`/bulletin/${studentInternalId}`}>
                     <FileDown className="mr-2 size-4 md:size-5" /> Télécharger Bulletin
@@ -224,7 +229,16 @@ export default function StudentGradesPage() {
           </TabsList>
 
           <TabsContent value={activeTerm} className="space-y-5 md:space-y-10 animate-in slide-in-from-bottom-6 duration-700">
-             {loadingMyGrades ? (
+             {!isTermUnlocked(activeTerm, paymentStatus.percent) ? (
+               <Card className="p-12 md:p-24 text-center border-4 border-dashed border-amber-300 rounded-[2rem] md:rounded-[3rem] bg-amber-50/50 space-y-4">
+                 <Lock className="size-8 md:size-14 mx-auto text-amber-500" />
+                 <h3 className="text-lg md:text-2xl font-black uppercase text-amber-700">Accès limité</h3>
+                 <p className="text-muted-foreground font-medium text-[10px] md:text-base max-w-md mx-auto">
+                   Vos notes du {activeTerm} seront visibles une fois {activeTerm === "T2" ? "34%" : "67%"} de la scolarité réglée.<br/>
+                   Solde actuel réglé : <span className="font-black">{paymentStatus.percent.toFixed(0)}%</span> ({paymentStatus.totalPaid.toLocaleString()} / {paymentStatus.totalDue.toLocaleString()} FCFA)
+                 </p>
+               </Card>
+             ) : loadingMyGrades ? (
                 <div className="py-20 md:py-40 text-center animate-pulse opacity-20"><Loader2 className="animate-spin text-primary size-8 md:size-12 mx-auto" /></div>
              ) : (!analysis || analysis.subjects.length === 0) ? (
                 <Card className="p-12 md:p-40 text-center border-4 border-dashed rounded-[2rem] md:rounded-[3rem] bg-white/50 opacity-40 space-y-4">
