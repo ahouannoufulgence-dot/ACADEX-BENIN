@@ -2,12 +2,13 @@
 
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Card } from "@/components/ui/card"
-import { CreditCard, DollarSign, History, CheckCircle2, Lock, ShieldCheck, Wallet, FileDown, Download } from "lucide-react"
+import { CreditCard, DollarSign, History, CheckCircle2, Lock, ShieldCheck, Wallet, FileDown, Download, Smartphone, Loader2 } from "lucide-react"
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
 import { jsPDF } from "jspdf"
+import Script from "next/script"
 
 export default function StudentPaymentsPage() {
   const [studentId, setStudentId] = useState("")
@@ -19,6 +20,8 @@ export default function StudentPaymentsPage() {
   const [payments, setPayments] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
+  const [payAmount, setPayAmount] = useState(0)
+  const [processingPayment, setProcessingPayment] = useState(false)
 
   useEffect(() => {
     const id = localStorage.getItem("acadex_user_id") || ""
@@ -314,8 +317,52 @@ export default function StudentPaymentsPage() {
 
   if (!mounted) return null
 
+  const handlePayment = () => {
+    const fedapay = (window as any).FedaPay
+    if (!fedapay) {
+      alert("Le module de paiement se charge encore, réessaie dans quelques secondes.")
+      return
+    }
+    const amount = payAmount > 0 ? payAmount : remaining
+    if (amount <= 0) return
+
+    fedapay.init({
+      public_key: process.env.NEXT_PUBLIC_FEDAPAY_PUBLIC_KEY,
+      transaction: {
+        amount: amount,
+        description: `Scolarite ${activeYear} - ${studentName}`,
+      },
+      customer: {
+        firstname: studentName.split(" ")[0] || studentName,
+        lastname: studentName.split(" ").slice(1).join(" ") || studentName,
+      },
+      onComplete: async (response: any) => {
+        if (response.reason === fedapay.CHECKOUT_COMPLETED) {
+          setProcessingPayment(true)
+          const { error } = await supabase.from("payments").insert({
+            student_matricule: studentId,
+            student_name: studentName,
+            class_id: studentClass,
+            amount_paid: amount,
+            total_amount: expectedFee,
+            status: "En attente",
+            academic_year: activeYear,
+            note: `FedaPay - ref ${response.transaction?.id || ""}`,
+          })
+          setProcessingPayment(false)
+          if (!error) {
+            window.location.reload()
+          } else {
+            alert("Paiement reçu mais erreur d'enregistrement. Contacte l'administration avec la référence " + response.transaction?.id)
+          }
+        }
+      },
+    }).open()
+  }
+
   return (
     <DashboardLayout>
+        <Script src="https://cdn.fedapay.com/checkout.js?v=1.1.7" strategy="lazyOnload" />
       <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -353,6 +400,11 @@ export default function StudentPaymentsPage() {
             <div>
               <p className="text-[8px] md:text-[10px] font-black uppercase text-muted-foreground tracking-widest">Reste à payer</p>
               <p className="text-2xl md:text-4xl font-black text-amber-600 tabular-nums">{remaining.toLocaleString()} <span className="text-[10px] opacity-40">F</span></p>
+            <Button onClick={handlePayment} disabled={processingPayment || remaining <= 0}
+              className="mt-4 w-full bg-amber-500 hover:bg-amber-600 text-white h-11 rounded-xl font-black text-[9px] md:text-xs shadow-lg active:scale-95 transition-all">
+              {processingPayment ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Smartphone className="mr-2 size-4" />}
+              {remaining <= 0 ? "Scolarité soldée" : "Payer maintenant"}
+            </Button>
             </div>
           </Card>
           <Card className="p-6 md:p-10 rounded-[1.5rem] md:rounded-[3rem] bg-foreground text-white flex flex-col justify-between overflow-hidden relative">

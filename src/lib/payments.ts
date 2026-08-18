@@ -28,11 +28,14 @@ export async function getPaymentStatus(studentMatricule: string, academicYear: s
 
   const { data: payData } = await supabase
     .from('payments')
-    .select('amount_paid')
+    .select('amount_paid, status')
     .eq('student_matricule', studentMatricule)
     .eq('academic_year', academicYear)
 
-  const totalPaid = (payData || []).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
+  // Seuls les paiements confirmés ("Payé") comptent pour débloquer les notes
+  const totalPaid = (payData || [])
+    .filter((p: any) => p.status === 'Payé')
+    .reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
 
   const percent = totalDue > 0 ? Math.min(100, (totalPaid / totalDue) * 100) : 0
   return { totalPaid, totalDue, percent }
