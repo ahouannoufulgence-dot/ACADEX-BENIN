@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import Image from "next/image"
 import { supabase } from "@/lib/supabase"
+import { getPaymentStatus, isTermUnlocked } from "@/lib/payments"
 import { useMemo, useEffect, useState } from "react"
 import placeholderData from "@/app/lib/placeholder-images.json"
 import { cn } from "@/lib/utils"
@@ -52,6 +53,7 @@ export default function StudentDashboard() {
   const [noteDepart, setNoteDepart] = useState(20)
   const [loadingGrades, setLoadingGrades] = useState(true)
   const [totalPaid, setTotalPaid] = useState(0)
+  const [paymentPercent, setPaymentPercent] = useState(0)
   const [rank, setRank] = useState("---")
     const [expectedFee, setExpectedFee] = useState(150000)
   const [totalAbsences, setTotalAbsences] = useState(0)
@@ -77,13 +79,10 @@ export default function StudentDashboard() {
       if (!studentId || !activeYear) return
       const { data: studentData } = await supabase.from("students").select("class_id").eq("matricule", studentId).single()
       const classId = studentData?.class_id || ""
-      if (classId) {
-        const { data: feeData } = await supabase.from("class_fees").select("amount").eq("class_id", classId).eq("academic_year", activeYear).single()
-        if (feeData) setExpectedFee(Number(feeData.amount))
-      }
-      const { data: payData } = await supabase.from("payments").select("amount_paid").eq("student_matricule", studentId).eq("academic_year", activeYear)
-      const total = (payData || []).reduce((acc: number, p: any) => acc + Number(p.amount_paid), 0)
-      setTotalPaid(total)
+      const payStatus = await getPaymentStatus(studentId, activeYear)
+      setExpectedFee(payStatus.totalDue || 150000)
+      setTotalPaid(payStatus.totalPaid)
+      setPaymentPercent(payStatus.percent)
       if (classId) {
         const { data: classMates } = await supabase.from("students").select("matricule").eq("class_id", classId).eq("status", "Actif")
         if (classMates && classMates.length > 0) {
@@ -156,7 +155,7 @@ export default function StudentDashboard() {
       { title: "Absences", value: totalAbsences.toString(), label: "Cette année", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
-    
+
     const termAverages: number[] = []
     ;['T1', 'T2', 'T3'].forEach(term => {
       const tGrades = grades.filter((g: any) => g.term === term)
@@ -188,14 +187,15 @@ export default function StudentDashboard() {
       if (tC > 0) termAverages.push(tW / tC)
     })
     const avg = termAverages.length > 0 ? (termAverages.reduce((a, b) => a + b, 0) / termAverages.length).toFixed(2) : "0.00"
-
+    const lastTermWithGrades = ['T3', 'T2', 'T1'].find(t => grades.some((g: any) => g.term === t)) || 'T1'
+    const unlocked = isTermUnlocked(lastTermWithGrades, paymentPercent)
     return [
-      { title: "Ma Moyenne", value: avg, label: "Générale", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: "/dashboard/eleve/notes" },
-      { title: "Mon Rang", value: rank, label: "Classement", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: "/dashboard/eleve/notes" },
+      { title: "Ma Moyenne", value: unlocked ? avg : "🔒", label: unlocked ? "Générale" : "Scolarité à régler", icon: GraduationCap, color: "text-primary", bg: "bg-emerald-50", href: unlocked ? "/dashboard/eleve/notes" : "/dashboard/eleve/paiements" },
+      { title: "Mon Rang", value: unlocked ? rank : "🔒", label: unlocked ? "Classement" : "Scolarité à régler", icon: Trophy, color: "text-amber-500", bg: "bg-amber-50", href: unlocked ? "/dashboard/eleve/notes" : "/dashboard/eleve/paiements" },
       { title: "Absences", value: totalAbsences.toString(), label: "Cette année", icon: Clock, color: "text-red-500", bg: "bg-red-50", href: "/vie-scolaire" },
       { title: "Scolarité", value: totalPaid >= expectedFee ? "Soldé" : `${Math.round((totalPaid/expectedFee)*100)}%`, label: "Règlement", icon: CreditCard, color: "text-blue-600", bg: "bg-blue-50", href: "/dashboard/eleve/paiements" },
     ]
-  }, [grades, mounted, totalPaid, expectedFee, rank])
+  }, [grades, mounted, totalPaid, expectedFee, rank, paymentPercent])
 
   if (!mounted) return null
 
