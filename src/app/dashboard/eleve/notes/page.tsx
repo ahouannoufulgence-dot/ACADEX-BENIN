@@ -25,7 +25,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useState, useMemo, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
-import { getConductConfig, getStudentConduct } from "@/lib/conduct"
+import { getConductConfig, getStudentConduct, getStudentConductAllTerms } from "@/lib/conduct"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -39,6 +39,7 @@ export default function StudentGradesPage() {
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [myLifeEvents, setMyLifeEvents] = useState<any[]>([])
   const [mySanctions, setMySanctions] = useState<any[]>([])
+  const [conductAllTerms, setConductAllTerms] = useState<Record<string, number>>({ T1: 20, T2: 20, T3: 20 })
   const [conductConfig, setConductConfig] = useState<any>({ note_depart: 20, seuil_absences: 3, bareme: {} })
   const [loadingMyGrades, setLoadingMyGrades] = useState(true)
   const [paymentStatus, setPaymentStatus] = useState({ totalPaid: 0, totalDue: 0, percent: 0 })
@@ -71,6 +72,8 @@ export default function StudentGradesPage() {
       setConductConfig(config)
       const conductResult = await getStudentConduct(studentId, activeYear, activeTerm, config)
       setMySanctions(conductResult.sanctions)
+      const allTermsConduct = await getStudentConductAllTerms(studentId, activeYear)
+      setConductAllTerms(allTermsConduct)
       setLoadingMyGrades(false)
     }
     fetchData()
@@ -146,15 +149,15 @@ export default function StudentGradesPage() {
           tC += s.coef
         }
       })
-      // Inclure la conduite dans chaque trimestre
-      tW += conductValue * 1
+      // Inclure la conduite PROPRE à ce trimestre (pas celle de l'onglet actif)
+      tW += (conductAllTerms[term] ?? conductValue) * 1
       tC += 1
       if (tC > 0) termAverages.push(tW / tC)
     })
     const annualAvg = termAverages.length > 0 ? termAverages.reduce((a, b) => a + b, 0) / termAverages.length : 0
 
     return { generalAvg, subjects: subjectList, conductValue, annualAvg, termsCompleted: termAverages.length }
-  }, [myGrades, myLifeEvents, mySanctions, conductConfig, activeTerm])
+  }, [myGrades, myLifeEvents, mySanctions, conductConfig, activeTerm, conductAllTerms])
 
   return (
     <DashboardLayout>
