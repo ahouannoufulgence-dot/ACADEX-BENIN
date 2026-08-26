@@ -18,6 +18,8 @@ import {
 } from "recharts"
 import { cn } from "@/lib/utils"
 import { generateAcademicFeedback, type GenerateAcademicFeedbackOutput } from "@/ai/flows/generate-academic-feedback"
+import { getPaymentStatus, isTermUnlocked } from "@/lib/payments"
+import { Lock } from "lucide-react"
 
 const EVAL_STEPS = ["int1", "int2", "int3", "dev1", "dev2"]
 const EVAL_LABELS: Record<string, string> = {
@@ -37,6 +39,7 @@ export default function StudentProgressionPage() {
   const [myGrades, setMyGrades] = useState<any[]>([])
   const [classGrades, setClassGrades] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [paymentPercent, setPaymentPercent] = useState(0)
 
   useEffect(() => {
     const id = localStorage.getItem("acadex_user_id") || ""
@@ -77,6 +80,8 @@ export default function StudentProgressionPage() {
           .eq("academic_year", activeYear)
         setClassGrades(classData || [])
       }
+      const payStatus = await getPaymentStatus(studentId, activeYear)
+      setPaymentPercent(payStatus.percent)
       setLoading(false)
     }
     fetchData()
@@ -189,7 +194,15 @@ export default function StudentProgressionPage() {
           </div>
         </div>
 
-        {!selectedSubject ? (
+        {!isTermUnlocked(activeTerm, paymentPercent) ? (
+          <Card className="p-12 md:p-24 text-center border-4 border-dashed border-amber-300 rounded-[2rem] md:rounded-[3rem] bg-amber-50/50 space-y-4">
+            <Lock className="size-8 md:size-14 mx-auto text-amber-500" />
+            <h3 className="text-lg md:text-2xl font-black uppercase text-amber-700">Accès limité</h3>
+            <p className="text-muted-foreground font-medium text-[10px] md:text-base max-w-md mx-auto">
+              La progression détaillée du {activeTerm} est disponible une fois la scolarité correspondante réglée.
+            </p>
+          </Card>
+        ) : !selectedSubject ? (
           <div className="space-y-6 md:space-y-10">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-8">
               {[
